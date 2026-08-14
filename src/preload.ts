@@ -272,7 +272,7 @@ function injectReleaseDownload(): void {
             li.title = owned ? 'Open your download page (all formats)' : "Download this release's streams with tags & cover art";
             // fixed width so state label changes (Download / Starting / Downloading /
             // errors) never shift the other buttons in the justified row
-            li.style.cssText = 'margin:0;padding:0;display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;width:150px;overflow:hidden;';
+            li.style.cssText = 'margin:0;padding:0;display:inline-flex;align-items:center;justify-content:flex-start;vertical-align:middle;width:150px;overflow:hidden;';
             const sp = document.createElement('span');
             sp.id = 'bcrpc-dlbtn';
             sp.className = 'action compound-button';
