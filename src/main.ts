@@ -897,7 +897,8 @@ async function init() {
         }
         const headers = { ...details.requestHeaders };
         // spoof referer/origin for the media CDNs (they gate on a bandcamp referer)
-        // and for the BASE bandcamp.com domain (its apis - tralbum/fancollection - // want it). but NOT for artist subdomains: forcing Origin=bandcamp.com on a
+// and for the BASE bandcamp.com domain (its apis - tralbum/fancollection -
+        // want it). but NOT for artist subdomains: forcing Origin=bandcamp.com on a
         // subdomain action (e.g. c418.bandcamp.com/collect_item_cb) makes bandcamp
         // reject it ("request must use the base domain").
         let host = '';
@@ -1364,7 +1365,8 @@ async function init() {
     // pacing: bandcamp throttles bursts of tralbum reads hard (the previous
     // 3-worker/no-delay version wedged at ~50 items of a 2300-item collection on
     // 429s). requests are now strictly serialized with a delay between releases,
-    // 429s exponentially back off, and a run aborts after repeated hard failures - // the cache resumes where it left off on the next reload/launch.
+// 429s exponentially back off, and a run aborts after repeated hard failures -
+    // the cache resumes where it left off on the next reload/launch.
     interface IndexRow { key: string; blob: string; tags: string[]; tracks: [string, number][] }
     type IndexCacheEntry = { g: string[]; t: [string, number][]; y: number; a?: string };
     const indexRowOf = (k: string, c: IndexCacheEntry): IndexRow => ({
@@ -1767,7 +1769,7 @@ async function init() {
         const entryId = ++dlSeq;
         const dlState = { canceled: false };
         streamDownloads.set(entryId, dlState);
-        const entry: DlEntry = { id: entryId, name: `Playlist - ${p.name}`, album: '', artist: '', state: 'progressing', percent: 0, file: '', at: Date.now(), receivedBytes: 0, totalBytes: 0, speed: 0, lastTime: Date.now(), lastBytes: 0, art: '' };
+const entry: DlEntry = { id: entryId, name: `Playlist - ${p.name}`, album: '', artist: '', state: 'progressing', percent: 0, file: '', at: Date.now(), receivedBytes: 0, totalBytes: 0, speed: 0, lastTime: Date.now(), lastBytes: 0, art: '' };
         dlRegistry.unshift(entry);
         const prog = (state: string, percent: number) => {
             entry.state = state;
@@ -2442,7 +2444,7 @@ async function init() {
         const dlState = { canceled: false };
         streamDownloads.set(entryId, dlState);
 
-        const entry: DlEntry = { id: entryId, name: `${rel.albumArtist} - ${rel.album}`, album: rel.album, artist: rel.albumArtist, state: 'progressing', percent: 0, file: '', at: Date.now(), receivedBytes: 0, totalBytes: 0, speed: 0, lastTime: Date.now(), lastBytes: 0, art: rel.artUrl };
+const entry: DlEntry = { id: entryId, name: `${rel.albumArtist} - ${rel.album}`, album: rel.album, artist: rel.albumArtist, state: 'progressing', percent: 0, file: '', at: Date.now(), receivedBytes: 0, totalBytes: 0, speed: 0, lastTime: Date.now(), lastBytes: 0, art: rel.artUrl };
         dlRegistry.unshift(entry);
         
         const prog = (state: string, percent: number, name: string) => {
@@ -2696,6 +2698,7 @@ async function init() {
         if (devMode) console.log('[bcrpc] settings:get');
         return {
             lastfm: store.get('lastfm', { apiKey: '', apiSecret: '', username: '', enabled: true }),
+            lastfmStatus: lastfmService.status(),
             discordEnabled: store.get('discordEnabled', true),
             discordClientId: store.get('discordClientId', ''),
             closeToTray: store.get('closeToTray', true),
@@ -2733,7 +2736,14 @@ async function init() {
     ipcMain.handle('settings:save', (_e, data: any) => {
         try {
             const existing = (store.get('lastfm') as any) || {};
-            store.set('lastfm', { ...existing, ...(data.lastfm || {}) });
+            const incomingLfm = { ...(data.lastfm || {}) };
+            // a BLANK key/secret never overwrites a stored one: a settings window
+            // whose load failed (or a save racing the load) posts empty fields,
+            // and wiping the creds silently kills scrobbling until re-entered.
+            // scrobbling is turned off via the enabled toggle, not by blanking.
+            if (!String(incomingLfm.apiKey || '').trim() && existing.apiKey) delete incomingLfm.apiKey;
+            if (!String(incomingLfm.apiSecret || '').trim() && existing.apiSecret) delete incomingLfm.apiSecret;
+            store.set('lastfm', { ...existing, ...incomingLfm });
             if (typeof data.fileNameFmt === 'string') store.set('fileNameFmt', data.fileNameFmt);
             if (typeof data.folderNameFmt === 'string') store.set('folderNameFmt', data.folderNameFmt);
             if (typeof data.modifyTags === 'boolean') store.set('modifyTags', data.modifyTags);
@@ -2856,10 +2866,10 @@ async function init() {
                 contextIsolation: true,
                 sandbox: true,
                 // webSecurity is off so the in-page extractor can hit bandcamp.com apis
-                // cross-origin from artist subdomains. the page is otherwise locked
-                // down (no node integration, sandboxed, context-isolated), which is
-                // what contains the risk. CodeQL flags this - it's an intentional
-                // trade-off for a browser-like client.
+// cross-origin from artist subdomains & darkreader can pull cross-origin
+                // css/fonts. the page is otherwise locked down (no node integration,
+                // sandboxed, context-isolated), which is what contains the risk. CodeQL
+                // flags this - it's an intentional trade-off for a browser-like client.
                 webSecurity: false,
                 devTools: devMode,
                 autoplayPolicy: 'no-user-gesture-required',
@@ -2959,13 +2969,11 @@ async function init() {
         wc.on('did-navigate-in-page', onNav);
         wc.on('page-title-updated', onNav);
 
-        // NOTE: every page load goes through TWO cloak layers (this preload one AND
-        // the webContents-inserted ANTI_FLASH_CSS below) plus an injected <style> tag
-        // from preload.ts. they exist to hide bandcamp's white background at its
-        // document-start moment, before darkreader runs; they are NOT redundant.
-        // if a nav ever slips through (e.g. race like ?from=menubar hops, bfcache
-        // restores), the page stayed an empty grey forever. after a few seconds, if
-        // nothing painted, drop the user-origin cloak AND force the body visible - // worst case is a brief unthemed flash.
+// failsafe against the grey-page hang: the dark cloak hides the body until
+        // darkreader paints; if darkreader never initializes (script error, redirect
+        // race like ?from=menubar hops, bfcache restores), the page stayed an empty
+        // grey forever. after a few seconds, if nothing painted, drop the user-origin
+        // cloak AND force the body visible - worst case is a brief unthemed flash.
         const liftCloakIfStuck = () => {
             setTimeout(() => {
                 if (wc.isDestroyed()) return;
@@ -3041,7 +3049,7 @@ async function init() {
                     d.style.cssText = 'position:fixed;inset:0;z-index:2147483647;background:' + th.bg + ';color:' + th.text + ';display:flex;align-items:center;justify-content:center;font-family:sans-serif;';
                     d.innerHTML = '<div style="max-width:440px;padding:24px;text-align:center;">' +
                         '<div style="font-size:18px;font-weight:600;margin-bottom:10px;">Error 429 - too many requests</div>' +
-                        '<div style="font-size:13px;color:' + th.muted + ';line-height:1.6;">Bandcamp is throttling this session, so this page could not load. Wait a little bit T__T and try again.</div>' +
+'<div style="font-size:13px;color:' + th.muted + ';line-height:1.6;">Bandcamp is throttling this session, so this page could not load. Wait a little bit T__T and try again.</div>' +
                         '<button onclick="location.reload()" style="margin-top:16px;background:' + th.accent + ';border:none;color:#fff;border-radius:6px;padding:9px 16px;font-size:13px;cursor:pointer;">Reload page</button></div>';
                     (document.body || document.documentElement).appendChild(d);
                     var st = document.createElement('style'); st.textContent = 'body{opacity:1 !important}';

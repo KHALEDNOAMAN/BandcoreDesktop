@@ -408,6 +408,19 @@
             $('apiSecret').value = lfm.apiSecret || '';
             $('lfmEnabled').checked = lfm.enabled !== false;
             $('minScrobbleLen').value = lfm.minScrobbleLen == null ? 30 : lfm.minScrobbleLen;
+            // scrobbler health: every failure in the scrobble path is non-fatal,
+            // so this line is the only place a broken setup becomes visible
+            const lst = s.lastfmStatus || {};
+            if (!lst.ready) {
+                $('lfmStatus').textContent = 'not scrobbling: ' + (lst.reason || 'unknown');
+                $('lfmStatus').className = 'status err';
+            } else if (lst.last) {
+                $('lfmStatus').textContent = 'last submission: ' + lst.last.detail;
+                $('lfmStatus').className = lst.last.ok ? 'status ok' : 'status err';
+            } else {
+                $('lfmStatus').textContent = 'ready - nothing submitted yet this session.';
+                $('lfmStatus').className = 'status';
+            }
             $('discordEnabled').checked = s.discordEnabled !== false;
             $('discordClientId').value = s.discordClientId || '';
             const dOpts = s.discordOpts || {};
