@@ -50,6 +50,17 @@ export const THEMES: Theme[] = [
         },
         pageBg: '#000000', pageText: '#e8e6e3',
     },
+    {
+        key: 'forest', label: 'Forest',
+        vars: {
+            'bg': '#0d1512', 'titlebar': '#0a100c', 'input': '#0d1612', 'bar': '#111b16',
+            'panel': '#0b120e', 'card': '#15211a', 'hover-bg': '#1b2a22',
+            'line': '#24382d', 'line-2': '#1a2b22', 'scroll': '#2c4437',
+            'text': '#d6e5d9', 'text-2': '#b7c9bd', 'muted': '#90a795', 'sub': '#6f8677',
+            'accent': '#4ec978', 'hover-text': '#ffffff',
+        },
+        pageBg: '#0d1512', pageText: '#d6e5d9',
+    },
 ];
 
 export function themeByKey(key: unknown): Theme {
