@@ -402,6 +402,14 @@ function getTheme(): string {
     return themeByKey(store.get('theme', 'dark')).key;
 }
 
+// darkreader page colors follow the chrome theme: with AMOLED selected, pages
+// darken to pure black instead of the standard charcoal.
+function darkReaderConfig(): { bg: string; text: string } {
+    return getTheme() === 'amoled'
+        ? { bg: '#000000', text: '#e8e6e3' }
+        : { bg: '#181a1b', text: '#e8e6e3' };
+}
+
 // resolved chrome-variable CSS injected into our own views. every view defines
 // the same vars in author CSS (dark defaults) so they work standalone; this
 // user-origin override is what actually switches the palette.
@@ -2845,6 +2853,18 @@ const entry: DlEntry = { id: entryId, name: `${rel.albumArtist} - ${rel.album}`,
                 for (const w of [mainWindow, settingsWindow, spotlightWin, downloadsWin, notice429Win]) {
                     if (w && !w.webContents.isDestroyed()) w.setBackgroundColor(chromeBg());
                 }
+                // page darkening follows the theme too (amoled = pure black pages);
+                // re-apply darkreader's palette on every dark tab
+                const dr = darkReaderConfig();
+                tabs.forEach((t) => {
+                    const wc = t.view.webContents;
+                    if (wc.isDestroyed() || themeForUrl(wc.getURL()) === 'light') return;
+                    wc.executeJavaScript(
+                        `if (window.__darkReaderActive && typeof window.DarkReader !== 'undefined') ` +
+                        `window.DarkReader.enable({ brightness: 100, contrast: 100, sepia: 0, mode: 1, ` +
+                        `darkSchemeBackgroundColor: '${dr.bg}', darkSchemeTextColor: '${dr.text}' });`
+                    ).catch(() => {});
+                });
             }
             if (typeof data.seekbarAbove === 'boolean') {
                 store.set('seekbarAbove', data.seekbarAbove);
@@ -3044,8 +3064,8 @@ const entry: DlEntry = { id: entryId, name: `${rel.albumArtist} - ${rel.album}`,
                                 window.DarkReader.setFetchMethod(window.fetch);
                                 window.DarkReader.enable({
                                     brightness: 100, contrast: 100, sepia: 0, mode: 1,
-                                    darkSchemeBackgroundColor: '#181a1b',
-                                    darkSchemeTextColor: '#e8e6e3'
+                                    darkSchemeBackgroundColor: '${darkReaderConfig().bg}',
+                                    darkSchemeTextColor: '${darkReaderConfig().text}'
                                 });
                             }
                         } finally { window.define = _define; window.exports = _exports; }
@@ -3076,7 +3096,7 @@ const entry: DlEntry = { id: entryId, name: `${rel.albumArtist} - ${rel.album}`,
                 const key = antiFlashKeys.get(wc);
                 if (key) { wc.removeInsertedCSS(key).catch(() => {}); antiFlashKeys.delete(wc); }
                 wc.executeJavaScript(`(function () {
-                    var th = { bg: '#181a1b', text: '#e8e6e3', muted: '#9a968e', accent: '#1da0c3' };
+                    var th = { bg: '${themeByKey(getTheme()).vars['bg']}', text: '${themeByKey(getTheme()).vars['text']}', muted: '${themeByKey(getTheme()).vars['muted']}', accent: '${themeByKey(getTheme()).vars['accent']}' };
                     if (document.getElementById('bcrpc-429')) return;
                     var d = document.createElement('div');
                     d.id = 'bcrpc-429';
