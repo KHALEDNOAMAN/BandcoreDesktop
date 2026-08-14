@@ -270,12 +270,16 @@ function injectReleaseDownload(): void {
             li.id = 'bcrpc-dl-item';
             li.className = 'wishlist';
             li.title = owned ? 'Open your download page (all formats)' : "Download this release's streams with tags & cover art";
-            li.style.cssText = 'margin:0;padding:0;display:inline-flex;align-items:center;vertical-align:middle;';
+            // fixed width so state label changes (Download / Starting / Downloading /
+            // errors) never shift the other buttons in the justified row
+            li.style.cssText = 'margin:0;padding:0;display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;width:150px;overflow:hidden;';
             const sp = document.createElement('span');
             sp.id = 'bcrpc-dlbtn';
             sp.className = 'action compound-button';
             sp.style.cssText = 'display:inline-flex;align-items:center;gap:6px;cursor:pointer;';
             sp.innerHTML = svg + '<span class="collect-msg"><span><a>' + label + '</a></span></span>';
+            const lblA = sp.querySelector('a') as HTMLElement | null;
+            if (lblA) lblA.style.cssText = 'display:inline-block;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
             li.appendChild(sp);
             sp.addEventListener('click', async (e) => {
                 e.preventDefault();
