@@ -410,6 +410,23 @@ function darkReaderConfig(): { bg: string; text: string } {
         : { bg: '#181a1b', text: '#e8e6e3' };
 }
 
+// amoled pages go pure black, and darkreader blends every dark element (like
+// bandcamp's #222 header bars) toward that #000000 scheme - so the fixed
+// header vanishes into the page. pin the bar to pure black in amoled, and
+// cancel darkreader's icon inversion so the light logo stays visible on it.
+const AMOLED_BAR_CSS = 'header.menu-bar, #masthead, .masthead { background-color: #000000 !important; }';
+const HEADER_ICON_CSS = 'header.menu-bar svg, #masthead svg, .masthead svg { filter: none !important; }';
+const darkHeaderKeys = new WeakMap<Electron.WebContents, string>();
+async function applyDarkHeaderPatch(wc: Electron.WebContents): Promise<void> {
+    try {
+        const prev = darkHeaderKeys.get(wc);
+        if (prev) await wc.removeInsertedCSS(prev).catch(() => {});
+        const css = (getTheme() === 'amoled' ? AMOLED_BAR_CSS : '') + HEADER_ICON_CSS;
+        const key = await wc.insertCSS(css, { cssOrigin: 'user' });
+        darkHeaderKeys.set(wc, key);
+    } catch (err) { console.error('applyDarkHeaderPatch failed:', err); }
+}
+
 // resolved chrome-variable CSS injected into our own views. every view defines
 // the same vars in author CSS (dark defaults) so they work standalone; this
 // user-origin override is what actually switches the palette.
@@ -2864,6 +2881,7 @@ const entry: DlEntry = { id: entryId, name: `${rel.albumArtist} - ${rel.album}`,
                         `window.DarkReader.enable({ brightness: 100, contrast: 100, sepia: 0, mode: 1, ` +
                         `darkSchemeBackgroundColor: '${dr.bg}', darkSchemeTextColor: '${dr.text}' });`
                     ).catch(() => {});
+                    applyDarkHeaderPatch(wc).catch(() => {});
                 });
             }
             if (typeof data.seekbarAbove === 'boolean') {
@@ -3071,6 +3089,7 @@ const entry: DlEntry = { id: entryId, name: `${rel.albumArtist} - ${rel.album}`,
                         } finally { window.define = _define; window.exports = _exports; }
                     })();
                 `);
+                await applyDarkHeaderPatch(wc);
             } catch (err) { console.error('Failed to inject view assets:', err); }
         });
 
