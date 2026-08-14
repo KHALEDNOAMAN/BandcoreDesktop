@@ -671,6 +671,9 @@ async function init() {
 
     headerView.webContents.loadFile(path.join(__dirname, 'header', 'header.html'));
     playerView.webContents.loadFile(path.join(__dirname, 'player', 'player.html'));
+    playerView.webContents.once('did-finish-load', () => {
+        playerView.webContents.send('player:seekbar-top', store.get('seekbarAbove', false) === true);
+    });
 
     const session = contentView.webContents.session;
 
@@ -2692,6 +2695,7 @@ async function init() {
             theme: getTheme(),
             darkArtistPages: store.get('darkArtistPages', false) === true,
             discordOpts: presenceService.options(),
+            seekbarAbove: store.get('seekbarAbove', false) === true,
         };
     });
 
@@ -2763,6 +2767,12 @@ async function init() {
             if (typeof data.darkArtistPages === 'boolean') {
                 if (data.darkArtistPages !== (store.get('darkArtistPages', false) === true)) themeChanged = true;
                 store.set('darkArtistPages', data.darkArtistPages);
+            }
+            if (typeof data.seekbarAbove === 'boolean') {
+                store.set('seekbarAbove', data.seekbarAbove);
+                if (playerView && !playerView.webContents.isDestroyed()) {
+                    playerView.webContents.send('player:seekbar-top', data.seekbarAbove);
+                }
             }
             // reload every tab so the cloak/darkreader state flips
             if (themeChanged) tabs.forEach((t) => { if (!t.view.webContents.isDestroyed()) t.view.webContents.reload(); });

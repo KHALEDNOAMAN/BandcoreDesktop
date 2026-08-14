@@ -52,6 +52,10 @@
             font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: #9a968e;
             padding-bottom: 10px; margin-bottom: 14px; border-bottom: 1px solid #1e2224;
         }
+        .sub-h {
+            font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: #848079;
+            margin-bottom: 10px;
+        }
         .hint { color: #848079; font-size: 11px; margin-bottom: 14px; line-height: 1.5; }
         .hint code { color: #b7b2a8; background: #121415; padding: 1px 4px; border-radius: 3px; }
         label { display: block; font-size: 11px; color: #fff; margin: 10px 0 4px; }
@@ -147,6 +151,9 @@
                 <label class="toggle" style="margin-top:12px;"><input type="checkbox" id="gridHeaders"> show group headers in the collection grid view</label>
                 <label class="toggle" style="margin-top:12px;"><input type="checkbox" id="darkMode"> dark mode (uncheck for bandcamp's native theme)</label>
                 <label class="toggle" style="margin-top:12px;"><input type="checkbox" id="noDarkArtistPages"> disable dark mode on artist pages (keeps their custom themes)</label>
+                <div style="height:1px;background:#1e2224;margin:16px 0;"></div>
+                <div class="sub-h">Player Bar</div>
+                <label class="toggle"><input type="checkbox" id="seekbarAbove"> seekbar above the controls</label>
             </section>
 
             <section class="pane hidden" id="pane-windowbar">
@@ -397,6 +404,7 @@
             $('cacheReleases').checked = s.cacheReleases === true;
             refreshCacheInfo();
             $('darkMode').checked = s.theme !== 'light'; // dark by default
+            $('seekbarAbove').checked = s.seekbarAbove === true;
             // stored setting is "apply dark to artist pages" (default off); the
             // checkbox is the inverse ("disable…"), so it starts checked
             $('noDarkArtistPages').checked = s.darkArtistPages !== true;
@@ -459,7 +467,8 @@
                 musicFolderScan: $('musicFolderScan').checked,
                 cacheReleases: $('cacheReleases').checked,
                 theme: $('darkMode').checked ? 'dark' : 'light',
-                darkArtistPages: !$('noDarkArtistPages').checked
+                darkArtistPages: !$('noDarkArtistPages').checked,
+                seekbarAbove: $('seekbarAbove').checked
             });
         }
 
