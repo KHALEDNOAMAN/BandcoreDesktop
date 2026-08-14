@@ -501,7 +501,7 @@ function lvBuildRowEl(i: number): HTMLElement {
         row.innerHTML =
             `<span class="lv-num">${r.isAlbumRow ? '' : r.trackIdx + 1}.</span>` +
             `<span class="lv-art">${escapeHtml(it.artist)}</span>` +
-            `<span class="lv-trk">${escapeHtml(r.title)}${r.isAlbumRow ? ' <span style="color:#848079">(album)</span>' : ''}</span>` +
+            `<span class="lv-trk">${escapeHtml(r.title)}${r.isAlbumRow ? ' <span style="color:var(--sub)">(album)</span>' : ''}</span>` +
             `<span class="lv-alb">${escapeHtml(it.title)}</span>` +
             `<span class="lv-yr">${it.year || ''}</span>` +
             `<span class="lv-gen">${genreHtml}</span>` +
@@ -1443,7 +1443,7 @@ function textPrompt(title: string, initial: string, multiline = false): Promise<
             `<div class="modal"><h3></h3>` +
             (multiline
                 ? `<textarea spellcheck="false" maxlength="2000"></textarea>` +
-                  `<div class="mrow" style="margin-top:10px"><span style="flex:1;font-size:11px;color:#848079;align-self:center">Ctrl+Enter to save</span>`
+                  `<div class="mrow" style="margin-top:10px"><span style="flex:1;font-size:11px;color:var(--sub);align-self:center">Ctrl+Enter to save</span>`
                 : `<input type="text" spellcheck="false" autocomplete="off" maxlength="300" style="width:100%">` +
                   `<div class="mrow" style="margin-top:14px">`) +
             `<button class="m-ok primary">OK</button>` +

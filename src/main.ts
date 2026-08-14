@@ -14,9 +14,7 @@ import { buildExtractorScript } from './services/queueExtractor';
 import { buildId3v23 } from './services/id3';
 import { readLocalTags, AUDIO_EXTENSIONS } from './services/localTags';
 import type { NowPlaying, ResolveStreamRequest, ResolveStreamResponse, TralbumType, PlayerTrack } from './shared/types';
-
-const darkReaderPath = require.resolve('darkreader/darkreader.js');
-const darkReaderJS = fs.readFileSync(darkReaderPath, 'utf8');
+import { themeByKey } from './shared/themes';
 
 // last-resort crash telemetry: log to userData/crash.log (and the console) so a
 // hard crash actually says WHERE it happened instead of just closing the app.
@@ -41,62 +39,13 @@ const SEARCHBOX_CSS = `
     }
 `;
 
-// light theme: keep bandcamp's own look, just hide scrollbars & the banner. no
-// opacity cloak (that waits on darkreader, which is off in light mode).
-const LIGHT_CSS = `
+// bandcamp pages are always shown native; this css is the only thing we apply
+// to them (scrollbars hidden, editorial banner kept on the homepage only).
+const PAGE_CSS = `
     * { scrollbar-width: none !important; -ms-overflow-style: none !important; }
     ::-webkit-scrollbar { width: 0 !important; height: 0 !important; display: none !important; }
     .editorial-recommendations-banner { display: none !important; }
     body.home .editorial-recommendations-banner { display: block !important; }
-`;
-
-// per-navigation theme css. the html-bg / body-opacity cloak is intentionally
-// injected here too (webContents-level, applies very early per navigation) AND in
-// the preload — dropping either one lets a flash of light-mode bandcamp show on
-// page change, so both are kept on purpose.
-const ANTI_FLASH_CSS = `
-    html { background-color: #181a1b !important; }
-    html:not([data-darkreader-scheme="dark"]) body { opacity: 0 !important; }
-
-    /* hide every scrollbar app wide (content still scrolls). */
-    * { scrollbar-width: none !important; -ms-overflow-style: none !important; }
-    ::-webkit-scrollbar { width: 0 !important; height: 0 !important; display: none !important; }
-
-    :root, html, body {
-        --menubar-background-color: #1e2021 !important;
-        --header-background-color: #1e2021 !important;
-    }
-    .header-wrapper, #menubar, .menubar, .menu-bar {
-        transition: none !important;
-        background-color: #1e2021 !important;
-    }
-
-    .editorial-recommendations-banner { display: none !important; }
-    body.home .editorial-recommendations-banner { display: block !important; }
-
-    .bandcamp-logo-link svg, .logo-mobile svg, .horizontal-nav__logo svg {
-        visibility: hidden !important;
-    }
-
-    .bandcamp-logo-link, .horizontal-nav__logo, .logo-mobile, #page-footer .bandcamp-logo-link {
-        background-color: #ffffff !important;
-        -webkit-mask-image: url('https://upload.wikimedia.org/wikipedia/commons/0/06/Bandcamp-logotype-light.svg') !important;
-        mask-image: url('https://upload.wikimedia.org/wikipedia/commons/0/06/Bandcamp-logotype-light.svg') !important;
-        -webkit-mask-size: contain !important;
-        mask-size: contain !important;
-        -webkit-mask-repeat: no-repeat !important;
-        mask-repeat: no-repeat !important;
-        -webkit-mask-position: left center !important;
-        mask-position: left center !important;
-        display: inline-block !important;
-    }
-
-    @media (max-width: 743px) {
-        .bandcamp-logo-link, .logo-mobile, .horizontal-nav__logo {
-            -webkit-mask-image: url('https://upload.wikimedia.org/wikipedia/commons/0/07/Bandcamp-bc-logotype-light.svg') !important;
-            mask-image: url('https://upload.wikimedia.org/wikipedia/commons/0/07/Bandcamp-bc-logotype-light.svg') !important;
-        }
-    }
 `;
 
 const store = new Store({ clearInvalidConfig: true });
@@ -252,7 +201,7 @@ interface Tab { id: number; view: BrowserView; title: string; }
 let tabs: Tab[] = [];
 let activeTabId = -1;
 let tabSeq = 0;
-// per-view anti-flash css handle so each tab can swap its own on navigation
+// per-view page css handle so each tab can swap its own on navigation
 const antiFlashKeys = new WeakMap<Electron.WebContents, string>();
 
 function isBandcampUrl(url: string): boolean {
@@ -346,12 +295,13 @@ function openSettings() {
         modal: false,
         resizable: false,
         title: 'Settings',
-        backgroundColor: '#181a1b',
+        backgroundColor: chromeBg(),
         // frameless w/ our own titlebar: native close btn on windows can stick in its
         // hover state when the cursor leaves via the client area, so we own the control
         frame: false,
         webPreferences: { nodeIntegration: true, contextIsolation: false }
     });
+    settingsWindow.webContents.on('dom-ready', () => applyChromeTheme(settingsWindow!.webContents));
     settingsWindow.loadFile(path.join(__dirname, 'settings', 'settings.html'));
     settingsWindow.on('closed', () => { settingsWindow = null; });
 }
@@ -395,40 +345,28 @@ function isSocialHost(url: string): boolean {
 
 function toIdStr(v: unknown): string { const m = String(v ?? '').match(/\d+/); return m ? m[0] : ''; }
 
-// ui theme: dark (darkreader) by default; unchecking the "dark mode" setting
-// switches to 'light' = bandcamp's native look.
-function getTheme(): 'dark' | 'light' {
-    return store.get('theme', 'dark') === 'light' ? 'light' : 'dark';
+// ui theme: maps the stored key to a chrome palette (pages are always native).
+function getTheme(): string {
+    return themeByKey(store.get('theme', 'dark')).key;
 }
 
-// artist / label pages (subdomains & bandcamp-pro custom domains) as opposed to the
-// core app pages (bandcamp.com, the daily). used by the "don't darken artist pages"
-// option so their custom themes show through.
-function isArtistPage(url: string): boolean {
+// resolved chrome-variable CSS injected into our own views. every view defines
+// the same vars in author CSS (dark defaults) so they work standalone; this
+// user-origin override is what actually switches the palette.
+const chromeVarKeys = new WeakMap<Electron.WebContents, string>();
+function themeVarsCss(): string {
+    const vars = Object.entries(themeByKey(getTheme()).vars);
+    return ':root { ' + vars.map(([k, v]) => '--' + k + ': ' + v + ';').join(' ') + ' }';
+}
+async function applyChromeTheme(wc: Electron.WebContents): Promise<void> {
     try {
-        const h = new URL(url).hostname.toLowerCase();
-        return !(h === 'bandcamp.com' || h === 'www.bandcamp.com' || h === 'daily.bandcamp.com');
-    } catch { return false; }
+        const prev = chromeVarKeys.get(wc);
+        if (prev) await wc.removeInsertedCSS(prev).catch(() => {});
+        const key = await wc.insertCSS(themeVarsCss(), { cssOrigin: 'user' });
+        chromeVarKeys.set(wc, key);
+    } catch (err) { console.error('applyChromeTheme failed:', err); }
 }
-
-// fan playlist pages ship their own dark design; darkreader double-inverts it
-// into weird colors, so they're always exempt (our chrome stays dark regardless).
-function isPlaylistPage(url: string): boolean {
-    try {
-        const u = new URL(url);
-        return /(^|\.)bandcamp\.com$/i.test(u.hostname) && /\/playlist(\/|$)/.test(u.pathname);
-    } catch { return false; }
-}
-
-// effective theme for a specific page: dark everywhere, except artist pages are
-// left light (their custom look) unless the user opted into darkening them,
-// and playlist pages which are natively dark already.
-function themeForUrl(url: string): 'dark' | 'light' {
-    if (getTheme() === 'light') return 'light';
-    if (isPlaylistPage(url)) return 'light';
-    if (store.get('darkArtistPages', false) !== true && isArtistPage(url)) return 'light';
-    return 'dark';
-}
+function chromeBg(): string { return themeByKey(getTheme()).vars['bg']; }
 
 // opt-in on-disk release cache: covers + the release index (tracklists, tags,
 // album info) + the collection listing itself. audio is never cached.
@@ -569,9 +507,10 @@ async function init() {
         try {
             notice429Win = new BrowserWindow({
                 width: 470, height: 220, parent: mainWindow, frame: false, resizable: false,
-                backgroundColor: '#181a1b', // opaque: transparent windows are crash-prone on some setups
+                backgroundColor: chromeBg(), // opaque: transparent windows are crash-prone on some setups
                 webPreferences: { nodeIntegration: true, contextIsolation: false },
             });
+            notice429Win.webContents.on('dom-ready', () => applyChromeTheme(notice429Win!.webContents));
             notice429Win.loadFile(path.join(__dirname, 'notice', 'notice429.html'));
             notice429Win.on('closed', () => { notice429Win = null; });
         } catch { notice429Win = null; }
@@ -597,7 +536,8 @@ async function init() {
     });
 
     headerView = new BrowserView({ webPreferences: { nodeIntegration: true, contextIsolation: false } });
-    headerView.setBackgroundColor('#121415');
+    headerView.setBackgroundColor(chromeBg());
+    headerView.webContents.on('dom-ready', () => applyChromeTheme(headerView.webContents));
 
     playerView = new BrowserView({
         webPreferences: {
@@ -606,7 +546,8 @@ async function init() {
             autoplayPolicy: 'no-user-gesture-required'
         }
     });
-    playerView.setBackgroundColor('#181a1b');
+    playerView.setBackgroundColor(chromeBg());
+    playerView.webContents.on('dom-ready', () => applyChromeTheme(playerView.webContents));
 
     // first tab. contentView aliases the *active* tab's view; more tabs open via
     // middle-click (bandcamp links) or the + button and all share the one player.
@@ -617,7 +558,8 @@ async function init() {
     collectionView = new BrowserView({
         webPreferences: { nodeIntegration: true, contextIsolation: false, devTools: devMode }
     });
-    collectionView.setBackgroundColor('#181a1b');
+    collectionView.setBackgroundColor(chromeBg());
+    collectionView.webContents.on('dom-ready', () => applyChromeTheme(collectionView.webContents));
     if (devMode) {
         collectionView.webContents.on('did-finish-load', () => console.log('[bcrpc] collection view loaded'));
         collectionView.webContents.on('did-fail-load', (_e, code, desc, url) =>
@@ -627,7 +569,8 @@ async function init() {
     feedView = new BrowserView({
         webPreferences: { nodeIntegration: true, contextIsolation: false, devTools: devMode }
     });
-    feedView.setBackgroundColor('#181a1b');
+    feedView.setBackgroundColor(chromeBg());
+    feedView.webContents.on('dom-ready', () => applyChromeTheme(feedView.webContents));
 
     if (devMode) {
         feedView.webContents.on('did-fail-load', (_e, code, desc, url) =>
@@ -1031,9 +974,10 @@ async function init() {
             spotlightWin = new BrowserWindow({
                 width: 620, height: 460, frame: false, resizable: false, parent: mainWindow,
                 x: Math.max(0, b.x + Math.round((b.width - 620) / 2)), y: b.y + 110,
-                backgroundColor: '#181a1b',
+                backgroundColor: chromeBg(),
                 webPreferences: { nodeIntegration: true, contextIsolation: false, devTools: devMode },
             });
+            spotlightWin.webContents.on('dom-ready', () => applyChromeTheme(spotlightWin!.webContents));
             spotlightWin.loadFile(path.join(__dirname, 'search', 'search.html'));
             spotlightWin.webContents.on('did-finish-load', () => {
                 if (spotlightWin && !spotlightWin.isDestroyed()) spotlightWin.webContents.send('gsearch:shown');
@@ -2273,9 +2217,10 @@ async function init() {
             downloadsWin = new BrowserWindow({
                 width: 360, height: h, frame: false, resizable: false, parent: mainWindow,
                 x: Math.max(0, b.x + b.width - 372), y: b.y + 44,
-                backgroundColor: '#181a1b',
+                backgroundColor: chromeBg(),
                 webPreferences: { nodeIntegration: true, contextIsolation: false },
             });
+            downloadsWin.webContents.on('dom-ready', () => applyChromeTheme(downloadsWin!.webContents));
 
             downloadsWin.on('blur', () => {
                 if (downloadsJustOpened) return;
@@ -2608,10 +2553,6 @@ async function init() {
 
     ipcMain.on('app:settings', () => openSettings());
     ipcMain.on('settings:close', () => { if (settingsWindow && !settingsWindow.isDestroyed()) settingsWindow.close(); });
-    // preload reads the effective theme for its page synchronously at document-start
-    // so its anti-flash cloak matches (no opacity cloak when the page will be light,
-    // else it stays blank grey)
-    ipcMain.on('app:theme-for', (e, url: unknown) => { e.returnValue = themeForUrl(typeof url === 'string' ? url : ''); });
 
     // let the user pick where purchased downloads are saved
     ipcMain.handle('settings:choose-download-dir', async () => {
@@ -2693,7 +2634,6 @@ async function init() {
             musicFolderScan: store.get('musicFolderScan', false) === true,
             musicFolder: String(store.get('musicFolder', '') || ''),
             theme: getTheme(),
-            darkArtistPages: store.get('darkArtistPages', false) === true,
             discordOpts: presenceService.options(),
             seekbarAbove: store.get('seekbarAbove', false) === true,
         };
@@ -2760,13 +2700,23 @@ async function init() {
             }
             let themeChanged = false;
             if (typeof data.theme === 'string') {
-                const next = data.theme === 'light' ? 'light' : 'dark';
+                const next = themeByKey(data.theme).key;
                 themeChanged = next !== getTheme();
-                store.set('theme', next);
+                if (themeChanged) store.set('theme', next);
             }
-            if (typeof data.darkArtistPages === 'boolean') {
-                if (data.darkArtistPages !== (store.get('darkArtistPages', false) === true)) themeChanged = true;
-                store.set('darkArtistPages', data.darkArtistPages);
+            if (themeChanged) {
+                // live palette swap for our own chrome (settings window included)
+                const chrome = [
+                    headerView, playerView, collectionView, feedView,
+                    settingsWindow, spotlightWin, downloadsWin, notice429Win,
+                ].map((w) => (w && !w.webContents.isDestroyed() ? w.webContents : null)).filter(Boolean) as Electron.WebContents[];
+                chrome.forEach((wc) => applyChromeTheme(wc));
+                for (const w of [headerView, playerView, collectionView, feedView]) {
+                    if (w && !w.webContents.isDestroyed()) w.setBackgroundColor(chromeBg());
+                }
+                for (const w of [mainWindow, settingsWindow, spotlightWin, downloadsWin, notice429Win]) {
+                    if (w && !w.webContents.isDestroyed()) w.setBackgroundColor(chromeBg());
+                }
             }
             if (typeof data.seekbarAbove === 'boolean') {
                 store.set('seekbarAbove', data.seekbarAbove);
@@ -2774,8 +2724,6 @@ async function init() {
                     playerView.webContents.send('player:seekbar-top', data.seekbarAbove);
                 }
             }
-            // reload every tab so the cloak/darkreader state flips
-            if (themeChanged) tabs.forEach((t) => { if (!t.view.webContents.isDestroyed()) t.view.webContents.reload(); });
             if (devMode) console.log('[bcrpc] settings:save ok keys=' + JSON.stringify(Object.keys(data || {})));
             return { ok: true };
         } catch (err: any) {
@@ -2810,10 +2758,10 @@ async function init() {
                 contextIsolation: true,
                 sandbox: true,
                 // webSecurity is off so the in-page extractor can hit bandcamp.com apis
-                // cross-origin from artist subdomains & darkreader can pull cross-origin
-                // css/fonts. the page is otherwise locked down (no node integration,
-                // sandboxed, context-isolated), which is what contains the risk. CodeQL
-                // flags this — it's an intentional trade-off for a browser-like client.
+                // cross-origin from artist subdomains. the page is otherwise locked
+                // down (no node integration, sandboxed, context-isolated), which is
+                // what contains the risk. CodeQL flags this — it's an intentional
+                // trade-off for a browser-like client.
                 webSecurity: false,
                 devTools: devMode,
                 autoplayPolicy: 'no-user-gesture-required',
@@ -2913,86 +2861,40 @@ async function init() {
         wc.on('did-navigate-in-page', onNav);
         wc.on('page-title-updated', onNav);
 
-        // failsafe against the grey-page hang: the dark cloak hides the body until
-        // darkreader paints; if darkreader never initializes (script error, redirect
-        // race like ?from=menubar hops, bfcache restores), the page stayed an empty
-        // grey forever. after a few seconds, if nothing painted, drop the user-origin
-        // cloak AND force the body visible — worst case is a brief unthemed flash.
-        const liftCloakIfStuck = () => {
-            setTimeout(() => {
-                if (wc.isDestroyed()) return;
-                wc.executeJavaScript('!!document.documentElement.getAttribute("data-darkreader-scheme")')
-                    .then((painted: boolean) => {
-                        if (painted || wc.isDestroyed()) return;
-                        if (themeForUrl(wc.getURL()) !== 'light') {
-                            const key = antiFlashKeys.get(wc);
-                            if (key) { wc.removeInsertedCSS(key).catch(() => {}); antiFlashKeys.delete(wc); }
-                        }
-                        wc.executeJavaScript(
-                            '(function(){var s=document.createElement("style");s.textContent="body{opacity:1 !important}";(document.head||document.documentElement).appendChild(s);})()'
-                        ).catch(() => {});
-                    }).catch(() => {});
-            }, 4000);
-        };
-
-        // dark theme once the dom is ready
+        // pages are bandcamp-native; the only page css is ours, light and stable
         wc.on('dom-ready', async () => {
             try {
                 await wc.insertCSS(SEARCHBOX_CSS);
-                liftCloakIfStuck(); // arm the de-grey failsafe on every load path
-                if (themeForUrl(wc.getURL()) === 'light') return; // no darkreader in light mode / on exempt artist pages
-                await wc.executeJavaScript(`
-                    (function() {
-                        if (window.__darkReaderActive) return;
-                        window.__darkReaderActive = true;
-                        const _define = window.define; const _exports = window.exports;
-                        window.define = undefined; window.exports = undefined;
-                        try {
-                            ${darkReaderJS};
-                            if (typeof window.DarkReader !== 'undefined') {
-                                window.DarkReader.setFetchMethod(window.fetch);
-                                window.DarkReader.enable({
-                                    brightness: 100, contrast: 100, sepia: 0, mode: 1,
-                                    darkSchemeBackgroundColor: '#181a1b',
-                                    darkSchemeTextColor: '#e8e6e3'
-                                });
-                            }
-                        } finally { window.define = _define; window.exports = _exports; }
-                    })();
-                `);
             } catch (err) { console.error('Failed to inject view assets:', err); }
         });
 
-        // pre-theme css, swapped per navigation (light mode skips the dark cloak)
+        // page css, swapped per navigation
         wc.on('did-navigate', async () => {
             try {
                 const prev = antiFlashKeys.get(wc);
                 if (prev) await wc.removeInsertedCSS(prev).catch(() => {});
-                const isLight = themeForUrl(wc.getURL()) === 'light';
-                const key = await wc.insertCSS(isLight ? LIGHT_CSS : ANTI_FLASH_CSS, { cssOrigin: 'user' });
+                const key = await wc.insertCSS(PAGE_CSS, { cssOrigin: 'user' });
                 antiFlashKeys.set(wc, key);
-                if (!isLight) liftCloakIfStuck();
-            } catch (err) { console.error('Failed to inject Pre-Theme CSS:', err); }
+            } catch (err) { console.error('Failed to inject page css:', err); }
         });
 
-        // a page navigation that itself gets HTTP 429 renders an empty shell that
-        // the dark cloak turns into a silent grey hang. say WHY and offer reload.
+        // a page navigation that itself gets HTTP 429 renders an empty shell.
+        // say WHY and offer reload.
         wc.on('did-navigate', (_e: any, _url: string, httpResponseCode: number) => {
             if (httpResponseCode !== 429) return;
             try { bandcampApi.on429?.(); } catch { /* notice best-effort */ }
             setTimeout(() => {
                 if (wc.isDestroyed()) return;
-                const key = antiFlashKeys.get(wc);
-                if (key) { wc.removeInsertedCSS(key).catch(() => {}); antiFlashKeys.delete(wc); }
                 wc.executeJavaScript(`(function () {
+                    var th = { bg: '#181a1b', text: '#e8e6e3', muted: '#9a968e', accent: '#1da0c3' };
                     if (document.getElementById('bcrpc-429')) return;
                     var d = document.createElement('div');
                     d.id = 'bcrpc-429';
-                    d.style.cssText = 'position:fixed;inset:0;z-index:2147483647;background:#181a1b;color:#e8e6e3;display:flex;align-items:center;justify-content:center;font-family:sans-serif;';
+                    d.style.cssText = 'position:fixed;inset:0;z-index:2147483647;background:' + th.bg + ';color:' + th.text + ';display:flex;align-items:center;justify-content:center;font-family:sans-serif;';
                     d.innerHTML = '<div style="max-width:440px;padding:24px;text-align:center;">' +
                         '<div style="font-size:18px;font-weight:600;margin-bottom:10px;">Error 429 — too many requests</div>' +
-                        '<div style="font-size:13px;color:#9a968e;line-height:1.6;">Bandcamp is throttling this session, so this page could not load. Wait a little bit T__T and try again.</div>' +
-                        '<button onclick="location.reload()" style="margin-top:16px;background:#1da0c3;border:none;color:#fff;border-radius:6px;padding:9px 16px;font-size:13px;cursor:pointer;">Reload page</button></div>';
+                        '<div style="font-size:13px;color:' + th.muted + ';line-height:1.6;">Bandcamp is throttling this session, so this page could not load. Wait a little bit T__T and try again.</div>' +
+                        '<button onclick="location.reload()" style="margin-top:16px;background:' + th.accent + ';border:none;color:#fff;border-radius:6px;padding:9px 16px;font-size:13px;cursor:pointer;">Reload page</button></div>';
                     (document.body || document.documentElement).appendChild(d);
                     var st = document.createElement('style'); st.textContent = 'body{opacity:1 !important}';
                     document.documentElement.appendChild(st);

@@ -5,22 +5,29 @@
     <title>Bandcamp</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --bg: #181a1b; --titlebar: #121415; --input: #121415; --bar: #1b1e1f;
+            --panel: #161819; --card: #202325; --hover-bg: #24282a;
+            --line: #2a2e30; --line-2: #1e2224; --scroll: #3a3f42;
+            --text: #e8e6e3; --text-2: #cfcac2; --muted: #9a968e; --sub: #848079;
+            --accent: #1da0c3; --hover-text: #ffffff;
+        }
         body {
-            background: #181a1b; color: #e8e6e3; height: 100vh; overflow: hidden;
+            background: var(--bg); color: var(--text); height: 100vh; overflow: hidden;
             font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Roboto, sans-serif;
             font-size: 13px; user-select: none; display: flex; flex-direction: column;
-            border: 1px solid #2a2e30; border-radius: 8px;
+            border: 1px solid var(--line); border-radius: 8px;
         }
         .bar { -webkit-app-region: drag; height: 30px; flex-shrink: 0; }
         .body { padding: 0 22px 18px; flex: 1; }
         h1 { font-size: 15px; margin-bottom: 8px; }
-        p { font-size: 12px; color: #9a968e; line-height: 1.6; }
+        p { font-size: 12px; color: var(--muted); line-height: 1.6; }
         .row { display: flex; gap: 8px; justify-content: flex-end; padding: 0 22px 18px; }
         button {
-            background: #24282a; border: 1px solid #2a2e30; color: #e8e6e3;
+            background: var(--hover-bg); border: 1px solid var(--line); color: var(--text);
             border-radius: 6px; padding: 8px 14px; font-size: 12px; cursor: pointer; font-family: inherit;
         }
-        button.primary { background: #1da0c3; border-color: #1da0c3; color: #fff; }
+        button.primary { background: var(--accent); border-color: var(--accent); color: var(--hover-text); }
         button:hover { filter: brightness(1.12); }
     </style>
 </head>
