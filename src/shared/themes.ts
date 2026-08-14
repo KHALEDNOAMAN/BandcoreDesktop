@@ -39,6 +39,17 @@ const DARK_VARS: Record<string, string> = {
 export const THEMES: Theme[] = [
     { key: 'dark', label: 'Dark', vars: DARK_VARS, pageBg: '#181a1b', pageText: '#e8e6e3' },
     { key: 'light', label: 'Light (Bandcamp native)', vars: DARK_VARS, pageBg: '#ffffff', pageText: '#1a1a1a' },
+    {
+        key: 'amoled', label: 'AMOLED',
+        vars: {
+            'bg': '#000000', 'titlebar': '#000000', 'input': '#0c0c0c', 'bar': '#0c0c0c',
+            'panel': '#000000', 'card': '#121212', 'hover-bg': '#1a1a1a',
+            'line': '#222222', 'line-2': '#161616', 'scroll': '#262626',
+            'text': '#e8e6e3', 'text-2': '#c9c9c9', 'muted': '#8f8f8f', 'sub': '#757575',
+            'accent': '#1da0c3', 'hover-text': '#ffffff',
+        },
+        pageBg: '#000000', pageText: '#e8e6e3',
+    },
 ];
 
 export function themeByKey(key: unknown): Theme {
