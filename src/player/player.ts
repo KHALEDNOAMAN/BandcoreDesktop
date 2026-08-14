@@ -321,6 +321,12 @@ ipcRenderer.on('player:seekbar-top', (_e, on: unknown) => {
     document.body.classList.toggle('seek-top', on === true);
 });
 
+// settings: blur intensity of the now-playing cover backdrop (miniplayer)
+ipcRenderer.on('player:blur', (_e, px: unknown) => {
+    const b = Math.min(40, Math.max(0, Math.round(Number(px) || 0)));
+    document.documentElement.style.setProperty('--art-blur', b + 'px');
+});
+
 // the release page's inline progress bar seeks by fraction
 ipcRenderer.on('player:seek-frac', (_e, frac: unknown) => {
     const f = Math.min(1, Math.max(0, Number(frac) || 0));

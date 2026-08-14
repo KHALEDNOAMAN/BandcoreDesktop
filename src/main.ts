@@ -693,6 +693,7 @@ async function init() {
     playerView.webContents.loadFile(path.join(__dirname, 'player', 'player.html'));
     playerView.webContents.once('did-finish-load', () => {
         playerView.webContents.send('player:seekbar-top', store.get('seekbarAbove', false) === true);
+        playerView.webContents.send('player:blur', store.get('miniBlur', 18));
     });
 
     const session = contentView.webContents.session;
@@ -2730,6 +2731,7 @@ const entry: DlEntry = { id: entryId, name: `${rel.albumArtist} - ${rel.album}`,
             darkArtistPages: store.get('darkArtistPages', false) === true,
             discordOpts: presenceService.options(),
             seekbarAbove: store.get('seekbarAbove', false) === true,
+            miniBlur: store.get('miniBlur', 18),
         };
     });
 
@@ -2830,6 +2832,13 @@ const entry: DlEntry = { id: entryId, name: `${rel.albumArtist} - ${rel.album}`,
                 store.set('seekbarAbove', data.seekbarAbove);
                 if (playerView && !playerView.webContents.isDestroyed()) {
                     playerView.webContents.send('player:seekbar-top', data.seekbarAbove);
+                }
+            }
+            if (typeof data.miniBlur === 'number') {
+                const b = Math.min(40, Math.max(0, Math.round(data.miniBlur)));
+                store.set('miniBlur', b);
+                if (playerView && !playerView.webContents.isDestroyed()) {
+                    playerView.webContents.send('player:blur', b);
                 }
             }
             if (devMode) console.log('[bcrpc] settings:save ok keys=' + JSON.stringify(Object.keys(data || {})));
