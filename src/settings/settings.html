@@ -35,6 +35,7 @@
         .sidebar {
             width: 150px; flex-shrink: 0; padding: 10px 8px;
             border-right: 1px solid #1e2224; overflow-y: auto;
+            display: flex; flex-direction: column;
         }
         .nav-item {
             display: block; width: 100%; text-align: left;
@@ -80,11 +81,9 @@
         }
         .wb-item:hover { border-color: #1da0c3; background: #24282a; color: #fff; }
         .wb-item svg { width: 16px; height: 16px; fill: currentColor; }
-        .foot {
-            position: sticky; bottom: 0; background: #181a1b; border-top: 1px solid #1e2224;
-            padding: 12px 22px; display: flex; align-items: center; gap: 10px; margin-top: auto;
-        }
-        .foot button { margin-top: 0; }
+        .side-actions { margin-top: auto; padding: 12px 2px 4px; }
+        .side-actions button { margin-top: 0; width: 100%; }
+        .side-actions .status { margin-top: 6px; }
     </style>
 </head>
 <body>
@@ -101,6 +100,10 @@
             <button class="nav-item" data-pane="keybinds" type="button">Keybinds</button>
             <button class="nav-item" data-pane="storage" type="button">Storage</button>
             <button class="nav-item" data-pane="about" type="button">About</button>
+            <div class="side-actions">
+                <button id="btnSave">Save</button>
+                <span class="status" id="saveStatus"></span>
+            </div>
         </nav>
         <div class="pane-wrap">
             <div class="status err hidden" id="fatal" style="padding:0 22px;margin-top:14px;"></div>
@@ -238,10 +241,6 @@
                 <div class="hint" id="updStatus" style="margin:6px 0 0;"></div>
             </section>
 
-            <div class="foot">
-                <button id="btnSave">Save</button>
-                <span class="status" id="saveStatus" style="margin-left:10px;"></span>
-            </div>
         </div>
     </div>
 
