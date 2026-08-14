@@ -61,6 +61,17 @@ export const THEMES: Theme[] = [
         },
         pageBg: '#0d1512', pageText: '#d6e5d9',
     },
+    {
+        key: 'catppuccin', label: 'Catppuccin (Mocha)',
+        vars: {
+            'bg': '#1e1e2e', 'titlebar': '#181825', 'input': '#26263a', 'bar': '#2a2a3e',
+            'panel': '#1f1f30', 'card': '#313244', 'hover-bg': '#313244',
+            'line': '#45475a', 'line-2': '#2f2f44', 'scroll': '#565b76',
+            'text': '#cdd6f4', 'text-2': '#bac2de', 'muted': '#a6adc8', 'sub': '#7f849c',
+            'accent': '#89b4fa', 'hover-text': '#ffffff',
+        },
+        pageBg: '#1e1e2e', pageText: '#cdd6f4',
+    },
 ];
 
 export function themeByKey(key: unknown): Theme {
