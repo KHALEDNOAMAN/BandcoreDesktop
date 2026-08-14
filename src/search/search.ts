@@ -6,6 +6,29 @@ import { ipcRenderer } from 'electron';
 
 ipcRenderer.send('gsearch:log', 'booted');
 
+// global tooltips setting: strip/restore title attributes live
+let tooltipsOn = true;
+const applyTooltips = (): void => {
+    document.querySelectorAll('[title]').forEach((el) => {
+        if (tooltipsOn) {
+            const t = el.getAttribute('data-tip');
+            if (t != null && !el.hasAttribute('title')) el.setAttribute('title', t);
+        } else {
+            el.setAttribute('data-tip', el.getAttribute('title') || '');
+            el.removeAttribute('title');
+        }
+    });
+};
+ipcRenderer.on('chrome:tooltips', (_e, on: unknown) => { tooltipsOn = on === true; applyTooltips(); });
+ipcRenderer.invoke('settings:get').then((s: any) => { tooltipsOn = (s && s.tooltips) !== false; applyTooltips(); }).catch(() => {});
+new MutationObserver((muts) => {
+    const hit = muts.some((m) =>
+        (m.type === 'attributes' && m.attributeName === 'title') ||
+        (m.type === 'childList' && Array.from(m.addedNodes).some((n) => n.nodeType === 1 && !!(n as Element).querySelectorAll && (n as Element).querySelectorAll('[title]').length))
+    );
+    if (hit) applyTooltips();
+}).observe(document.documentElement, { subtree: true, childList: true, attributes: true, attributeFilter: ['title'] });
+
 const $ = (id: string) => document.getElementById(id) as HTMLElement;
 const q = $('q') as HTMLInputElement;
 const list = $('list');

@@ -2749,6 +2749,7 @@ const entry: DlEntry = { id: entryId, name: `${rel.albumArtist} - ${rel.album}`,
             discordOpts: presenceService.options(),
             seekbarAbove: store.get('seekbarAbove', false) === true,
             miniBlur: store.get('miniBlur', 18),
+            tooltips: store.get('tooltips', true) !== false,
         };
     });
 
@@ -2856,6 +2857,13 @@ const entry: DlEntry = { id: entryId, name: `${rel.albumArtist} - ${rel.album}`,
                 store.set('miniBlur', b);
                 if (playerView && !playerView.webContents.isDestroyed()) {
                     playerView.webContents.send('player:blur', b);
+                }
+            }
+            if (typeof data.tooltips === 'boolean') {
+                store.set('tooltips', data.tooltips);
+                // every chrome window strips/restores its title attributes live
+                for (const w of [headerView, playerView, collectionView, feedView, settingsWindow, spotlightWin, downloadsWin, notice429Win]) {
+                    if (w && !w.webContents.isDestroyed()) w.webContents.send('chrome:tooltips', data.tooltips);
                 }
             }
             if (devMode) console.log('[bcrpc] settings:save ok keys=' + JSON.stringify(Object.keys(data || {})));

@@ -380,6 +380,31 @@ ipcRenderer.on('player:blur', (_e, px: unknown) => {
     document.documentElement.style.setProperty('--art-blur', b + 'px');
 });
 
+// global tooltips setting: strip/restore title attributes live. a mutation
+// observer keeps up with dynamically created buttons & live title updates
+// (e.g. the repeat button's state label).
+let tooltipsOn = true;
+const applyTooltips = (): void => {
+    document.querySelectorAll('[title]').forEach((el) => {
+        if (tooltipsOn) {
+            const t = el.getAttribute('data-tip');
+            if (t != null && !el.hasAttribute('title')) el.setAttribute('title', t);
+        } else {
+            el.setAttribute('data-tip', el.getAttribute('title') || '');
+            el.removeAttribute('title');
+        }
+    });
+};
+ipcRenderer.on('chrome:tooltips', (_e, on: unknown) => { tooltipsOn = on === true; applyTooltips(); });
+ipcRenderer.invoke('settings:get').then((s: any) => { tooltipsOn = (s && s.tooltips) !== false; applyTooltips(); }).catch(() => {});
+new MutationObserver((muts) => {
+    const hit = muts.some((m) =>
+        (m.type === 'attributes' && m.attributeName === 'title') ||
+        (m.type === 'childList' && Array.from(m.addedNodes).some((n) => n.nodeType === 1 && !!(n as Element).querySelectorAll && (n as Element).querySelectorAll('[title]').length))
+    );
+    if (hit) applyTooltips();
+}).observe(document.documentElement, { subtree: true, childList: true, attributes: true, attributeFilter: ['title'] });
+
 // app restart: reload the last session's track. stream urls from a previous
 // launch are long expired, so src is cleared to force a fresh resolve.
 let resumePos = 0;
