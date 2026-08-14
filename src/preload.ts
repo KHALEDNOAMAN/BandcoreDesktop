@@ -261,7 +261,7 @@ function injectReleaseDownload(): void {
             if (document.getElementById('bcrpc-dlbtn')) return;
             const owned = !!(res && res.owned && res.downloadUrl);
             const label = owned ? 'Download (you own this)' : 'Download';
-            const svg = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 19h16" stroke-linecap="round"/></svg>';
+            const svg = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 19h16" stroke-linecap="round"/></svg>';
 
             // same shell as bandcamp's own wishlist button (li.wishlist >
             // span.action.compound-button), inserted into the same UL so it picks
@@ -290,11 +290,22 @@ function injectReleaseDownload(): void {
             });
 
             // modern pages: appends into the share-collect-controls UL right after
-            // the wishlist li (id #collect-item). legacy fallbacks: the plain
+            // the wishlist li (id #collect-item), and justifies the button row
+            // (share/embed + wishlist + download). legacy fallbacks: the plain
             // #wishlist element, then the area under the inline player.
             const collect = document.getElementById('collect-item');
             if (collect && collect.parentElement) {
                 collect.parentElement.insertBefore(li, collect.nextSibling);
+                const ul = collect.parentElement as HTMLElement;
+                ul.style.cssText = 'display:flex;align-items:center;justify-content:space-between;';
+                // zero-width bookkeeping siblings would otherwise count as flex
+                // items and skew the justification
+                for (const ch of Array.from(ul.children)) {
+                    if (ch === collect || ch === li) continue;
+                    if (ch.tagName === 'A' || (ch as HTMLElement).id === 'wishlist-alert') {
+                        (ch as HTMLElement).style.cssText = 'flex:0 0 0;';
+                    }
+                }
             } else {
                 const wl = document.getElementById('wishlist');
                 if (wl) {
