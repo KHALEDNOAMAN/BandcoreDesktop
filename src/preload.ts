@@ -243,8 +243,8 @@ document.addEventListener('click', (e) => {
 }, true);
 
 // download button on release pages: owned releases jump to their bandcamp
-// download page (all your formats, tracked in the downloads panel); unowned
-// ones download the mp3-128 streams (tagged, with cover) via the app.
+// download page (all your formats, tracked in the downloads panel). unowned
+// releases get NO button here — stream downloads live in the collection view.
 function injectReleaseDownload(): void {
     try {
         if (!/\/(album|track)\//.test(location.pathname)) return;
@@ -261,20 +261,14 @@ function injectReleaseDownload(): void {
         ipcRenderer.invoke('release:download-info', { tralbumId, tralbumType: type }).then((res: any) => {
             if (document.getElementById('bcrpc-dlbtn')) return;
             const owned = !!(res && res.owned && res.downloadUrl);
+            if (!owned) return;
             const btn = document.createElement('button');
             btn.id = 'bcrpc-dlbtn';
             btn.type = 'button';
-            btn.textContent = owned ? '⤓ Download (you own this)' : '⤓ Download mp3-128';
-            btn.title = owned ? 'Open your download page (all formats)' : "Download this release's streams with tags & cover art";
+            btn.textContent = '⤓ Download (you own this)';
+            btn.title = 'Open your download page (all formats)';
             btn.style.cssText = 'display:inline-block;margin:10px 0;padding:7px 14px;font-size:13px;cursor:pointer;border:1px solid #1da0c3;border-radius:6px;background:rgba(29,160,195,.12);color:#1da0c3;font-family:inherit;';
-            btn.addEventListener('click', async () => {
-                if (owned) { location.href = res.downloadUrl; return; }
-                btn.textContent = '⤓ starting…';
-                try {
-                    const r = await ipcRenderer.invoke('download:release', { url: location.href.split(/[?#]/)[0] });
-                    btn.textContent = r && r.ok ? '⤓ downloading — see the downloads panel' : '⤓ ' + ((r && r.error) || 'failed');
-                } catch { btn.textContent = '⤓ failed'; }
-            });
+            btn.addEventListener('click', () => { location.href = res.downloadUrl; });
             anchor.parentElement!.insertBefore(btn, anchor.nextSibling);
         }).catch(() => { /* no button */ });
     } catch (e) { /* page shape changed; button is best-effort */ }
