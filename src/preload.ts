@@ -260,39 +260,56 @@ function injectReleaseDownload(): void {
         ipcRenderer.invoke('release:download-info', { tralbumId, tralbumType: type }).then((res: any) => {
             if (document.getElementById('bcrpc-dlbtn')) return;
             const owned = !!(res && res.owned && res.downloadUrl);
-            const btn = document.createElement('button');
-            btn.id = 'bcrpc-dlbtn';
-            btn.type = 'button';
-            btn.title = owned ? 'Open your download page (all formats)' : "Download this release's streams with tags & cover art";
+            const label = owned ? 'Download (you own this)' : 'Download mp3-128';
             const svg = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 19h16" stroke-linecap="round"/></svg>';
-            btn.innerHTML = svg + '<span>' + (owned ? 'Download (you own this)' : 'Download mp3-128') + '</span>';
-            btn.style.cssText = 'display:inline-flex;align-items:center;gap:6px;padding:6px 12px;font-size:12px;cursor:pointer;border:1px solid #1da0c3;border-radius:6px;background:rgba(29,160,195,.12);color:#1da0c3;font-family:inherit;';
-            btn.addEventListener('click', async () => {
+
+            // same shell as bandcamp's own wishlist button (li.wishlist >
+            // span.action.compound-button), inserted into the same UL so it picks
+            // up the row's styling for free.
+            const li = document.createElement('li');
+            li.id = 'bcrpc-dl-item';
+            li.className = 'wishlist';
+            li.title = owned ? 'Open your download page (all formats)' : "Download this release's streams with tags & cover art";
+            const sp = document.createElement('span');
+            sp.id = 'bcrpc-dlbtn';
+            sp.className = 'action compound-button';
+            sp.style.cssText = 'display:inline-flex;align-items:center;gap:6px;cursor:pointer;';
+            sp.innerHTML = svg + '<span class="collect-msg"><span><a>' + label + '</a></span></span>';
+            li.appendChild(sp);
+            sp.addEventListener('click', async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
                 if (owned) { location.href = res.downloadUrl; return; }
-                const label = btn.querySelector('span') as HTMLElement | null;
-                if (label) label.textContent = 'starting…';
+                const lbl = sp.querySelector('a') as HTMLElement | null;
+                if (lbl) lbl.textContent = 'starting…';
                 try {
                     const r = await ipcRenderer.invoke('download:release', { url: location.href.split(/[?#]/)[0] });
-                    if (label) label.textContent = r && r.ok ? 'downloading — see the downloads panel' : ((r && r.error) || 'failed');
-                } catch { if (label) label.textContent = 'failed'; }
+                    if (lbl) lbl.textContent = r && r.ok ? 'downloading — see the downloads panel' : ((r && r.error) || 'failed');
+                } catch { if (lbl) lbl.textContent = 'failed'; }
             });
 
-            // sit in a flex row right next to bandcamp's wishlist button (the row
-            // under the cover art with Share/Embed); fall back to the inline player
-            // area if the page shape doesn't carry a wishlist.
-            const wl = document.getElementById('wishlist');
-            if (wl) {
-                const host = (wl.closest && (wl.closest('.wishlist_wrap, .wishlist-wrap, #wishlist-wrap'))) || wl;
-                if (host.parentElement) {
-                    const row = document.createElement('div');
-                    row.style.cssText = 'display:flex;align-items:center;gap:8px;';
-                    host.parentElement.insertBefore(row, host);
-                    row.appendChild(host);
-                    row.appendChild(btn);
-                }
+            // modern pages: appends into the share-collect-controls UL right after
+            // the wishlist li (id #collect-item). legacy fallbacks: the plain
+            // #wishlist element, then the area under the inline player.
+            const collect = document.getElementById('collect-item');
+            if (collect && collect.parentElement) {
+                collect.parentElement.insertBefore(li, collect.nextSibling);
             } else {
-                const anchor = (document.querySelector('.inline_player') || document.querySelector('#name-section') || document.querySelector('h2.trackTitle')) as HTMLElement | null;
-                if (anchor && anchor.parentElement) anchor.parentElement.insertBefore(btn, anchor.nextSibling);
+                const wl = document.getElementById('wishlist');
+                if (wl) {
+                    const host = (wl.closest && (wl.closest('.wishlist_wrap, .wishlist-wrap, #wishlist-wrap'))) || wl;
+                    if (host.parentElement) {
+                        const row = document.createElement('div');
+                        row.style.cssText = 'display:flex;align-items:center;gap:8px;';
+                        host.parentElement.insertBefore(row, host);
+                        host.parentElement.removeChild(host);
+                        row.appendChild(host);
+                        row.appendChild(li);
+                    }
+                } else {
+                    const anchor = (document.querySelector('.inline_player') || document.querySelector('#name-section') || document.querySelector('h2.trackTitle')) as HTMLElement | null;
+                    if (anchor && anchor.parentElement) anchor.parentElement.insertBefore(li, anchor.nextSibling);
+                }
             }
         }).catch(() => { /* no button */ });
     } catch (e) { /* page shape changed; button is best-effort */ }
