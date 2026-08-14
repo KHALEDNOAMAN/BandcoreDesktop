@@ -340,8 +340,8 @@ function openSettings() {
         return;
     }
     settingsWindow = new BrowserWindow({
-        width: 460,
-        height: 560,
+        width: 640,
+        height: 620,
         parent: mainWindow,
         modal: false,
         resizable: false,

@@ -12,6 +12,8 @@
             font-size: 13px;
             /* ctrl+a used to select the whole chrome (incl the close btn); only let inputs be selected */
             user-select: none;
+            height: 100vh; overflow: hidden;
+            display: flex; flex-direction: column;
         }
         input { user-select: text; }
         /* our own titlebar so the native (windows) close btn can't stick highlighted */
@@ -19,7 +21,7 @@
             -webkit-app-region: drag;
             display: flex; align-items: center; justify-content: space-between;
             height: 36px; padding: 0 6px 0 14px; background: #121415; border-bottom: 1px solid #1e2224;
-            position: sticky; top: 0; z-index: 10;
+            flex-shrink: 0;
         }
         .titlebar .title { font-size: 12px; color: #9a968e; }
         .titlebar .winclose {
@@ -29,14 +31,30 @@
             display: flex; align-items: center; justify-content: center; cursor: pointer;
         }
         .titlebar .winclose:hover { background: #e81123; color: #fff; }
-        .body { padding: 22px; }
-        h1 { font-size: 16px; margin-bottom: 4px; }
-        .hint { color: #848079; font-size: 11px; margin-bottom: 18px; line-height: 1.5; }
+        .layout { display: flex; flex: 1; min-height: 0; }
+        .sidebar {
+            width: 150px; flex-shrink: 0; padding: 10px 8px;
+            border-right: 1px solid #1e2224; overflow-y: auto;
+        }
+        .nav-item {
+            display: block; width: 100%; text-align: left;
+            background: none; border: none; border-radius: 6px;
+            color: #9a968e; font-size: 12px; line-height: 1.4;
+            padding: 7px 10px; margin-bottom: 2px; cursor: pointer;
+        }
+        .nav-item:hover { background: #1e2224; color: #cfcac2; }
+        .nav-item.active { background: rgba(29, 160, 195, .12); color: #1da0c3; }
+        .pane-wrap { flex: 1; min-width: 0; overflow-y: auto; display: flex; flex-direction: column; }
+        .pane { padding: 20px 22px; }
+        .pane.hidden { display: none; }
+        .pane h2 {
+            font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: #9a968e;
+            padding-bottom: 10px; margin-bottom: 14px; border-bottom: 1px solid #1e2224;
+        }
+        .hint { color: #848079; font-size: 11px; margin-bottom: 14px; line-height: 1.5; }
         .hint code { color: #b7b2a8; background: #121415; padding: 1px 4px; border-radius: 3px; }
-        .section { border: 1px solid #2a2e30; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
-        .section h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: #9a968e; margin-bottom: 12px; }
         label { display: block; font-size: 11px; color: #fff; margin: 10px 0 4px; }
-        input[type="text"], input[type="password"] {
+        input[type="text"], input[type="password"], input[type="number"] {
             width: 100%; background: #121415; border: 1px solid #2a2e30; border-radius: 5px;
             color: #e8e6e3; padding: 8px 10px; font-size: 12px;
         }
@@ -62,6 +80,11 @@
         }
         .wb-item:hover { border-color: #1da0c3; background: #24282a; color: #fff; }
         .wb-item svg { width: 16px; height: 16px; fill: currentColor; }
+        .foot {
+            position: sticky; bottom: 0; background: #181a1b; border-top: 1px solid #1e2224;
+            padding: 12px 22px; display: flex; align-items: center; gap: 10px; margin-top: auto;
+        }
+        .foot button { margin-top: 0; }
     </style>
 </head>
 <body>
@@ -69,142 +92,158 @@
         <span class="title">Settings</span>
         <button class="winclose" id="winClose" title="Close" type="button">✕</button>
     </div>
-    <div class="body">
-    <h1>Settings</h1>
-    <div class="hint">Scrobbling and Rich Presence are driven by the in-app player.</div>
-    <div class="status err" id="fatal"></div>
+    <div class="layout">
+        <nav class="sidebar">
+            <button class="nav-item active" data-pane="lfm" type="button">Last.fm</button>
+            <button class="nav-item" data-pane="discord" type="button">Discord</button>
+            <button class="nav-item" data-pane="general" type="button">General</button>
+            <button class="nav-item" data-pane="windowbar" type="button">Window Bar</button>
+            <button class="nav-item" data-pane="keybinds" type="button">Keybinds</button>
+            <button class="nav-item" data-pane="storage" type="button">Storage</button>
+            <button class="nav-item" data-pane="about" type="button">About</button>
+        </nav>
+        <div class="pane-wrap">
+            <div class="status err hidden" id="fatal" style="padding:0 22px;margin-top:14px;"></div>
 
-    <div class="section">
-        <h2>Last.fm Scrobbling</h2>
-        <label>API Key</label>
-        <input type="text" id="apiKey" placeholder="Last.fm API key" autocomplete="off">
-        <label>Shared Secret</label>
-        <input type="password" id="apiSecret" placeholder="Last.fm shared secret" autocomplete="off">
-        <div class="row" style="margin-top:12px;">
-            <label class="toggle" style="margin:0;"><input type="checkbox" id="lfmEnabled"> Enable scrobbling</label>
-            <span id="lfmUser" class="status"></span>
-        </div>
-        <div class="row">
-            <button id="btnConnect">Connect account</button>
-        </div>
-        <div class="status" id="lfmStatus"></div>
-    </div>
+            <section class="pane" id="pane-lfm">
+                <h2>Last.fm Scrobbling</h2>
+                <div class="hint" style="margin-top:0;">Scrobbling and Rich Presence are driven by the in-app player.</div>
+                <label>API Key</label>
+                <input type="text" id="apiKey" placeholder="Last.fm API key" autocomplete="off">
+                <label>Shared Secret</label>
+                <input type="password" id="apiSecret" placeholder="Last.fm shared secret" autocomplete="off">
+                <div class="row" style="margin-top:12px;">
+                    <label class="toggle" style="margin:0;"><input type="checkbox" id="lfmEnabled"> Enable scrobbling</label>
+                    <span id="lfmUser" class="status"></span>
+                </div>
+                <div class="row">
+                    <button id="btnConnect">Connect account</button>
+                </div>
+                <label style="margin-top:12px;">Minimum track length to scrobble (seconds)</label>
+                <div class="row" style="gap:8px;margin-top:2px;">
+                    <input type="number" id="minScrobbleLen" min="0" max="30" step="1" style="width:90px;" autocomplete="off">
+                    <span class="hint" style="flex:1;margin:0;">tracks shorter than this are never scrobbled; 0 scrobbles everything at half its length. last.fm may ignore very short scrobbles.</span>
+                </div>
+                <div class="status" id="lfmStatus"></div>
+            </section>
 
-    <div class="section">
-        <h2>Discord Rich Presence</h2>
-        <label class="toggle"><input type="checkbox" id="discordEnabled"> show what i'm listening to</label>
-        <label class="toggle" style="margin-top:10px;"><input type="checkbox" id="dOptPaused"> keep showing while paused (shows "⏸️ Paused" instead of the timer)</label>
-        <div class="hint" style="margin:8px 0 0;">shows "Listening to {artist}" with the track name, album name and cover.</div>
-        <label>Discord Application ID (optional)</label>
-        <input type="text" id="discordClientId" placeholder="leave blank to use the built-in app" autocomplete="off">
-        <div class="hint" style="margin:6px 0 0;">works out of the box with the built-in app id; the discord desktop app just needs to be running. only set this to use your own app.</div>
-    </div>
+            <section class="pane hidden" id="pane-discord">
+                <h2>Discord Rich Presence</h2>
+                <label class="toggle"><input type="checkbox" id="discordEnabled"> show what i'm listening to</label>
+                <label class="toggle" style="margin-top:10px;"><input type="checkbox" id="dOptPaused"> keep showing while paused (shows "⏸️ Paused" instead of the timer)</label>
+                <div class="hint" style="margin:8px 0 0;">shows "Listening to {artist}" with the track name, album name and cover.</div>
+                <label>Discord Application ID (optional)</label>
+                <input type="text" id="discordClientId" placeholder="leave blank to use the built-in app" autocomplete="off">
+                <div class="hint" style="margin:6px 0 0;">works out of the box with the built-in app id; the discord desktop app just needs to be running. only set this to use your own app.</div>
+            </section>
 
-    <div class="section">
-        <h2>General</h2>
-            <label class="toggle"><input type="checkbox" id="closeToTray"> close to tray instead of quitting</label>
-            <label class="toggle" style="margin-top:12px;"><input type="checkbox" id="autoLoadCollection"> load collection in the background on startup</label>
-            <label class="toggle" style="margin-top:12px;"><input type="checkbox" id="gridHeaders"> show group headers in the collection grid view</label>
-            <label class="toggle" style="margin-top:12px;"><input type="checkbox" id="darkMode"> dark mode (uncheck for bandcamp's native theme)</label>
-            <label class="toggle" style="margin-top:12px;"><input type="checkbox" id="noDarkArtistPages"> disable dark mode on artist pages (keeps their custom themes)</label>
-    </div>
+            <section class="pane hidden" id="pane-general">
+                <h2>General</h2>
+                <label class="toggle"><input type="checkbox" id="closeToTray"> close to tray instead of quitting</label>
+                <label class="toggle" style="margin-top:12px;"><input type="checkbox" id="autoLoadCollection"> load collection in the background on startup</label>
+                <label class="toggle" style="margin-top:12px;"><input type="checkbox" id="gridHeaders"> show group headers in the collection grid view</label>
+                <label class="toggle" style="margin-top:12px;"><input type="checkbox" id="darkMode"> dark mode (uncheck for bandcamp's native theme)</label>
+                <label class="toggle" style="margin-top:12px;"><input type="checkbox" id="noDarkArtistPages"> disable dark mode on artist pages (keeps their custom themes)</label>
+            </section>
 
-    <div class="section">
-        <h2>Window Bar</h2>
-        <div class="hint">Click to move buttons between enabled and disabled. They will update instantly</div>
-        <div class="wb-lists">
-            <div class="wb-col" id="wb-enabled">
-                <h3>Enabled</h3>
+            <section class="pane hidden" id="pane-windowbar">
+                <h2>Window Bar</h2>
+                <div class="hint">Click to move buttons between enabled and disabled. They will update instantly</div>
+                <div class="wb-lists">
+                    <div class="wb-col" id="wb-enabled">
+                        <h3>Enabled</h3>
+                    </div>
+                    <div class="wb-col" id="wb-disabled">
+                        <h3>Disabled</h3>
+                    </div>
+                </div>
+            </section>
+
+            <section class="pane hidden" id="pane-keybinds">
+                <h2>Keybinds</h2>
+                <div class="hint" style="margin-bottom:10px;">click a keybind, then press the new combination — or press Esc/Backspace to remove the keybind ("none" = shortcut disabled; click the button again to cancel). combinations need Ctrl/Alt to avoid clashing with typing &amp; media keys.</div>
+                <div class="row" style="margin-top:6px;"><span style="font-size:12px;color:#fff;">open collection</span><button class="ghost kb" id="kbCollection" style="margin:0;min-width:130px;"></button></div>
+                <div class="row" style="margin-top:8px;"><span style="font-size:12px;color:#fff;">open feed</span><button class="ghost kb" id="kbFeed" style="margin:0;min-width:130px;"></button></div>
+                <div class="row" style="margin-top:8px;"><span style="font-size:12px;color:#fff;">go to homepage</span><button class="ghost kb" id="kbHome" style="margin:0;min-width:130px;"></button></div>
+                <div class="row" style="margin-top:8px;"><span style="font-size:12px;color:#fff;">open downloads</span><button class="ghost kb" id="kbDownloads" style="margin:0;min-width:130px;"></button></div>
+                <div class="row" style="margin-top:8px;"><span style="font-size:12px;color:#fff;">open search</span><button class="ghost kb" id="kbSearch" style="margin:0;min-width:130px;"></button></div>
+            </section>
+
+            <section class="pane hidden" id="pane-storage">
+                <h2>Storage</h2>
+                <label style="margin-top:0;">Download location</label>
+                <div class="row" style="gap:8px;margin-top:2px;">
+                    <input type="text" id="downloadDir" readonly style="flex:1;" title="where purchased downloads are saved">
+                    <button id="btnDownloadDir" class="ghost" style="margin-top:0;white-space:nowrap;">Change…</button>
+                </div>
+                <div style="height:1px;background:#1e2224;margin:16px 0;"></div>
+                <label style="margin-top:0;">Filename Format</label>
+                <input type="text" id="fileNameFmt" placeholder="{tracknum} {artist} - {title}" autocomplete="off">
+                <label style="margin-top:10px;">Folder Format</label>
+                <input type="text" id="folderNameFmt" placeholder="{artist}/{album}" autocomplete="off">
+                <div class="hint" style="margin:6px 0 0;">Tokens available: {artist}, {albumartist}, {album}, {title}, {tracknum}, {year}</div>
+                <label class="toggle" style="margin-top:12px;"><input type="checkbox" id="modifyTags"> Write ID3 metadata tags to stream downloads</label>
+                <div id="tagOpts" style="margin:8px 0 0 24px;display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;">
+                    <label class="toggle" style="margin:0;"><input type="checkbox" id="tagTitle"> title</label>
+                    <label class="toggle" style="margin:0;"><input type="checkbox" id="tagArtist"> artist</label>
+                    <label class="toggle" style="margin:0;"><input type="checkbox" id="tagAlbumArtist"> album artist</label>
+                    <label class="toggle" style="margin:0;"><input type="checkbox" id="tagAlbum"> album</label>
+                    <label class="toggle" style="margin:0;"><input type="checkbox" id="tagYear"> year</label>
+                    <label class="toggle" style="margin:0;"><input type="checkbox" id="tagTrackNum"> track number</label>
+                    <label class="toggle" style="margin:0;"><input type="checkbox" id="tagLyrics"> lyrics (when published)</label>
+                </div>
+                <label class="toggle" style="margin-top:12px;"><input type="checkbox" id="coverInTags"> embed cover art in the tags</label>
+                <label class="toggle" style="margin-top:10px;"><input type="checkbox" id="coverInFolder"> save cover art in the folder</label>
+                <label style="margin-top:10px;">Cover art filename</label>
+                <input type="text" id="coverNameFmt" placeholder="cover" autocomplete="off">
+                <label style="margin-top:10px;">Playlist filename</label>
+                <input type="text" id="playlistNameFmt" placeholder="{album}" autocomplete="off">
+                <div style="height:1px;background:#1e2224;margin:16px 0;"></div>
+                <label class="toggle"><input type="checkbox" id="cacheReleases"> permanently cache release data on this computer (covers, tracklists, album info — never audio)</label>
+                <label style="margin-top:10px;">Cache location</label>
+                <div class="row" style="gap:8px;margin-top:2px;">
+                    <input type="text" id="cacheDir" readonly style="flex:1;" title="where cached covers are stored">
+                    <button id="btnCacheDir" class="ghost" style="margin-top:0;white-space:nowrap;">Change…</button>
+                </div>
+                <div class="hint" id="cacheSize" style="margin:6px 0 0;"></div>
+                <div style="height:1px;background:#1e2224;margin:16px 0;"></div>
+                <label class="toggle" style="margin-top:0;"><input type="checkbox" id="musicFolderScan"> automatically scan a music folder for audio files (adds them to your collection as local releases)</label>
+                <div id="musicFolderOpts" style="margin-top:8px;">
+                    <div class="row" style="gap:8px;margin-top:2px;">
+                        <input type="text" id="musicFolder" readonly style="flex:1;" placeholder="no folder selected" title="folder scanned for audio files">
+                        <button id="btnMusicFolder" class="ghost" style="margin-top:0;white-space:nowrap;">Change…</button>
+                        <button id="btnScanNow" class="ghost" style="margin-top:0;white-space:nowrap;">Scan now</button>
+                    </div>
+                    <div class="hint" id="scanStatus" style="margin:6px 0 0;">Off by default. When enabled, the folder is scanned at startup and on save; files removed from it drop out of the collection.</div>
+                </div>
+                <div style="height:1px;background:#1e2224;margin:16px 0;"></div>
+                <label style="margin-top:0;">Playlist file for stream downloads</label>
+                <select id="dlPlaylistFormat" style="width:100%;background:#121415;border:1px solid #2a2e30;border-radius:5px;color:#e8e6e3;padding:8px 10px;font-size:12px;">
+                    <option value="m3u">m3u</option>
+                    <option value="pls">pls</option>
+                    <option value="wpl">wpl</option>
+                    <option value="zpl">zpl</option>
+                    <option value="none">none</option>
+                </select>
+                <div class="hint" style="margin:6px 0 0;">written next to the tracks when downloading a release's mp3-128 streams (release-page button, right-click menu, or the ⤓ on wishlist items).</div>
+            </section>
+
+            <section class="pane hidden" id="pane-about">
+                <h2>About</h2>
+                <div class="row" style="gap:8px;align-items:center;">
+                    <span class="hint" id="appVersion" style="flex:1;margin:0;">version …</span>
+                    <button id="btnInstallUpdate" class="ghost" style="margin-top:0;white-space:nowrap;display:none;border-color:#1da0c3;color:#1da0c3;">Restart &amp; install</button>
+                    <button id="btnCheckUpdates" class="ghost" style="margin-top:0;white-space:nowrap;">Check for updates</button>
+                </div>
+                <div class="hint" id="updStatus" style="margin:6px 0 0;"></div>
+            </section>
+
+            <div class="foot">
+                <button id="btnSave">Save</button>
+                <span class="status" id="saveStatus" style="margin-left:10px;"></span>
             </div>
-            <div class="wb-col" id="wb-disabled">
-                <h3>Disabled</h3>
-            </div>
         </div>
     </div>
-
-    <div class="section">
-        <h2>Keybinds</h2>
-        <div class="hint" style="margin-bottom:10px;">click a keybind, then press the new combination — or press Esc/Backspace to remove the keybind ("none" = shortcut disabled; click the button again to cancel). combinations need Ctrl/Alt to avoid clashing with typing &amp; media keys.</div>
-        <div class="row" style="margin-top:6px;"><span style="font-size:12px;color:#fff;">open collection</span><button class="ghost kb" id="kbCollection" style="margin:0;min-width:130px;"></button></div>
-        <div class="row" style="margin-top:8px;"><span style="font-size:12px;color:#fff;">open feed</span><button class="ghost kb" id="kbFeed" style="margin:0;min-width:130px;"></button></div>
-        <div class="row" style="margin-top:8px;"><span style="font-size:12px;color:#fff;">go to homepage</span><button class="ghost kb" id="kbHome" style="margin:0;min-width:130px;"></button></div>
-        <div class="row" style="margin-top:8px;"><span style="font-size:12px;color:#fff;">open downloads</span><button class="ghost kb" id="kbDownloads" style="margin:0;min-width:130px;"></button></div>
-        <div class="row" style="margin-top:8px;"><span style="font-size:12px;color:#fff;">open search</span><button class="ghost kb" id="kbSearch" style="margin:0;min-width:130px;"></button></div>
-    </div>
-
-    <div class="section">
-        <h2>Storage</h2>
-        <label style="margin-top:0;">Download location</label>
-        <div class="row" style="gap:8px;margin-top:2px;">
-            <input type="text" id="downloadDir" readonly style="flex:1;" title="where purchased downloads are saved">
-            <button id="btnDownloadDir" class="ghost" style="margin-top:0;white-space:nowrap;">Change…</button>
-        </div>
-        <div style="height:1px;background:#2a2e30;margin:16px 0;"></div>
-        <label style="margin-top:0;">Filename Format</label>
-        <input type="text" id="fileNameFmt" placeholder="{tracknum} {artist} - {title}" autocomplete="off">
-        <label style="margin-top:10px;">Folder Format</label>
-        <input type="text" id="folderNameFmt" placeholder="{artist}/{album}" autocomplete="off">
-        <div class="hint" style="margin:6px 0 0;">Tokens available: {artist}, {albumartist}, {album}, {title}, {tracknum}, {year}</div>
-        <label class="toggle" style="margin-top:12px;"><input type="checkbox" id="modifyTags"> Write ID3 metadata tags to stream downloads</label>
-        <div id="tagOpts" style="margin:8px 0 0 24px;display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;">
-            <label class="toggle" style="margin:0;"><input type="checkbox" id="tagTitle"> title</label>
-            <label class="toggle" style="margin:0;"><input type="checkbox" id="tagArtist"> artist</label>
-            <label class="toggle" style="margin:0;"><input type="checkbox" id="tagAlbumArtist"> album artist</label>
-            <label class="toggle" style="margin:0;"><input type="checkbox" id="tagAlbum"> album</label>
-            <label class="toggle" style="margin:0;"><input type="checkbox" id="tagYear"> year</label>
-            <label class="toggle" style="margin:0;"><input type="checkbox" id="tagTrackNum"> track number</label>
-            <label class="toggle" style="margin:0;"><input type="checkbox" id="tagLyrics"> lyrics (when published)</label>
-        </div>
-        <label class="toggle" style="margin-top:12px;"><input type="checkbox" id="coverInTags"> embed cover art in the tags</label>
-        <label class="toggle" style="margin-top:10px;"><input type="checkbox" id="coverInFolder"> save cover art in the folder</label>
-        <label style="margin-top:10px;">Cover art filename</label>
-        <input type="text" id="coverNameFmt" placeholder="cover" autocomplete="off">
-        <label style="margin-top:10px;">Playlist filename</label>
-        <input type="text" id="playlistNameFmt" placeholder="{album}" autocomplete="off">
-        <div style="height:1px;background:#2a2e30;margin:16px 0;"></div>
-        <label class="toggle"><input type="checkbox" id="cacheReleases"> permanently cache release data on this computer (covers, tracklists, album info — never audio)</label>
-        <label style="margin-top:10px;">Cache location</label>
-        <div class="row" style="gap:8px;margin-top:2px;">
-            <input type="text" id="cacheDir" readonly style="flex:1;" title="where cached covers are stored">
-            <button id="btnCacheDir" class="ghost" style="margin-top:0;white-space:nowrap;">Change…</button>
-        </div>
-        <div class="hint" id="cacheSize" style="margin:6px 0 0;"></div>
-        <div style="height:1px;background:#2a2e30;margin:16px 0;"></div>
-        <label class="toggle" style="margin-top:0;"><input type="checkbox" id="musicFolderScan"> automatically scan a music folder for audio files (adds them to your collection as local releases)</label>
-        <div id="musicFolderOpts" style="margin-top:8px;">
-            <div class="row" style="gap:8px;margin-top:2px;">
-                <input type="text" id="musicFolder" readonly style="flex:1;" placeholder="no folder selected" title="folder scanned for audio files">
-                <button id="btnMusicFolder" class="ghost" style="margin-top:0;white-space:nowrap;">Change…</button>
-                <button id="btnScanNow" class="ghost" style="margin-top:0;white-space:nowrap;">Scan now</button>
-            </div>
-            <div class="hint" id="scanStatus" style="margin:6px 0 0;">Off by default. When enabled, the folder is scanned at startup and on save; files removed from it drop out of the collection.</div>
-        </div>
-        <div style="height:1px;background:#2a2e30;margin:16px 0;"></div>
-        <label style="margin-top:0;">Playlist file for stream downloads</label>
-        <select id="dlPlaylistFormat" style="width:100%;background:#121415;border:1px solid #2a2e30;border-radius:5px;color:#e8e6e3;padding:8px 10px;font-size:12px;">
-            <option value="m3u">m3u</option>
-            <option value="pls">pls</option>
-            <option value="wpl">wpl</option>
-            <option value="zpl">zpl</option>
-            <option value="none">none</option>
-        </select>
-        <div class="hint" style="margin:6px 0 0;">written next to the tracks when downloading a release's mp3-128 streams (release-page button, right-click menu, or the ⤓ on wishlist items).</div>
-    </div>
-
-    <div class="section">
-        <h2>About</h2>
-        <div class="row" style="gap:8px;align-items:center;">
-            <span class="hint" id="appVersion" style="flex:1;margin:0;">version …</span>
-            <button id="btnInstallUpdate" class="ghost" style="margin-top:0;white-space:nowrap;display:none;border-color:#1da0c3;color:#1da0c3;">Restart &amp; install</button>
-            <button id="btnCheckUpdates" class="ghost" style="margin-top:0;white-space:nowrap;">Check for updates</button>
-        </div>
-        <div class="hint" id="updStatus" style="margin:6px 0 0;"></div>
-    </div>
-
-    <button id="btnSave">Save</button>
-    <span class="status" id="saveStatus" style="margin-left:10px;"></span>
-    </div>
-    <!-- /.body -->
 
     <script>
         // if renderer isnt node integrated, require() throws and whole
@@ -220,7 +259,18 @@
         const $ = (id) => document.getElementById(id);
         const log = (m) => { try { ipcRenderer && ipcRenderer.send('settings:log', m); } catch (e) {} };
 
-        // keybind capture: click a button, press the combo. stored as
+        // sidebar section switching
+        const navItems = Array.from(document.querySelectorAll('.nav-item'));
+        const paneWrap = document.querySelector('.pane-wrap');
+        function showPane(id) {
+            navItems.forEach((b) => b.classList.toggle('active', b.dataset.pane === id));
+            document.querySelectorAll('.pane').forEach((p) => p.classList.toggle('hidden', p.id !== 'pane-' + id));
+            paneWrap.scrollTop = 0;
+        }
+        navItems.forEach((b) => b.addEventListener('click', () => showPane(b.dataset.pane)));
+        showPane('lfm');
+
+        // keybind capture: click a keybind, press the combo. stored as
         // "Ctrl+Shift+X" strings matching main's accelOfInput format.
         const KB_DEFAULTS = { collection: 'Ctrl+Shift+C', feed: 'Ctrl+Shift+F', home: 'Ctrl+Shift+H', downloads: 'Ctrl+Shift+D', search: 'Ctrl+K' };
         const KB_IDS = { collection: 'kbCollection', feed: 'kbFeed', home: 'kbHome', downloads: 'kbDownloads', search: 'kbSearch' };
@@ -322,6 +372,7 @@
             $('apiKey').value = lfm.apiKey || '';
             $('apiSecret').value = lfm.apiSecret || '';
             $('lfmEnabled').checked = lfm.enabled !== false;
+            $('minScrobbleLen').value = lfm.minScrobbleLen == null ? 30 : lfm.minScrobbleLen;
             $('discordEnabled').checked = s.discordEnabled !== false;
             $('discordClientId').value = s.discordClientId || '';
             const dOpts = s.discordOpts || {};
@@ -377,7 +428,12 @@
         async function persist() {
             if (!ipcRenderer) return { ok: false, error: 'no bridge' };
             return ipcRenderer.invoke('settings:save', {
-                lastfm: { apiKey: $('apiKey').value.trim(), apiSecret: $('apiSecret').value.trim(), enabled: $('lfmEnabled').checked },
+                lastfm: { apiKey: $('apiKey').value.trim(), apiSecret: $('apiSecret').value.trim(), enabled: $('lfmEnabled').checked,
+                minScrobbleLen: (() => {
+                    const raw = $('minScrobbleLen').value.trim();
+                    const v = raw === '' ? 30 : Number(raw);
+                    return Number.isFinite(v) ? Math.min(Math.max(Math.round(v), 0), 30) : 30;
+                })() },
                 discordEnabled: $('discordEnabled').checked,
                 discordClientId: $('discordClientId').value.trim(),
                 discordOpts: { showWhenPaused: $('dOptPaused').checked },
