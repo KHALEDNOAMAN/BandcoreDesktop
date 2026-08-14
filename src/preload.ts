@@ -282,11 +282,11 @@ function injectReleaseDownload(): void {
                 e.stopPropagation();
                 if (owned) { location.href = res.downloadUrl; return; }
                 const lbl = sp.querySelector('a') as HTMLElement | null;
-                if (lbl) lbl.textContent = 'starting…';
+                if (lbl) lbl.textContent = 'Starting';
                 try {
                     const r = await ipcRenderer.invoke('download:release', { url: location.href.split(/[?#]/)[0] });
-                    if (lbl) lbl.textContent = r && r.ok ? 'downloading — see the downloads panel' : ((r && r.error) || 'failed');
-                } catch { if (lbl) lbl.textContent = 'failed'; }
+                    if (lbl) lbl.textContent = r && r.ok ? 'Downloading' : (r && r.error) ? r.error : 'Failed';
+                } catch { if (lbl) lbl.textContent = 'Failed'; }
             });
 
             // modern pages: appends into the share-collect-controls UL right after
