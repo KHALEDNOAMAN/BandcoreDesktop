@@ -260,7 +260,7 @@ function injectReleaseDownload(): void {
         ipcRenderer.invoke('release:download-info', { tralbumId, tralbumType: type }).then((res: any) => {
             if (document.getElementById('bcrpc-dlbtn')) return;
             const owned = !!(res && res.owned && res.downloadUrl);
-            const label = owned ? 'Download (you own this)' : 'Download mp3-128';
+            const label = owned ? 'Download (you own this)' : 'Download';
             const svg = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 19h16" stroke-linecap="round"/></svg>';
 
             // same shell as bandcamp's own wishlist button (li.wishlist >
@@ -270,6 +270,7 @@ function injectReleaseDownload(): void {
             li.id = 'bcrpc-dl-item';
             li.className = 'wishlist';
             li.title = owned ? 'Open your download page (all formats)' : "Download this release's streams with tags & cover art";
+            li.style.cssText = 'margin:0;padding:0;display:inline-flex;align-items:center;vertical-align:middle;';
             const sp = document.createElement('span');
             sp.id = 'bcrpc-dlbtn';
             sp.className = 'action compound-button';
