@@ -1769,7 +1769,7 @@ async function init() {
         const entryId = ++dlSeq;
         const dlState = { canceled: false };
         streamDownloads.set(entryId, dlState);
-        const entry: DlEntry = { id: entryId, name: `Playlist — ${p.name}`, state: 'progressing', percent: 0, file: '', at: Date.now(), receivedBytes: 0, totalBytes: 0, speed: 0, lastTime: Date.now(), lastBytes: 0, art: '' };
+        const entry: DlEntry = { id: entryId, name: `Playlist — ${p.name}`, album: '', artist: '', state: 'progressing', percent: 0, file: '', at: Date.now(), receivedBytes: 0, totalBytes: 0, speed: 0, lastTime: Date.now(), lastBytes: 0, art: '' };
         dlRegistry.unshift(entry);
         const prog = (state: string, percent: number) => {
             entry.state = state;
@@ -2219,7 +2219,7 @@ async function init() {
     // report progress to the header so there's a visible indicator
     // downloads registry: everything ever downloaded this session, with live
     // status, backing the header's downloads panel. Clear drops finished entries.
-    interface DlEntry { id: number; name: string; state: string; percent: number; file: string; at: number; receivedBytes: number; totalBytes: number; speed: number; lastTime: number; lastBytes: number; art: string; }
+    interface DlEntry { id: number; name: string; album: string; artist: string; state: string; percent: number; file: string; at: number; receivedBytes: number; totalBytes: number; speed: number; lastTime: number; lastBytes: number; art: string; }
     const dlRegistry: DlEntry[] = [];
     // cover hints for native (will-download) entries: the initiating view sends
     // the release's art url right before the download starts; each will-download
@@ -2368,7 +2368,7 @@ async function init() {
         const name = item.getFilename();
         try { item.setSavePath(path.join(getDownloadDir(), name)); } catch { /* let electron pick */ }
         const entryId = ++dlSeq;
-        const entry: DlEntry = { id: entryId, name, state: 'progressing', percent: 0, file: '', at: Date.now(), receivedBytes: 0, totalBytes: 0, speed: 0, lastTime: Date.now(), lastBytes: 0, art: dlArtHints.shift() || '' };
+        const entry: DlEntry = { id: entryId, name, album: '', artist: '', state: 'progressing', percent: 0, file: '', at: Date.now(), receivedBytes: 0, totalBytes: 0, speed: 0, lastTime: Date.now(), lastBytes: 0, art: dlArtHints.shift() || '' };
         dlRegistry.unshift(entry);
         nativeDownloads.set(entryId, item);
 
@@ -2442,7 +2442,7 @@ async function init() {
         const dlState = { canceled: false };
         streamDownloads.set(entryId, dlState);
 
-        const entry: DlEntry = { id: entryId, name: `${rel.albumArtist} — ${rel.album}`, state: 'progressing', percent: 0, file: '', at: Date.now(), receivedBytes: 0, totalBytes: 0, speed: 0, lastTime: Date.now(), lastBytes: 0, art: rel.artUrl };
+        const entry: DlEntry = { id: entryId, name: `${rel.albumArtist} — ${rel.album}`, album: rel.album, artist: rel.albumArtist, state: 'progressing', percent: 0, file: '', at: Date.now(), receivedBytes: 0, totalBytes: 0, speed: 0, lastTime: Date.now(), lastBytes: 0, art: rel.artUrl };
         dlRegistry.unshift(entry);
         
         const prog = (state: string, percent: number, name: string) => {

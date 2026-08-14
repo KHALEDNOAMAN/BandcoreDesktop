@@ -40,6 +40,7 @@
         .rw-main { flex: 1; min-width: 0; }
         .art { width: 42px; height: 42px; border-radius: 6px; object-fit: cover; flex-shrink: 0; border: 1px solid var(--line); }
         .art.blank { background: var(--line); display: flex; align-items: center; justify-content: center; color: var(--sub); font-size: 15px; }
+        .who { font-size: 10.5px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .name { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .sub { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
         .st { font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--sub); flex-shrink: 0; }
@@ -98,12 +99,14 @@
                     : '<div class="art blank">♪</div>';
 
                 row.innerHTML =
+                    artHtml +
                     '<div class="rw-main">' +
-                        '<div class="name">' + esc(d.name) + '</div>' +
+                        '<div class="name">' + esc(d.album || d.name) + '</div>' +
+                        (d.artist ? '<div class="who">' + esc(d.artist) + '</div>' : '') +
                         '<div class="sub"><span class="st ' + esc(d.state) + '">' + esc(d.state === 'progressing' ? pct + '%' : d.state) + '</span>' +
                         (d.state === 'progressing' ? '<div class="track"><div style="width:' + pct + '%"></div></div>' : '') +
                         cancelBtn + '</div>' +
-                    '</div>' + artHtml;
+                    '</div>';
 
                 if (d.state === 'completed' && d.file) {
                     row.title = 'Show in folder';
