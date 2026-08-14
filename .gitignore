@@ -2,3 +2,4 @@
 tsc/
 build/
 **/.DS_Store
+docs/

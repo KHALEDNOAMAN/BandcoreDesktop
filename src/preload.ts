@@ -6,11 +6,13 @@ import { ipcRenderer } from 'electron';
 // hidden and the whole page shows blank grey). theme is read synchronously so the
 // right cloak applies at document-start.
 let bcTheme = 'dark';
+let bcBg = '#181a1b';
 try { bcTheme = (ipcRenderer.sendSync('app:theme-for', location.href) as string) || 'dark'; } catch (e) { /* default dark */ }
+try { bcBg = (ipcRenderer.sendSync('app:theme-bg-for', location.href) as string) || bcBg; } catch (e) { /* default dark */ }
 const antiFlashStyle = document.createElement('style');
 antiFlashStyle.textContent = (bcTheme === 'light'
     ? ''
-    : `html { background-color: #181a1b !important; }
+    : `html { background-color: ${bcBg} !important; }
        html:not([data-darkreader-scheme="dark"]) body { opacity: 0 !important; }`)
     // keep the release-page .inline_player fully visible (people like it): it is
     // kept alive by mirroring OUR player's state into it (see page:now-playing).

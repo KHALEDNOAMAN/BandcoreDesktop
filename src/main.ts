@@ -14,6 +14,7 @@ import { buildExtractorScript } from './services/queueExtractor';
 import { buildId3v23 } from './services/id3';
 import { readLocalTags, AUDIO_EXTENSIONS } from './services/localTags';
 import type { NowPlaying, ResolveStreamRequest, ResolveStreamResponse, TralbumType, PlayerTrack } from './shared/types';
+import { themeByKey } from './shared/themes';
 
 const darkReaderPath = require.resolve('darkreader/darkreader.js');
 const darkReaderJS = fs.readFileSync(darkReaderPath, 'utf8');
@@ -53,9 +54,12 @@ const LIGHT_CSS = `
 // per-navigation theme css. the html-bg / body-opacity cloak is intentionally
 // injected here too (webContents-level, applies very early per navigation) AND in
 // the preload — dropping either one lets a flash of light-mode bandcamp show on
-// page change, so both are kept on purpose.
-const ANTI_FLASH_CSS = `
-    html { background-color: #181a1b !important; }
+// page change, so both are kept on purpose. the html bg tracks the theme's page
+// background so flash-free colors match the darkreader scheme.
+function antiFlashCss(): string {
+    const th = themeByKey(getTheme());
+    return `
+    html { background-color: ${th.pageBg} !important; }
     html:not([data-darkreader-scheme="dark"]) body { opacity: 0 !important; }
 
     /* hide every scrollbar app wide (content still scrolls). */
@@ -98,6 +102,7 @@ const ANTI_FLASH_CSS = `
         }
     }
 `;
+}
 
 const store = new Store({ clearInvalidConfig: true });
 
@@ -346,12 +351,13 @@ function openSettings() {
         modal: false,
         resizable: false,
         title: 'Settings',
-        backgroundColor: '#181a1b',
+        backgroundColor: chromeBg(),
         // frameless w/ our own titlebar: native close btn on windows can stick in its
         // hover state when the cursor leaves via the client area, so we own the control
         frame: false,
         webPreferences: { nodeIntegration: true, contextIsolation: false }
     });
+    settingsWindow.webContents.on('dom-ready', () => applyChromeTheme(settingsWindow!.webContents));
     settingsWindow.loadFile(path.join(__dirname, 'settings', 'settings.html'));
     settingsWindow.on('closed', () => { settingsWindow = null; });
 }
@@ -395,11 +401,31 @@ function isSocialHost(url: string): boolean {
 
 function toIdStr(v: unknown): string { const m = String(v ?? '').match(/\d+/); return m ? m[0] : ''; }
 
-// ui theme: dark (darkreader) by default; unchecking the "dark mode" setting
-// switches to 'light' = bandcamp's native look.
-function getTheme(): 'dark' | 'light' {
-    return store.get('theme', 'dark') === 'light' ? 'light' : 'dark';
+// ui theme: dark (darkreader) by default; any theme key maps to a palette.
+// 'light' switches bandcamp pages to their native look (no darkreader) while
+// our chrome keeps the dark palette.
+function getTheme(): string {
+    return themeByKey(store.get('theme', 'dark')).key;
 }
+
+// resolved chrome-variable CSS injected into our own views. every view defines
+// the same vars in author CSS (dark defaults) so they work standalone; this
+// user-origin override is what actually switches the palette.
+const chromeVarKeys = new WeakMap<Electron.WebContents, string>();
+function themeVarsCss(): string {
+    const vars = Object.entries(themeByKey(getTheme()).vars);
+    return ':root { ' + vars.map(([k, v]) => '--' + k + ': ' + v + ';').join(' ') + ' }';
+}
+async function applyChromeTheme(wc: Electron.WebContents): Promise<void> {
+    try {
+        const prev = chromeVarKeys.get(wc);
+        if (prev) await wc.removeInsertedCSS(prev).catch(() => {});
+        const key = await wc.insertCSS(themeVarsCss(), { cssOrigin: 'user' });
+        chromeVarKeys.set(wc, key);
+    } catch (err) { console.error('applyChromeTheme failed:', err); }
+}
+function chromeBg(): string { return themeByKey(getTheme()).vars['bg']; }
+function pageBg(): string { return themeByKey(getTheme()).pageBg; }
 
 // artist / label pages (subdomains & bandcamp-pro custom domains) as opposed to the
 // core app pages (bandcamp.com, the daily). used by the "don't darken artist pages"
@@ -540,7 +566,7 @@ function openInNewWindow(url: string) {
         width: 1100,
         height: 800,
         title: 'Bandcamp',
-        backgroundColor: '#181a1b',
+        backgroundColor: pageBg(),
         autoHideMenuBar: true,
         webPreferences: { nodeIntegration: false, contextIsolation: true, devTools: true },
     });
@@ -569,9 +595,10 @@ async function init() {
         try {
             notice429Win = new BrowserWindow({
                 width: 470, height: 220, parent: mainWindow, frame: false, resizable: false,
-                backgroundColor: '#181a1b', // opaque: transparent windows are crash-prone on some setups
+                backgroundColor: chromeBg(), // opaque: transparent windows are crash-prone on some setups
                 webPreferences: { nodeIntegration: true, contextIsolation: false },
             });
+            notice429Win.webContents.on('dom-ready', () => applyChromeTheme(notice429Win!.webContents));
             notice429Win.loadFile(path.join(__dirname, 'notice', 'notice429.html'));
             notice429Win.on('closed', () => { notice429Win = null; });
         } catch { notice429Win = null; }
@@ -589,7 +616,7 @@ async function init() {
         minHeight: 540,
         title: 'Bandcamp',
         icon: path.join(__dirname, '../assets/bandcamp-button-circle-black-512.png'),
-        backgroundColor: '#181a1b',
+        backgroundColor: pageBg(),
         show: false,
         frame: false,
         titleBarStyle: 'hidden',
@@ -597,7 +624,8 @@ async function init() {
     });
 
     headerView = new BrowserView({ webPreferences: { nodeIntegration: true, contextIsolation: false } });
-    headerView.setBackgroundColor('#121415');
+    headerView.setBackgroundColor(chromeBg());
+    headerView.webContents.on('dom-ready', () => applyChromeTheme(headerView.webContents));
 
     playerView = new BrowserView({
         webPreferences: {
@@ -606,7 +634,8 @@ async function init() {
             autoplayPolicy: 'no-user-gesture-required'
         }
     });
-    playerView.setBackgroundColor('#181a1b');
+    playerView.setBackgroundColor(chromeBg());
+    playerView.webContents.on('dom-ready', () => applyChromeTheme(playerView.webContents));
 
     // first tab. contentView aliases the *active* tab's view; more tabs open via
     // middle-click (bandcamp links) or the + button and all share the one player.
@@ -617,7 +646,8 @@ async function init() {
     collectionView = new BrowserView({
         webPreferences: { nodeIntegration: true, contextIsolation: false, devTools: devMode }
     });
-    collectionView.setBackgroundColor('#181a1b');
+    collectionView.setBackgroundColor(chromeBg());
+    collectionView.webContents.on('dom-ready', () => applyChromeTheme(collectionView.webContents));
     if (devMode) {
         collectionView.webContents.on('did-finish-load', () => console.log('[bcrpc] collection view loaded'));
         collectionView.webContents.on('did-fail-load', (_e, code, desc, url) =>
@@ -627,7 +657,8 @@ async function init() {
     feedView = new BrowserView({
         webPreferences: { nodeIntegration: true, contextIsolation: false, devTools: devMode }
     });
-    feedView.setBackgroundColor('#181a1b');
+    feedView.setBackgroundColor(chromeBg());
+    feedView.webContents.on('dom-ready', () => applyChromeTheme(feedView.webContents));
 
     if (devMode) {
         feedView.webContents.on('did-fail-load', (_e, code, desc, url) =>
@@ -1031,9 +1062,10 @@ async function init() {
             spotlightWin = new BrowserWindow({
                 width: 620, height: 460, frame: false, resizable: false, parent: mainWindow,
                 x: Math.max(0, b.x + Math.round((b.width - 620) / 2)), y: b.y + 110,
-                backgroundColor: '#181a1b',
+                backgroundColor: chromeBg(),
                 webPreferences: { nodeIntegration: true, contextIsolation: false, devTools: devMode },
             });
+            spotlightWin.webContents.on('dom-ready', () => applyChromeTheme(spotlightWin!.webContents));
             spotlightWin.loadFile(path.join(__dirname, 'search', 'search.html'));
             spotlightWin.webContents.on('did-finish-load', () => {
                 if (spotlightWin && !spotlightWin.isDestroyed()) spotlightWin.webContents.send('gsearch:shown');
@@ -2273,9 +2305,10 @@ async function init() {
             downloadsWin = new BrowserWindow({
                 width: 360, height: h, frame: false, resizable: false, parent: mainWindow,
                 x: Math.max(0, b.x + b.width - 372), y: b.y + 44,
-                backgroundColor: '#181a1b',
+                backgroundColor: chromeBg(),
                 webPreferences: { nodeIntegration: true, contextIsolation: false },
             });
+            downloadsWin.webContents.on('dom-ready', () => applyChromeTheme(downloadsWin!.webContents));
 
             downloadsWin.on('blur', () => {
                 if (downloadsJustOpened) return;
@@ -2612,6 +2645,12 @@ async function init() {
     // so its anti-flash cloak matches (no opacity cloak when the page will be light,
     // else it stays blank grey)
     ipcMain.on('app:theme-for', (e, url: unknown) => { e.returnValue = themeForUrl(typeof url === 'string' ? url : ''); });
+    // same for the cloak's html background: preload paints it at document-start,
+    // so it must be themed without waiting on darkreader ('' when the page will
+    // be light — no cloak is installed then anyway).
+    ipcMain.on('app:theme-bg-for', (e, url: unknown) => {
+        e.returnValue = themeForUrl(typeof url === 'string' ? url : '') === 'light' ? '' : pageBg();
+    });
 
     // let the user pick where purchased downloads are saved
     ipcMain.handle('settings:choose-download-dir', async () => {
@@ -2760,7 +2799,7 @@ async function init() {
             }
             let themeChanged = false;
             if (typeof data.theme === 'string') {
-                const next = data.theme === 'light' ? 'light' : 'dark';
+                const next = themeByKey(data.theme).key;
                 themeChanged = next !== getTheme();
                 store.set('theme', next);
             }
@@ -2775,7 +2814,26 @@ async function init() {
                 }
             }
             // reload every tab so the cloak/darkreader state flips
-            if (themeChanged) tabs.forEach((t) => { if (!t.view.webContents.isDestroyed()) t.view.webContents.reload(); });
+            if (themeChanged) {
+                // live palette swap for our own chrome (settings window included)
+                const chrome = [
+                    headerView, playerView, collectionView, feedView,
+                    settingsWindow, spotlightWin, downloadsWin, notice429Win,
+                ].map((w) => (w && !w.webContents.isDestroyed() ? w.webContents : null)).filter(Boolean) as Electron.WebContents[];
+                chrome.forEach((wc) => applyChromeTheme(wc));
+                for (const w of [headerView, playerView, collectionView, feedView]) {
+                    if (w && !w.webContents.isDestroyed()) w.setBackgroundColor(chromeBg());
+                }
+                for (const w of [mainWindow, settingsWindow, spotlightWin, downloadsWin, notice429Win]) {
+                    if (w && !w.webContents.isDestroyed()) w.setBackgroundColor(chromeBg());
+                }
+                tabs.forEach((t) => {
+                    if (!t.view.webContents.isDestroyed()) {
+                        t.view.setBackgroundColor(pageBg());
+                        t.view.webContents.reload();
+                    }
+                });
+            }
             if (devMode) console.log('[bcrpc] settings:save ok keys=' + JSON.stringify(Object.keys(data || {})));
             return { ok: true };
         } catch (err: any) {
@@ -2820,7 +2878,7 @@ async function init() {
                 preload: path.join(__dirname, 'preload.js'),
             },
         });
-        v.setBackgroundColor('#181a1b');
+        v.setBackgroundColor(pageBg());
         v.webContents.setAudioMuted(true);
         return v;
     }
@@ -2953,8 +3011,8 @@ async function init() {
                                 window.DarkReader.setFetchMethod(window.fetch);
                                 window.DarkReader.enable({
                                     brightness: 100, contrast: 100, sepia: 0, mode: 1,
-                                    darkSchemeBackgroundColor: '#181a1b',
-                                    darkSchemeTextColor: '#e8e6e3'
+darkSchemeBackgroundColor: themeByKey(getTheme()).pageBg,
+                                darkSchemeTextColor: themeByKey(getTheme()).pageText
                                 });
                             }
                         } finally { window.define = _define; window.exports = _exports; }
@@ -2969,7 +3027,7 @@ async function init() {
                 const prev = antiFlashKeys.get(wc);
                 if (prev) await wc.removeInsertedCSS(prev).catch(() => {});
                 const isLight = themeForUrl(wc.getURL()) === 'light';
-                const key = await wc.insertCSS(isLight ? LIGHT_CSS : ANTI_FLASH_CSS, { cssOrigin: 'user' });
+                const key = await wc.insertCSS(isLight ? LIGHT_CSS : antiFlashCss(), { cssOrigin: 'user' });
                 antiFlashKeys.set(wc, key);
                 if (!isLight) liftCloakIfStuck();
             } catch (err) { console.error('Failed to inject Pre-Theme CSS:', err); }
@@ -2985,14 +3043,15 @@ async function init() {
                 const key = antiFlashKeys.get(wc);
                 if (key) { wc.removeInsertedCSS(key).catch(() => {}); antiFlashKeys.delete(wc); }
                 wc.executeJavaScript(`(function () {
+                    var th = ${JSON.stringify({ bg: pageBg(), text: themeByKey(getTheme()).pageText, accent: themeByKey(getTheme()).vars['accent'], muted: themeByKey(getTheme()).vars['muted'] })};
                     if (document.getElementById('bcrpc-429')) return;
                     var d = document.createElement('div');
                     d.id = 'bcrpc-429';
-                    d.style.cssText = 'position:fixed;inset:0;z-index:2147483647;background:#181a1b;color:#e8e6e3;display:flex;align-items:center;justify-content:center;font-family:sans-serif;';
+                    d.style.cssText = 'position:fixed;inset:0;z-index:2147483647;background:' + th.bg + ';color:' + th.text + ';display:flex;align-items:center;justify-content:center;font-family:sans-serif;';
                     d.innerHTML = '<div style="max-width:440px;padding:24px;text-align:center;">' +
                         '<div style="font-size:18px;font-weight:600;margin-bottom:10px;">Error 429 — too many requests</div>' +
-                        '<div style="font-size:13px;color:#9a968e;line-height:1.6;">Bandcamp is throttling this session, so this page could not load. Wait a little bit T__T and try again.</div>' +
-                        '<button onclick="location.reload()" style="margin-top:16px;background:#1da0c3;border:none;color:#fff;border-radius:6px;padding:9px 16px;font-size:13px;cursor:pointer;">Reload page</button></div>';
+                        '<div style="font-size:13px;color:' + th.muted + ';line-height:1.6;">Bandcamp is throttling this session, so this page could not load. Wait a little bit T__T and try again.</div>' +
+                        '<button onclick="location.reload()" style="margin-top:16px;background:' + th.accent + ';border:none;color:#fff;border-radius:6px;padding:9px 16px;font-size:13px;cursor:pointer;">Reload page</button></div>';
                     (document.body || document.documentElement).appendChild(d);
                     var st = document.createElement('style'); st.textContent = 'body{opacity:1 !important}';
                     document.documentElement.appendChild(st);

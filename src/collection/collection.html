@@ -7,8 +7,11 @@
         * { box-sizing: border-box; margin: 0; padding: 0; scrollbar-width: none; -ms-overflow-style: none; }
         ::-webkit-scrollbar { width: 0; height: 0; display: none; }
         :root {
-            --bg: #181a1b; --bar: #1b1e1f; --card: #202325; --text: #e8e6e3;
-            --muted: #9a968e; --sub: #848079; --line: #2a2e30; --accent: #1da0c3;
+            --bg: #181a1b; --titlebar: #121415; --input: #121415; --bar: #1b1e1f;
+            --panel: #161819; --card: #202325; --hover-bg: #24282a;
+            --line: #2a2e30; --line-2: #1e2224; --scroll: #3a3f42;
+            --text: #e8e6e3; --text-2: #cfcac2; --muted: #9a968e; --sub: #848079;
+            --accent: #1da0c3; --hover-text: #ffffff;
         }
         html, body { height: 100%; }
         body {
@@ -24,7 +27,7 @@
         .count { font-size: 11px; color: var(--sub); }
         .spacer { flex: 1; }
         input[type="text"], select {
-            background: #121415; border: 1px solid var(--line); border-radius: 6px;
+            background: var(--input); border: 1px solid var(--line); border-radius: 6px;
             color: var(--text); padding: 7px 10px; font-size: 12px; font-family: inherit; outline: none;
         }
         select {
@@ -35,7 +38,7 @@
         input[type="text"]:focus, select:focus { border-color: var(--accent); }
         #search { width: 220px; }
         .tbtn {
-            background: #24282a; border: 1px solid var(--line); color: var(--text);
+            background: var(--hover-bg); border: 1px solid var(--line); color: var(--text);
             border-radius: 6px; padding: 7px 10px; font-size: 12px; cursor: pointer;
         }
         .tbtn:hover { border-color: var(--accent); }
@@ -54,11 +57,11 @@
             display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px; align-content: start;
             /* the page-wide rules hide every scrollbar; the collection is the one
                surface long enough to need a visible one, so restore a slim one here */
-            scrollbar-width: thin; scrollbar-color: #3a3f42 transparent;
+            scrollbar-width: thin; scrollbar-color: var(--scroll) transparent;
         }
         .card { cursor: pointer; }
         .card .art {
-            width: 100%; aspect-ratio: 1 / 1; border-radius: 6px; background: #2a2e30;
+            width: 100%; aspect-ratio: 1 / 1; border-radius: 6px; background: var(--line);
             object-fit: cover; display: block; transition: transform .12s ease;
         }
         .card:hover .art { transform: scale(1.03); outline: 2px solid var(--accent); }
@@ -89,7 +92,7 @@
         }
         .enq:hover { background: var(--accent); }
         .dlmenu {
-            position: fixed; z-index: 50; width: 190px; background: #202325;
+            position: fixed; z-index: 50; width: 190px; background: var(--card);
             border: 1px solid var(--line); border-radius: 8px; padding: 6px; font-size: 12px;
             color: var(--muted); box-shadow: 0 8px 24px rgba(0,0,0,.4);
             max-height: 320px; overflow-y: auto;
@@ -104,19 +107,19 @@
         /* CRITICAL: Tracklist Layout Fixes */
         .tlinline {
             grid-column: 1 / -1; display: flex; gap: 24px; align-items: flex-start;
-            background: #1b1e1f; border: 1px solid var(--line); border-radius: 10px;
+            background: var(--bar); border: 1px solid var(--line); border-radius: 10px;
             padding: 20px; margin: 4px 0; height: max-content; /* Force full height calculation */
             animation: tlslide .18s ease;
         }
         @keyframes tlslide { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
         .tlleft { width: 180px; flex-shrink: 0; position: sticky; top: 20px; }
-        .tlart { width: 100%; aspect-ratio: 1/1; border-radius: 6px; object-fit: cover; background: #2a2e30; display: block; }
+        .tlart { width: 100%; aspect-ratio: 1/1; border-radius: 6px; object-fit: cover; background: var(--line); display: block; }
         .tltitle { font-size: 14px; font-weight: 600; margin-top: 12px; line-height: 1.3; }
         .tlartist { font-size: 12px; color: var(--muted); margin-top: 4px; }
         .tlyear { font-size: 11px; color: var(--sub); margin-top: 2px; }
         .tltags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
         .tltag {
-            font-size: 11px; color: var(--muted); background: #24282a; border: 1px solid var(--line);
+            font-size: 11px; color: var(--muted); background: var(--hover-bg); border: 1px solid var(--line);
             border-radius: 999px; padding: 3px 9px; cursor: pointer;
         }
         .tltag:hover { border-color: var(--accent); color: var(--text); }
@@ -130,7 +133,7 @@
             display: flex; align-items: center; justify-content: center;
         }
         .modal {
-            width: 420px; max-width: calc(100vw - 40px); background: #202325;
+            width: 420px; max-width: calc(100vw - 40px); background: var(--card);
             border: 1px solid var(--line); border-radius: 10px; padding: 20px;
             box-shadow: 0 12px 40px rgba(0,0,0,.5);
         }
@@ -138,7 +141,7 @@
         .modal p { font-size: 12px; color: var(--muted); line-height: 1.55; margin-bottom: 14px; }
         .modal .mrow { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
         .modal button {
-            background: #24282a; border: 1px solid var(--line); color: var(--text);
+            background: var(--hover-bg); border: 1px solid var(--line); color: var(--text);
             border-radius: 6px; padding: 7px 12px; font-size: 12px; cursor: pointer; font-family: inherit;
         }
         .modal button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
@@ -155,7 +158,7 @@
         }
         .tlbtns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
         .tlbtns button {
-            background: #24282a; border: 1px solid var(--line); color: var(--text);
+            background: var(--hover-bg); border: 1px solid var(--line); color: var(--text);
             border-radius: 6px; padding: 6px 12px; font-size: 11px; cursor: pointer; font-family: inherit;
             flex: 1; text-align: center;
         }
@@ -212,13 +215,13 @@
         /* playlists panel: swaps in for the grid (which keeps rendering hidden) */
         .plov {
             flex: 1; overflow-y: auto; padding: 16px 18px;
-            scrollbar-width: thin; scrollbar-color: #3a3f42 transparent;
+            scrollbar-width: thin; scrollbar-color: var(--scroll) transparent;
         }
         .tbtn.on { border-color: var(--accent); color: var(--accent); }
         .pl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 16px; align-content: start; }
         .pl-card { cursor: pointer; }
         .pl-cover {
-            width: 100%; aspect-ratio: 1 / 1; border-radius: 8px; background: #202325; overflow: hidden;
+            width: 100%; aspect-ratio: 1 / 1; border-radius: 8px; background: var(--card); overflow: hidden;
             display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr;
             border: 1px solid var(--line); transition: transform .12s ease;
         }
@@ -267,7 +270,7 @@
         /* transient feedback toast (imports, reloads) */
         .ctoast {
             position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%) translateY(8px);
-            z-index: 120; background: #202325; border: 1px solid var(--line); border-radius: 8px;
+            z-index: 120; background: var(--card); border: 1px solid var(--line); border-radius: 8px;
             color: var(--text); font-size: 12px; padding: 9px 16px; pointer-events: none;
             opacity: 0; transition: opacity .18s ease, transform .18s ease;
             box-shadow: 0 8px 24px rgba(0,0,0,.4); max-width: 70vw;
@@ -293,7 +296,7 @@
         /* multiline text in the name/description modal */
         .modal textarea {
             width: 100%; min-height: 96px; resize: vertical;
-            background: #121415; border: 1px solid var(--line); border-radius: 6px;
+            background: var(--input); border: 1px solid var(--line); border-radius: 6px;
             color: var(--text); padding: 8px 10px; font-size: 12px; font-family: inherit; outline: none;
         }
         .modal textarea:focus { border-color: var(--accent); }

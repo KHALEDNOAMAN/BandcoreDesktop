@@ -7,8 +7,11 @@
         * { box-sizing: border-box; margin: 0; padding: 0; scrollbar-width: none; -ms-overflow-style: none; }
         ::-webkit-scrollbar { width: 0; height: 0; display: none; }
         :root {
-            --bg: #181a1b; --bar: #1b1e1f; --card: #202325; --text: #e8e6e3;
-            --muted: #9a968e; --sub: #848079; --line: #2a2e30; --accent: #1da0c3;
+            --bg: #181a1b; --titlebar: #121415; --input: #121415; --bar: #1b1e1f;
+            --panel: #161819; --card: #202325; --hover-bg: #24282a;
+            --line: #2a2e30; --line-2: #1e2224; --scroll: #3a3f42;
+            --text: #e8e6e3; --text-2: #cfcac2; --muted: #9a968e; --sub: #848079;
+            --accent: #1da0c3; --hover-text: #ffffff;
         }
         html, body { height: 100%; }
         body {
@@ -24,19 +27,19 @@
         .count { font-size: 11px; color: var(--sub); }
         .spacer { flex: 1; }
         .chip {
-            background: #24282a; border: 1px solid var(--line); color: var(--muted);
+            background: var(--hover-bg); border: 1px solid var(--line); color: var(--muted);
             border-radius: 999px; padding: 6px 12px; font-size: 12px; cursor: pointer; font-family: inherit;
         }
-        .chip.on { color: #fff; border-color: var(--accent); background: rgba(29,160,195,.12); }
+        .chip.on { color: var(--hover-text); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
         .tbtn {
-            background: #24282a; border: 1px solid var(--line); color: var(--text);
+            background: var(--hover-bg); border: 1px solid var(--line); color: var(--text);
             border-radius: 6px; padding: 7px 10px; font-size: 12px; cursor: pointer;
         }
         .tbtn:hover { border-color: var(--accent); }
         .list {
             flex: 1; overflow-y: auto; padding: 16px;
             display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px; align-content: start;
-            scrollbar-width: thin; scrollbar-color: #3a3f42 transparent;
+            scrollbar-width: thin; scrollbar-color: var(--scroll) transparent;
         }
         .daysep {
             grid-column: 1 / -1; font-size: 12px; color: var(--sub); font-weight: 600;
@@ -44,7 +47,7 @@
         }
         .card { cursor: pointer; position: relative; }
         .card .art {
-            width: 100%; aspect-ratio: 1 / 1; border-radius: 6px; background: #2a2e30;
+            width: 100%; aspect-ratio: 1 / 1; border-radius: 6px; background: var(--line);
             object-fit: cover; display: block; transition: transform .12s ease;
         }
         .card:hover .art { transform: scale(1.03); outline: 2px solid var(--accent); }
@@ -72,33 +75,33 @@
         /* expanded story panel (tracklist / tags / description) */
         .fdpanel {
             grid-column: 1 / -1; display: flex; gap: 24px; align-items: flex-start;
-            background: #1b1e1f; border: 1px solid var(--line); border-radius: 10px;
+            background: var(--bar); border: 1px solid var(--line); border-radius: 10px;
             padding: 20px; margin: 4px 0; animation: fdslide .18s ease;
         }
         @keyframes fdslide { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
         .fdleft { width: 200px; flex-shrink: 0; position: sticky; top: 20px; }
-        .fdart { width: 100%; aspect-ratio: 1/1; border-radius: 6px; object-fit: cover; background: #2a2e30; display: block; }
+        .fdart { width: 100%; aspect-ratio: 1/1; border-radius: 6px; object-fit: cover; background: var(--line); display: block; }
         .fdtitle { font-size: 14px; font-weight: 600; margin-top: 12px; line-height: 1.3; }
         .fdartist { font-size: 12px; color: var(--muted); margin-top: 4px; }
         .fdwhen { font-size: 11px; color: var(--sub); margin-top: 2px; }
         .fdbtns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
         .fdbtns button {
-            background: #24282a; border: 1px solid var(--line); color: var(--text);
+            background: var(--hover-bg); border: 1px solid var(--line); color: var(--text);
             border-radius: 6px; padding: 6px 12px; font-size: 11px; cursor: pointer; font-family: inherit;
             flex: 1; text-align: center; white-space: nowrap;
         }
-        .fdbtns .fdplayall { background: var(--accent); border-color: var(--accent); color: #fff; flex: 100%; }
+        .fdbtns .fdplayall { background: var(--accent); border-color: var(--accent); color: var(--hover-text); flex: 100%; }
         .fdbtns button:hover { filter: brightness(1.12); }
         .fdright { flex: 1; min-width: 0; }
         .fdtags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
         .fdtag {
-            font-size: 11px; color: var(--muted); background: #24282a; border: 1px solid var(--line);
+            font-size: 11px; color: var(--muted); background: var(--hover-bg); border: 1px solid var(--line);
             border-radius: 999px; padding: 3px 9px;
         }
         .fdabout {
             font-size: 12px; color: var(--muted); line-height: 1.55; white-space: pre-wrap;
             max-height: 130px; overflow-y: auto; margin-bottom: 12px; user-select: text;
-            scrollbar-width: thin; scrollbar-color: #3a3f42 transparent;
+            scrollbar-width: thin; scrollbar-color: var(--scroll) transparent;
         }
         .fdtracks {
             display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
