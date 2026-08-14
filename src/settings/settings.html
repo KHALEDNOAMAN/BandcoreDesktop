@@ -169,6 +169,9 @@
                 <label style="margin-top:0;">Theme</label>
                 <select id="themeSel" autocomplete="off"></select>
                 <div class="hint" style="margin:6px 0 0;">changes the app chrome (the browser chrome around the pages); applies instantly.</div>
+                <label class="toggle" style="margin-top:16px;"><input type="checkbox" id="darkMode"> dark bandcamp pages (darkreader)</label>
+                <label class="toggle" style="margin-top:12px;"><input type="checkbox" id="noDarkArtistPages"> disable dark mode on artist pages (keeps their custom themes)</label>
+                <div class="hint" style="margin:6px 0 0;">dark page changes reload open tabs to apply.</div>
             </section>
 
             <section class="pane hidden" id="pane-windowbar">
@@ -430,11 +433,17 @@
             $('cacheReleases').checked = s.cacheReleases === true;
             refreshCacheInfo();
             $('themeSel').value = s.theme; // unknown keys snap back to dark via main
+            $('darkMode').checked = s.darkMode !== false; // dark pages by default
+            // stored setting is "apply dark to artist pages" (default off); the
+            // checkbox is the inverse ("disable…"), so it starts checked
+            $('noDarkArtistPages').checked = s.darkArtistPages !== true;
             $('seekbarAbove').checked = s.seekbarAbove === true;
             // player bar toggles apply instantly, like the window bar list
             $('seekbarAbove').addEventListener('change', () => { persist(); });
             // theme applies instantly too (chrome palette swap is live)
             $('themeSel').addEventListener('change', () => { persist(); });
+            $('darkMode').addEventListener('change', () => { persist(); });
+            $('noDarkArtistPages').addEventListener('change', () => { persist(); });
             $('downloadDir').value = s.downloadDir || '';
             if (lfm.username) { $('lfmUser').textContent = 'connected: ' + lfm.username; $('lfmUser').className = 'status ok'; }
             $('fileNameFmt').value = s.fileNameFmt || '{tracknum} {artist} - {title}';
@@ -494,6 +503,8 @@
                 musicFolderScan: $('musicFolderScan').checked,
                 cacheReleases: $('cacheReleases').checked,
                 theme: $('themeSel').value,
+                darkMode: $('darkMode').checked,
+                darkArtistPages: !$('noDarkArtistPages').checked,
                 seekbarAbove: $('seekbarAbove').checked
             });
         }

@@ -1,12 +1,36 @@
 import { ipcRenderer } from 'electron';
 
-// bandcamp pages are always shown native; the only injected style hides
-// bandcamp's own audio bars (our player is the only transport).
+// anti-flash + hide bandcamp's own audio bars (our player is the only transport).
+// in DARK mode we cloak the body until darkreader paints (avoids a white flash);
+// in LIGHT mode we must NOT do that (darkreader never runs, so the body would stay
+// hidden and the whole page shows blank grey). theme is read synchronously so the
+// right cloak applies at document-start.
+let bcTheme = 'dark';
+try { bcTheme = (ipcRenderer.sendSync('app:theme-for', location.href) as string) || 'dark'; } catch (e) { /* default dark */ }
 const antiFlashStyle = document.createElement('style');
-antiFlashStyle.textContent = `#collection-player, .floating-player { display: none !important; }`;
+antiFlashStyle.textContent = (bcTheme === 'light'
+    ? ''
+    : `html { background-color: #181a1b !important; }
+       html:not([data-darkreader-scheme="dark"]) body { opacity: 0 !important; }`)
+    // keep the release-page .inline_player fully visible (people like it): it is
+    // kept alive by mirroring OUR player's state into it (see page:now-playing).
+    + `\n#collection-player, .floating-player { display: none !important; }`;
 const antiFlashRoot = document.head || document.documentElement;
 if (antiFlashRoot) antiFlashRoot.appendChild(antiFlashStyle);
 else document.addEventListener('DOMContentLoaded', () => (document.head || document.documentElement).appendChild(antiFlashStyle));
+
+// failsafe: if darkreader never paints (script error, throttled subresources),
+// the cloak used to leave the page an empty grey forever. lift it after a few
+// seconds — worst case is a brief unthemed flash instead of a hang.
+if (bcTheme !== 'light') {
+    setTimeout(() => {
+        try {
+            if (!document.documentElement.getAttribute('data-darkreader-scheme')) {
+                antiFlashStyle.textContent = antiFlashStyle.textContent.replace('opacity: 0 !important', 'opacity: 1');
+            }
+        } catch (e) { /* keep cloak */ }
+    }, 6000);
+}
 
 // mirror discover grid (/api/discover/1/discover_web) into window.__bcrpc.discover so extractor resolves genre page play to full album w/out track -> album lookup. injected as main world script at document start (csp stripped) before page grabs fetch. passive read of resp clone
 const CAPTURE_SRC = `

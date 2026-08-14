@@ -16,6 +16,9 @@ import { readLocalTags, AUDIO_EXTENSIONS } from './services/localTags';
 import type { NowPlaying, ResolveStreamRequest, ResolveStreamResponse, TralbumType, PlayerTrack } from './shared/types';
 import { themeByKey } from './shared/themes';
 
+const darkReaderPath = require.resolve('darkreader/darkreader.js');
+const darkReaderJS = fs.readFileSync(darkReaderPath, 'utf8');
+
 // last-resort crash telemetry: log to userData/crash.log (and the console) so a
 // hard crash actually says WHERE it happened instead of just closing the app.
 process.on('uncaughtException', (err) => {
@@ -39,13 +42,62 @@ const SEARCHBOX_CSS = `
     }
 `;
 
-// bandcamp pages are always shown native; this css is the only thing we apply
-// to them (scrollbars hidden, editorial banner kept on the homepage only).
-const PAGE_CSS = `
+// light pages: bandcamp's own look, just hide scrollbars & the banner. no
+// opacity cloak (that waits on darkreader, which is off in light mode).
+const LIGHT_CSS = `
     * { scrollbar-width: none !important; -ms-overflow-style: none !important; }
     ::-webkit-scrollbar { width: 0 !important; height: 0 !important; display: none !important; }
     .editorial-recommendations-banner { display: none !important; }
     body.home .editorial-recommendations-banner { display: block !important; }
+`;
+
+// per-navigation dark-page css. the html-bg / body-opacity cloak is intentionally
+// injected here too (webContents-level, applies very early per navigation) AND in
+// the preload — dropping either one lets a flash of light-mode bandcamp show on
+// page change, so both are kept on purpose.
+const ANTI_FLASH_CSS = `
+    html { background-color: #181a1b !important; }
+    html:not([data-darkreader-scheme="dark"]) body { opacity: 0 !important; }
+
+    /* hide every scrollbar app wide (content still scrolls). */
+    * { scrollbar-width: none !important; -ms-overflow-style: none !important; }
+    ::-webkit-scrollbar { width: 0 !important; height: 0 !important; display: none !important; }
+
+    :root, html, body {
+        --menubar-background-color: #1e2021 !important;
+        --header-background-color: #1e2021 !important;
+    }
+    .header-wrapper, #menubar, .menubar, .menu-bar {
+        transition: none !important;
+        background-color: #1e2021 !important;
+    }
+
+    .editorial-recommendations-banner { display: none !important; }
+    body.home .editorial-recommendations-banner { display: block !important; }
+
+    .bandcamp-logo-link svg, .logo-mobile svg, .horizontal-nav__logo svg {
+        visibility: hidden !important;
+    }
+
+    .bandcamp-logo-link, .horizontal-nav__logo, .logo-mobile, #page-footer .bandcamp-logo-link {
+        background-color: #ffffff !important;
+        -webkit-mask-image: url('https://upload.wikimedia.org/wikipedia/commons/0/06/Bandcamp-logotype-light.svg') !important;
+        mask-image: url('https://upload.wikimedia.org/wikipedia/commons/0/06/Bandcamp-logotype-light.svg') !important;
+        -webkit-mask-size: contain !important;
+        mask-size: contain !important;
+        -webkit-mask-repeat: no-repeat !important;
+        mask-repeat: no-repeat !important;
+        -webkit-mask-position: left center !important;
+        mask-position: left center !important;
+        display: inline-block !important;
+    }
+
+    @media (max-width: 743px) {
+        .bandcamp-logo-link, .logo-mobile, .horizontal-nav__logo {
+            -webkit-mask-image: url('https://upload.wikimedia.org/wikipedia/commons/0/07/Bandcamp-bc-logotype-light.svg') !important;
+            mask-image: url('https://upload.wikimedia.org/wikipedia/commons/0/07/Bandcamp-bc-logotype-light.svg') !important;
+        }
+    }
 `;
 
 const store = new Store({ clearInvalidConfig: true });
@@ -369,6 +421,29 @@ async function applyChromeTheme(wc: Electron.WebContents): Promise<void> {
     } catch (err) { console.error('applyChromeTheme failed:', err); }
 }
 function chromeBg(): string { return themeByKey(getTheme()).vars['bg']; }
+
+// page dark mode (darkreader on bandcamp pages) — independent of the UI theme.
+// artist / label pages (subdomains & bandcamp-pro custom domains) are left
+// light (their custom look) unless the user opts into darkening them; fan
+// playlist pages ship their own dark design and are always exempt.
+function isArtistPage(url: string): boolean {
+    try {
+        const h = new URL(url).hostname.toLowerCase();
+        return !(h === 'bandcamp.com' || h === 'www.bandcamp.com' || h === 'daily.bandcamp.com');
+    } catch { return false; }
+}
+function isPlaylistPage(url: string): boolean {
+    try {
+        const u = new URL(url);
+        return /(^|\.)bandcamp\.com$/i.test(u.hostname) && /\/playlist(\/|$)/.test(u.pathname);
+    } catch { return false; }
+}
+function themeForUrl(url: string): 'dark' | 'light' {
+    if (store.get('darkMode', true) !== true) return 'light';
+    if (isPlaylistPage(url)) return 'light';
+    if (store.get('darkArtistPages', false) !== true && isArtistPage(url)) return 'light';
+    return 'dark';
+}
 
 // opt-in on-disk release cache: covers + the release index (tracklists, tags,
 // album info) + the collection listing itself. audio is never cached.
@@ -2555,6 +2630,10 @@ async function init() {
 
     ipcMain.on('app:settings', () => openSettings());
     ipcMain.on('settings:close', () => { if (settingsWindow && !settingsWindow.isDestroyed()) settingsWindow.close(); });
+    // preload reads the effective theme for its page synchronously at document-start
+    // so its anti-flash cloak matches (no opacity cloak when the page will be light,
+    // else it stays blank grey)
+    ipcMain.on('app:theme-for', (e, url: unknown) => { e.returnValue = themeForUrl(typeof url === 'string' ? url : ''); });
 
     // let the user pick where purchased downloads are saved
     ipcMain.handle('settings:choose-download-dir', async () => {
@@ -2636,6 +2715,8 @@ async function init() {
             musicFolderScan: store.get('musicFolderScan', false) === true,
             musicFolder: String(store.get('musicFolder', '') || ''),
             theme: getTheme(),
+            darkMode: store.get('darkMode', true) === true,
+            darkArtistPages: store.get('darkArtistPages', false) === true,
             discordOpts: presenceService.options(),
             seekbarAbove: store.get('seekbarAbove', false) === true,
         };
@@ -2705,6 +2786,13 @@ async function init() {
                 const next = themeByKey(data.theme).key;
                 themeChanged = next !== getTheme();
                 if (themeChanged) store.set('theme', next);
+            }
+            const oldPageTheme = themeForUrl('https://bandcamp.com/');
+            if (typeof data.darkMode === 'boolean') store.set('darkMode', data.darkMode);
+            if (typeof data.darkArtistPages === 'boolean') store.set('darkArtistPages', data.darkArtistPages);
+            // reload every tab so the cloak/darkreader state flips
+            if (themeForUrl('https://bandcamp.com/') !== oldPageTheme) {
+                tabs.forEach((t) => { if (!t.view.webContents.isDestroyed()) t.view.webContents.reload(); });
             }
             if (themeChanged) {
                 // live palette swap for our own chrome (settings window included)
@@ -2863,30 +2951,81 @@ async function init() {
         wc.on('did-navigate-in-page', onNav);
         wc.on('page-title-updated', onNav);
 
-        // pages are bandcamp-native; the only page css is ours, light and stable
+        // NOTE: every page load goes through TWO cloak layers (this preload one AND
+        // the webContents-inserted ANTI_FLASH_CSS below) plus an injected <style> tag
+        // from preload.ts. they exist to hide bandcamp's white background at its
+        // document-start moment, before darkreader runs; they are NOT redundant.
+        // if a nav ever slips through (e.g. race like ?from=menubar hops, bfcache
+        // restores), the page stayed an empty grey forever. after a few seconds, if
+        // nothing painted, drop the user-origin cloak AND force the body visible —
+        // worst case is a brief unthemed flash.
+        const liftCloakIfStuck = () => {
+            setTimeout(() => {
+                if (wc.isDestroyed()) return;
+                wc.executeJavaScript('!!document.documentElement.getAttribute("data-darkreader-scheme")')
+                    .then((painted: boolean) => {
+                        if (painted || wc.isDestroyed()) return;
+                        if (themeForUrl(wc.getURL()) !== 'light') {
+                            const key = antiFlashKeys.get(wc);
+                            if (key) { wc.removeInsertedCSS(key).catch(() => {}); antiFlashKeys.delete(wc); }
+                        }
+                        wc.executeJavaScript(
+                            '(function(){var s=document.createElement("style");s.textContent="body{opacity:1 !important}";(document.head||document.documentElement).appendChild(s);})()'
+                        ).catch(() => {});
+                    }).catch(() => {});
+            }, 4000);
+        };
+
+        // pages are bandcamp-native: our search-box css always, darkreader only in
+        // dark mode (never on exempt artist / playlist pages, which get LIGHT_CSS)
         wc.on('dom-ready', async () => {
             try {
                 await wc.insertCSS(SEARCHBOX_CSS);
+                liftCloakIfStuck(); // arm the de-grey failsafe on every load path
+                if (themeForUrl(wc.getURL()) === 'light') return; // no darkreader in light mode / on exempt artist pages
+                await wc.executeJavaScript(`
+                    (function() {
+                        if (window.__darkReaderActive) return;
+                        window.__darkReaderActive = true;
+                        const _define = window.define; const _exports = window.exports;
+                        window.define = undefined; window.exports = undefined;
+                        try {
+                            ${darkReaderJS};
+                            if (typeof window.DarkReader !== 'undefined') {
+                                window.DarkReader.setFetchMethod(window.fetch);
+                                window.DarkReader.enable({
+                                    brightness: 100, contrast: 100, sepia: 0, mode: 1,
+                                    darkSchemeBackgroundColor: '#181a1b',
+                                    darkSchemeTextColor: '#e8e6e3'
+                                });
+                            }
+                        } finally { window.define = _define; window.exports = _exports; }
+                    })();
+                `);
             } catch (err) { console.error('Failed to inject view assets:', err); }
         });
 
-        // page css, swapped per navigation
+        // pre-theme css, swapped per navigation (light mode skips the dark cloak)
         wc.on('did-navigate', async () => {
             try {
                 const prev = antiFlashKeys.get(wc);
                 if (prev) await wc.removeInsertedCSS(prev).catch(() => {});
-                const key = await wc.insertCSS(PAGE_CSS, { cssOrigin: 'user' });
+                const isLight = themeForUrl(wc.getURL()) === 'light';
+                const key = await wc.insertCSS(isLight ? LIGHT_CSS : ANTI_FLASH_CSS, { cssOrigin: 'user' });
                 antiFlashKeys.set(wc, key);
-            } catch (err) { console.error('Failed to inject page css:', err); }
+                if (!isLight) liftCloakIfStuck();
+            } catch (err) { console.error('Failed to inject Pre-Theme CSS:', err); }
         });
 
-        // a page navigation that itself gets HTTP 429 renders an empty shell.
-        // say WHY and offer reload.
+        // a page navigation that itself gets HTTP 429 renders an empty shell that
+        // the dark cloak turns into a silent grey hang. say WHY and offer reload.
         wc.on('did-navigate', (_e: any, _url: string, httpResponseCode: number) => {
             if (httpResponseCode !== 429) return;
             try { bandcampApi.on429?.(); } catch { /* notice best-effort */ }
             setTimeout(() => {
                 if (wc.isDestroyed()) return;
+                const key = antiFlashKeys.get(wc);
+                if (key) { wc.removeInsertedCSS(key).catch(() => {}); antiFlashKeys.delete(wc); }
                 wc.executeJavaScript(`(function () {
                     var th = { bg: '#181a1b', text: '#e8e6e3', muted: '#9a968e', accent: '#1da0c3' };
                     if (document.getElementById('bcrpc-429')) return;
