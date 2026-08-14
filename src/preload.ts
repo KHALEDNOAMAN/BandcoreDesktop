@@ -300,6 +300,9 @@ function injectReleaseDownload(): void {
             const collect = document.getElementById('collect-item');
             if (collect && collect.parentElement) {
                 collect.parentElement.insertBefore(li, collect.nextSibling);
+                // match the wishlist button's height exactly so the row sits on one Y
+                const mh = (collect as HTMLElement).offsetHeight;
+                if (mh) { li.style.height = mh + 'px'; sp.style.height = '100%'; }
                 const ul = collect.parentElement as HTMLElement;
                 ul.style.cssText = 'display:flex;align-items:center;justify-content:space-between;';
                 // zero-width bookkeeping siblings would otherwise count as flex
