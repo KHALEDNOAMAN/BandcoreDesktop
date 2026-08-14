@@ -901,6 +901,7 @@ async function openDownloadMenu(it: CollectionItem, anchor: HTMLElement): Promis
         b.addEventListener('click', async (e) => {
             e.stopPropagation();
             b.textContent = f.label + ' — preparing…';
+            ipcRenderer.send('downloads:art-hint', it.art);
             await ipcRenderer.invoke('download:start', f.url);
             b.textContent = f.label + ' — started ✓';
             setTimeout(closeMenu, 900);
