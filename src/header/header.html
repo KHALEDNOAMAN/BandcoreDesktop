@@ -126,6 +126,15 @@
             color: #ffffff !important;
         }
 
+        /* green dot: active downloads */
+        #btn-downloads { position: relative; }
+        .dl-dot {
+            position: absolute; top: 5px; right: 6px; width: 7px; height: 7px;
+            border-radius: 50%; background: #5fb878; display: none;
+            box-shadow: 0 0 4px rgba(95, 184, 120, 0.7);
+        }
+        .dl-dot.on { display: block; }
+
         /* after minimizing, the window hides mid-hover so no mouseleave fires and the
            button stays highlighted on reopen. this suppresses hover until the mouse
            moves again (js toggles .nohover). */
@@ -194,6 +203,7 @@
 <div class="window-controls">
     <button id="btn-downloads" title="Downloads" type="button">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 19h16" stroke-linecap="round"/></svg>
+        <span class="dl-dot" id="dl-dot"></span>
     </button>
     <button id="btn-gsearch" title="Search all of Bandcamp" type="button">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5.2 5.2" stroke-linecap="round"/></svg>
@@ -238,6 +248,7 @@
     const btnDownloads = document.getElementById('btn-downloads');
     btnDownloads.onclick = () => ipcRenderer.send('downloads:toggle');
     ipcRenderer.on('downloads:state', (_e, open) => { btnDownloads.style.color = open ? 'var(--accent)' : ''; });
+    ipcRenderer.on('downloads:active', (_e, n) => { document.getElementById('dl-dot').classList.toggle('on', Number(n) > 0); });
 
     const btnGsearch = document.getElementById('btn-gsearch');
     btnGsearch.onclick = () => ipcRenderer.send('gsearch:toggle');

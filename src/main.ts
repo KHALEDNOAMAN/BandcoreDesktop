@@ -2278,6 +2278,8 @@ async function init() {
 
         updateDownloadsHeight(); // Check bounds before drawing
 
+        if (headerView && !headerView.webContents.isDestroyed()) headerView.webContents.send('downloads:active', activeCount);
+
         downloadsWin.webContents.send('downloads:list', {
             items: dlRegistry, activeCount, overallPercent, eta
         });
