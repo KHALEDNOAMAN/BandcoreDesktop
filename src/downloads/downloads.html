@@ -156,21 +156,22 @@
         }
 
         // size the window to the actual content (no scrollbar / dead space);
-        // past 4 rows the height caps there and the list scrolls
+        // past 4 rows the height caps there and the list scrolls. rows are fixed
+        // height (58px) so the math is deterministic — live scrollHeight
+        // measurement jittered a pixel or two per progress tick and made the
+        // window bounce. unchanged heights are not re-sent at all.
+        let lastSentH = 0;
         function requestResize() {
             requestAnimationFrame(() => {
                 const bar = document.querySelector('.bar');
                 const footer = document.getElementById('footer');
                 const rows = list.querySelectorAll('.row');
-                let listH;
-                if (rows.length > 4) {
-                    const r4 = rows[3];
-                    listH = (r4.offsetTop - list.offsetTop) + r4.offsetHeight + 6; // + bottom padding
-                } else {
-                    listH = list.scrollHeight;
-                }
+                const listH = rows.length === 0 ? list.scrollHeight : 12 + Math.min(rows.length, 4) * 58;
                 const footH = footer && footer.style.display !== 'none' ? footer.offsetHeight : 0;
-                ipcRenderer.send('downloads:resize', Math.ceil(bar.offsetHeight + listH + footH + 2)); // +2 body border
+                const next = Math.ceil(bar.offsetHeight + listH + footH + 2); // +2 body border
+                if (next === lastSentH) return;
+                lastSentH = next;
+                ipcRenderer.send('downloads:resize', next);
             });
         }
 
