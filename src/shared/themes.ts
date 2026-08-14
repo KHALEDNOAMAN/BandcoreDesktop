@@ -36,7 +36,7 @@ export const THEMES: Theme[] = [
     {
         key: 'amoled', label: 'AMOLED',
         vars: {
-            'bg': '#000000', 'titlebar': '#000000', 'input': '#0c0c0c', 'bar': '#0c0c0c',
+            'bg': '#000000', 'titlebar': '#000000', 'input': '#0c0c0c', 'bar': '#000000',
             'panel': '#000000', 'card': '#121212', 'hover-bg': '#1a1a1a',
             'line': '#222222', 'line-2': '#161616', 'scroll': '#262626',
             'text': '#e8e6e3', 'text-2': '#c9c9c9', 'muted': '#8f8f8f', 'sub': '#757575',
