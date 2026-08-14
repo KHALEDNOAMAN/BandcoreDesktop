@@ -65,7 +65,7 @@ export class LastfmService {
     /**
      * md5 signature over alphabetically sorted params + shared secret.
      * NOTE: md5 here is MANDATED by the Last.fm API auth spec (the api_sig must be
-     * md5(sorted params + secret)) — it's a protocol requirement, not a security
+     * md5(sorted params + secret)) - it's a protocol requirement, not a security
      * hash of sensitive data, so the CodeQL "weak crypto" alert is a false positive
      * for this call and can be dismissed. https://www.last.fm/api/authspec
      */
@@ -183,7 +183,7 @@ export class LastfmService {
     /** called on progress; submits scrobble once play threshold is met. */
     async maybeScrobble(track: NowPlaying): Promise<void> {
         if (!this.isReady() || !track.title || !track.artist) return;
-        // repeat-one: the SAME track restarting is a NEW play — last.fm counts
+        // repeat-one: the SAME track restarting is a NEW play - last.fm counts
         // every loop, but the scrobbled flag only reset on track CHANGE, so
         // loops after the first never scrobbled. a jump back to the start after
         // real listening re-arms the scrobble and re-announces now playing.

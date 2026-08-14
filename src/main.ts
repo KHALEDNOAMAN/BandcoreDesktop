@@ -53,7 +53,7 @@ const LIGHT_CSS = `
 
 // per-navigation dark-page css. the html-bg / body-opacity cloak is intentionally
 // injected here too (webContents-level, applies very early per navigation) AND in
-// the preload — dropping either one lets a flash of light-mode bandcamp show on
+// the preload - dropping either one lets a flash of light-mode bandcamp show on
 // page change, so both are kept on purpose.
 const ANTI_FLASH_CSS = `
     html { background-color: #181a1b !important; }
@@ -105,7 +105,7 @@ const store = new Store({ clearInvalidConfig: true });
 // --- big on-disk caches -------------------------------------------------------
 // the release index / collection listing / year cache used to live in
 // electron-store, but conf re-reads AND re-writes the entire config.json
-// SYNCHRONOUSLY on every access — once these caches grew to megabytes the main
+// SYNCHRONOUSLY on every access - once these caches grew to megabytes the main
 // process spent seconds blocked on json i/o and the window went "not responding"
 // (looked like a crash). they now live in their own files with in-memory state
 // and debounced async writes.
@@ -136,7 +136,7 @@ class DiskCache<T> {
 type IndexCacheEntryT = { g: string[]; t: [string, number][]; y: number; a?: string };
 // custom playlists built from the collection view. entries are fully
 // materialized tracks (display metadata + resolver handle); stream urls are
-// NOT stored — they expire, so playback resolves them lazily like any queued
+// NOT stored - they expire, so playback resolves them lazily like any queued
 // collection track (player:resolve-stream).
 type PlaylistEntryT = {
     id: string; title: string; artist: string; album: string; art: string;
@@ -144,11 +144,11 @@ type PlaylistEntryT = {
 };
 type PlaylistT = {
     id: string; name: string; createdAt: number; entries: PlaylistEntryT[]; desc?: string; cover?: string;
-    /** bandcamp playlist id when imported — re-imports update in place */
+    /** bandcamp playlist id when imported - re-imports update in place */
     bcId?: number;
 };
 // local files library (quodlibet-style: files are parsed once into a queryable
-// index keyed by path — the on-disk folder layout is irrelevant afterwards)
+// index keyed by path - the on-disk folder layout is irrelevant afterwards)
 type LocalTrackT = {
     id: string; file: string; title: string; artist: string; album: string; albumArtist: string;
     year: number; trackNum: number; genre: string[]; duration: number;
@@ -279,7 +279,7 @@ if (!gotTheLock) {
 }
 
 // relaunching the app while it's hidden to tray (clicking the desktop/taskbar
-// icon) fires this in the running instance — bring the window back instead of
+// icon) fires this in the running instance - bring the window back instead of
 // silently doing nothing.
 function showMainWindow() {
     if (!mainWindow || mainWindow.isDestroyed()) return;
@@ -422,7 +422,7 @@ async function applyChromeTheme(wc: Electron.WebContents): Promise<void> {
 }
 function chromeBg(): string { return themeByKey(getTheme()).vars['bg']; }
 
-// page dark mode (darkreader on bandcamp pages) — independent of the UI theme.
+// page dark mode (darkreader on bandcamp pages) - independent of the UI theme.
 // artist / label pages (subdomains & bandcamp-pro custom domains) are left
 // light (their custom look) unless the user opts into darkening them; fan
 // playlist pages ship their own dark design and are always exempt.
@@ -824,7 +824,7 @@ async function init() {
         // (playlist header play button never streams, so it can't be trapped;
         // the preload click hook below drives the extractor directly instead)
 
-        // wishlist hearts / collection changes post to *collect_item_cb — refresh
+        // wishlist hearts / collection changes post to *collect_item_cb - refresh
         // the custom collection so the change shows up right away. removals
         // (uncollect / hide) force a full silent re-scan, since only a re-scan
         // can discover which item disappeared.
@@ -840,7 +840,7 @@ async function init() {
     // (bandcamp's own player preloads track 1 WITHOUT a stream request, so the
     // audio trap could never see header/first-row clicks, and its metadata
     // fallback painted the page <title> into the player). we read the page's
-    // data-blob — the same shape the playlist importer parses — and queue it
+    // data-blob - the same shape the playlist importer parses - and queue it
     // with resolver handles; streams resolve lazily like imported playlists.
     ipcMain.on('app:playlist-play', (_e, index?: unknown) => {
         if (!contentView || contentView.webContents.isDestroyed()) return;
@@ -897,14 +897,13 @@ async function init() {
         }
         const headers = { ...details.requestHeaders };
         // spoof referer/origin for the media CDNs (they gate on a bandcamp referer)
-        // and for the BASE bandcamp.com domain (its apis — tralbum/fancollection —
-        // want it). but NOT for artist subdomains: forcing Origin=bandcamp.com on a
+        // and for the BASE bandcamp.com domain (its apis - tralbum/fancollection - // want it). but NOT for artist subdomains: forcing Origin=bandcamp.com on a
         // subdomain action (e.g. c418.bandcamp.com/collect_item_cb) makes bandcamp
         // reject it ("request must use the base domain").
         let host = '';
         try { host = new URL(details.url).hostname.toLowerCase(); } catch { /* leave blank */ }
         // exact-suffix host checks (host.endsWith('bcbits.com') would also match
-        // evilbcbits.com, host.includes('sndcdn') matches anything — CWE-20)
+        // evilbcbits.com, host.includes('sndcdn') matches anything - CWE-20)
         const hostIs = (d: string) => host === d || host.endsWith('.' + d);
         const isBaseBandcamp = host === 'bandcamp.com' || host === 'www.bandcamp.com';
         if (isBaseBandcamp || hostIs('bcbits.com') || hostIs('sndcdn.com')) {
@@ -939,7 +938,7 @@ async function init() {
     };
     // force a navigation onto the active tab even if its page is wedged. bandcamp's
     // collection page hangs its own renderer when you try to sort a collection over
-    // 1000 items — clicks, refresh & even the home button then appear dead because
+    // 1000 items - clicks, refresh & even the home button then appear dead because
     // the stuck renderer swallows input. if the view is hung/crashed we drop that
     // renderer (loadURL then spins up a fresh one); otherwise we just stop the
     // pending load first. this is our guaranteed escape hatch.
@@ -1059,7 +1058,7 @@ async function init() {
             spotlightWin.webContents.on('did-finish-load', () => {
                 if (spotlightWin && !spotlightWin.isDestroyed()) spotlightWin.webContents.send('gsearch:shown');
             });
-            // esc dismisses — handled in MAIN so it works no matter what the
+            // esc dismisses - handled in MAIN so it works no matter what the
             // page is doing (the renderer listener alone proved unreliable).
             // the search shortcut itself also toggles the popup closed.
             spotlightWin.webContents.on('before-input-event', (event, input) => {
@@ -1157,7 +1156,7 @@ async function init() {
                     if (cacheReleasesOn()) collectionItemsDisk.replace(items);
                     // a re-scan is the source of truth: drop anything the view still
                     // shows that bandcamp no longer lists (hidden / un-wishlisted).
-                    // local pseudo-items aren't bandcamp's to prune — keep their keys
+                    // local pseudo-items aren't bandcamp's to prune - keep their keys
                     if (collectionView && !collectionView.webContents.isDestroyed()) {
                         collectionView.webContents.send('collection:prune',
                             [...items.map((c) => c.tralbumType + c.tralbumId), ...localCollectionItems().map((c) => c.tralbumType + c.tralbumId)]);
@@ -1213,7 +1212,7 @@ async function init() {
                 // raw compare too: local track ids ('L…') aren't numeric
                 if (req.trackId) { const i = tracks.findIndex((t) => t.id === toIdStr(req.trackId) || t.id === String(req.trackId)); if (i !== -1) active = i; }
                 active = Math.max(0, Math.min(active, tracks.length - 1));
-                // a single-track purchase plays JUST that track — resolving through
+                // a single-track purchase plays JUST that track - resolving through
                 // the parent album is only for metadata, not to queue the whole thing
                 if (req.trackOnly) {
                     tracks = [tracks[active]];
@@ -1275,7 +1274,7 @@ async function init() {
             // (a collection item's fetch here also fills the persistent cache)
             let tags: string[] = idxCache[k]?.g || sessionDetails.get(k)?.g || [];
             if (!tags.length && !idxCache[k] && !sessionDetails.get(k)) {
-                // tags are decoration — their fetch failing must not sink the panel
+                // tags are decoration - their fetch failing must not sink the panel
                 let d: Awaited<ReturnType<typeof bandcampApi.fetchSearchIndex>> | null = null;
                 try { d = await bandcampApi.fetchSearchIndex({ tralbumId: req.tralbumId, tralbumType: req.tralbumType === 't' ? 't' : 'a', bandId: req.bandId }, true); } catch { d = null; }
                 if (d && d.ok) {
@@ -1365,8 +1364,7 @@ async function init() {
     // pacing: bandcamp throttles bursts of tralbum reads hard (the previous
     // 3-worker/no-delay version wedged at ~50 items of a 2300-item collection on
     // 429s). requests are now strictly serialized with a delay between releases,
-    // 429s exponentially back off, and a run aborts after repeated hard failures —
-    // the cache resumes where it left off on the next reload/launch.
+    // 429s exponentially back off, and a run aborts after repeated hard failures - // the cache resumes where it left off on the next reload/launch.
     interface IndexRow { key: string; blob: string; tags: string[]; tracks: [string, number][] }
     type IndexCacheEntry = { g: string[]; t: [string, number][]; y: number; a?: string };
     const indexRowOf = (k: string, c: IndexCacheEntry): IndexRow => ({
@@ -1413,7 +1411,7 @@ async function init() {
         indexRunActive = true;
         const send = (rows: IndexRow[]) => { if (rows.length && idxAlive()) collectionView.webContents.send('collection:index', rows); };
         // local pseudo-albums index instantly from the library (no crawling, and
-        // they must never reach the bandcamp id paths below) — search & list view
+        // they must never reach the bandcamp id paths below) - search & list view
         // get their tracks/genres the same way as crawled releases
         const localReqs = reqs.filter((r) => isLocalId(r.tralbumId));
         reqs = reqs.filter((r) => !isLocalId(r.tralbumId));
@@ -1455,7 +1453,7 @@ async function init() {
             else todo.push(r);
         }
         send(cached);
-        // covers mirror concurrently (light cdn fetches) — previously this waited
+        // covers mirror concurrently (light cdn fetches) - previously this waited
         // for the whole metadata crawl, so covers never cached on big collections
         void mirrorArt(reqs);
 
@@ -1635,7 +1633,7 @@ async function init() {
     });
     // add a whole release (every track) or one song (trackId / trackIndex) to a
     // playlist. resolution goes through the same path as the tracklist panel, so
-    // anything playable from the collection — owned or wishlisted — can be added.
+    // anything playable from the collection - owned or wishlisted - can be added.
     ipcMain.handle('playlists:add', async (_e, req: { id: string; tralbumId: string; tralbumType: TralbumType; bandId: string; trackId?: string; trackIndex?: number }) => {
         try {
             const p = playlistById(req?.id);
@@ -1769,7 +1767,7 @@ async function init() {
         const entryId = ++dlSeq;
         const dlState = { canceled: false };
         streamDownloads.set(entryId, dlState);
-        const entry: DlEntry = { id: entryId, name: `Playlist — ${p.name}`, album: '', artist: '', state: 'progressing', percent: 0, file: '', at: Date.now(), receivedBytes: 0, totalBytes: 0, speed: 0, lastTime: Date.now(), lastBytes: 0, art: '' };
+        const entry: DlEntry = { id: entryId, name: `Playlist - ${p.name}`, album: '', artist: '', state: 'progressing', percent: 0, file: '', at: Date.now(), receivedBytes: 0, totalBytes: 0, speed: 0, lastTime: Date.now(), lastBytes: 0, art: '' };
         dlRegistry.unshift(entry);
         const prog = (state: string, percent: number) => {
             entry.state = state;
@@ -1822,7 +1820,7 @@ async function init() {
                     }
                     const e = p.entries[i];
                     const pos = i + 1;
-                    entry.name = `${p.name} — ${e.title} (${pos}/${p.entries.length})`;
+                    entry.name = `${p.name} - ${e.title} (${pos}/${p.entries.length})`;
                     prog('progressing', Math.round((i / p.entries.length) * 100));
                     const nameOf = (extension: string) => {
                         let name = (fileFmt || '{tracknum} {artist} - {title}')
@@ -1838,7 +1836,7 @@ async function init() {
                     try {
                         const lt = isLocalId(e.tralbumId) ? localTrackById(e.id) : undefined;
                         if (lt) {
-                            // local file: copied as-is — we never rewrite user files
+                            // local file: copied as-is - we never rewrite user files
                             if (!fs.existsSync(lt.file)) continue;
                             const file = path.join(dir, nameOf(path.extname(lt.file).toLowerCase() || '.mp3'));
                             fs.copyFileSync(lt.file, file);
@@ -1935,7 +1933,7 @@ async function init() {
         p.entries = entries;
         playlistsDisk.save();
         // playlist cover: bandcamp serves image ids both with and without the
-        // art prefix depending on kind — try both, first hit wins
+        // art prefix depending on kind - try both, first hit wins
         if (page.imageId && !p.cover) {
             for (const iu of [`https://f4.bcbits.com/img/a${page.imageId}_10.jpg`, `https://f4.bcbits.com/img/${page.imageId}_10.jpg`]) {
                 try {
@@ -1968,7 +1966,7 @@ async function init() {
         }
     };
     // shared by the "+ Files" picker and the music-folder scan. parsing is
-    // synchronous fs work, so yield the event loop every few files — a big
+    // synchronous fs work, so yield the event loop every few files - a big
     // import must never freeze the main process (the electron-store lesson).
     const localArtDir = path.join(app.getPath('userData'), 'local-art');
     const importLocalFiles = async (paths: string[], skipUnchanged: boolean): Promise<{ added: number; updated: number; skipped: number }> => {
@@ -2103,7 +2101,7 @@ async function init() {
 
     // dragging a cover out of the collection grid exports the FULL-SIZE cover as
     // a real file (native drag). CRITICAL: webContents.startDrag must be called
-    // SYNCHRONOUSLY while the drag gesture is live — awaiting a download first
+    // SYNCHRONOUSLY while the drag gesture is live - awaiting a download first
     // enters the OS drag loop with no active drag, which wedges/crashes the main
     // process. so: hovering a card prefetches the full-size art to temp, the
     // dragstart asks (sync) whether the file is ready, and only then hands the
@@ -2444,7 +2442,7 @@ async function init() {
         const dlState = { canceled: false };
         streamDownloads.set(entryId, dlState);
 
-        const entry: DlEntry = { id: entryId, name: `${rel.albumArtist} — ${rel.album}`, album: rel.album, artist: rel.albumArtist, state: 'progressing', percent: 0, file: '', at: Date.now(), receivedBytes: 0, totalBytes: 0, speed: 0, lastTime: Date.now(), lastBytes: 0, art: rel.artUrl };
+        const entry: DlEntry = { id: entryId, name: `${rel.albumArtist} - ${rel.album}`, album: rel.album, artist: rel.albumArtist, state: 'progressing', percent: 0, file: '', at: Date.now(), receivedBytes: 0, totalBytes: 0, speed: 0, lastTime: Date.now(), lastBytes: 0, art: rel.artUrl };
         dlRegistry.unshift(entry);
         
         const prog = (state: string, percent: number, name: string) => {
@@ -2860,7 +2858,7 @@ async function init() {
                 // webSecurity is off so the in-page extractor can hit bandcamp.com apis
                 // cross-origin from artist subdomains. the page is otherwise locked
                 // down (no node integration, sandboxed, context-isolated), which is
-                // what contains the risk. CodeQL flags this — it's an intentional
+                // what contains the risk. CodeQL flags this - it's an intentional
                 // trade-off for a browser-like client.
                 webSecurity: false,
                 devTools: devMode,
@@ -2967,8 +2965,7 @@ async function init() {
         // document-start moment, before darkreader runs; they are NOT redundant.
         // if a nav ever slips through (e.g. race like ?from=menubar hops, bfcache
         // restores), the page stayed an empty grey forever. after a few seconds, if
-        // nothing painted, drop the user-origin cloak AND force the body visible —
-        // worst case is a brief unthemed flash.
+        // nothing painted, drop the user-origin cloak AND force the body visible - // worst case is a brief unthemed flash.
         const liftCloakIfStuck = () => {
             setTimeout(() => {
                 if (wc.isDestroyed()) return;
@@ -3043,7 +3040,7 @@ async function init() {
                     d.id = 'bcrpc-429';
                     d.style.cssText = 'position:fixed;inset:0;z-index:2147483647;background:' + th.bg + ';color:' + th.text + ';display:flex;align-items:center;justify-content:center;font-family:sans-serif;';
                     d.innerHTML = '<div style="max-width:440px;padding:24px;text-align:center;">' +
-                        '<div style="font-size:18px;font-weight:600;margin-bottom:10px;">Error 429 — too many requests</div>' +
+                        '<div style="font-size:18px;font-weight:600;margin-bottom:10px;">Error 429 - too many requests</div>' +
                         '<div style="font-size:13px;color:' + th.muted + ';line-height:1.6;">Bandcamp is throttling this session, so this page could not load. Wait a little bit T__T and try again.</div>' +
                         '<button onclick="location.reload()" style="margin-top:16px;background:' + th.accent + ';border:none;color:#fff;border-radius:6px;padding:9px 16px;font-size:13px;cursor:pointer;">Reload page</button></div>';
                     (document.body || document.documentElement).appendChild(d);
@@ -3185,7 +3182,7 @@ async function init() {
             autoUpdater.on('update-downloaded', (info: any) => {
                 pushUpdStatus('downloaded', String(info?.version || ''));
                 if (headerView && !headerView.webContents.isDestroyed()) {
-                    headerView.webContents.send('download:progress', { name: 'update ready — restart to install', percent: 100, state: 'completed' });
+                    headerView.webContents.send('download:progress', { name: 'update ready - restart to install', percent: 100, state: 'completed' });
                 }
             });
             autoUpdater.checkForUpdatesAndNotify().catch(() => {});
@@ -3195,7 +3192,7 @@ async function init() {
     }
     ipcMain.handle('updates:info', () => ({ version: app.getVersion(), packaged: app.isPackaged, status: updStatus }));
     ipcMain.handle('updates:check', async () => {
-        if (!app.isPackaged) return { ok: false, error: 'dev build — self-update only works in packaged installs' };
+        if (!app.isPackaged) return { ok: false, error: 'dev build - self-update only works in packaged installs' };
         try {
             await autoUpdater.checkForUpdates();
             return { ok: true };
