@@ -74,7 +74,8 @@
 
         .now-playing { position: relative; display: flex; align-items: center; gap: 12px; width: 26%; min-width: 150px; overflow: hidden; }
         /* hidden until something is playing so there's no empty grey box at idle */
-        .art { width: 46px; height: 46px; border-radius: 3px; background: var(--hover-bg); object-fit: cover; flex-shrink: 0; display: none; }
+        .art { width: 46px; height: 46px; border-radius: 3px; background: var(--hover-bg); object-fit: cover; flex-shrink: 0; display: none; cursor: pointer; transition: transform .12s ease; }
+        .art:active { transform: scale(.9); transition: transform .06s ease; }
         .info { display: flex; flex-direction: column; overflow: hidden; white-space: nowrap; }
         .title { font-size: 13px; font-weight: 600; color: var(--hover-text); text-overflow: ellipsis; overflow: hidden; }
         .artist { font-size: 11px; color: var(--muted); text-overflow: ellipsis; overflow: hidden; margin-top: 3px; }
