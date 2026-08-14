@@ -256,17 +256,40 @@ ipcRenderer.on('player:enqueue', (_e, data: { tracks?: PlayerTrack[] }) => {
     if (wasEmpty) playCurrent();
 });
 
+// buttery seekbar: audio.currentTime only ticks a few times a second, so while
+// playing we extrapolate from the last known time + wall clock (rAF), corrected
+// by every timeupdate tick. discord/lastfm keep their own throttle - this is
+// purely visual, no extra IPC.
+let rafId = 0;
+let lastT = 0;
+let lastWall = 0;
+const syncBaseline = () => { lastT = audio.currentTime || 0; lastWall = performance.now(); };
+const rafSeek = () => {
+    rafId = 0;
+    if (audio.paused || scrubbing || !audio.duration) return;
+    const t = Math.min(lastT + (performance.now() - lastWall) / 1000, audio.duration);
+    seek.value = String(t);
+    seek.style.setProperty('--fill', (t / audio.duration * 100) + '%');
+    tCur.textContent = fmt(t);
+    rafId = requestAnimationFrame(rafSeek);
+};
+const startRaf = () => { if (!rafId) rafId = requestAnimationFrame(rafSeek); };
+
 // transport/ audio events
 
 audio.addEventListener('play', () => {
     iPlay.style.display = 'none';
     iPause.style.display = 'block';
+    document.body.classList.remove('paused');
+    syncBaseline();
+    startRaf();
     emitNowPlaying(true);
     sendSession(true);
 });
 audio.addEventListener('pause', () => {
     iPlay.style.display = 'block';
     iPause.style.display = 'none';
+    document.body.classList.add('paused');
     emitNowPlaying(true);
     sendSession(true);
 });
@@ -274,16 +297,15 @@ audio.addEventListener('pause', () => {
 audio.addEventListener('timeupdate', () => {
     if (!scrubbing && audio.duration) {
         seek.max = String(audio.duration);
-        seek.value = String(audio.currentTime);
-        seek.style.setProperty('--fill', (audio.currentTime / audio.duration * 100) + '%');
-        tCur.textContent = fmt(audio.currentTime);
-        tDur.textContent = fmt(audio.duration);
+        syncBaseline();
+        startRaf();
     }
     emitNowPlaying();
     sendSession();
 });
 
 audio.addEventListener('ended', () => {
+    document.body.classList.add('paused');
     sendSession(true);
     if (queue.repeat === 'one') {
         audio.currentTime = 0;
@@ -493,6 +515,8 @@ seek.addEventListener('input', () => {
 seek.addEventListener('change', () => {
     audio.currentTime = Number(seek.value);
     scrubbing = false;
+    syncBaseline();
+    startRaf();
     emitNowPlaying(true);
 });
 const volFill = () => vol.style.setProperty('--fill', (Number(vol.value) * 100) + '%');
