@@ -14,6 +14,7 @@ const $ = (id: string) => document.getElementById(id) as HTMLElement;
 
 const audio = $('engine') as HTMLAudioElement;
 const elArt = $('art') as HTMLImageElement;
+const elArtBg = $('art-bg') as HTMLImageElement;
 const elTitle = $('title');
 const elArtist = $('artist');
 const iPlay = $('i-play');
@@ -31,6 +32,7 @@ const queueList = $('queue-list');
 const queue = new Queue();
 // a failed art load would show a broken-image glyph; drop the src so it falls back to the grey box
 elArt.addEventListener('error', () => elArt.removeAttribute('src'));
+elArtBg.addEventListener('error', () => elArtBg.removeAttribute('src'));
 let hls: any = null;
 let scrubbing = false;
 let resolveToken = 0;
@@ -134,8 +136,14 @@ function renderNowPlaying(track: PlayerTrack): void {
     // something's playing now, so reveal the art box (hidden at idle). no art ->
     // leave the src off so it shows the grey box, not a broken-image glyph
     elArt.style.display = 'block';
-    if (track.art) elArt.src = track.art;
-    else elArt.removeAttribute('src');
+    elArtBg.style.display = 'block';
+    if (track.art) {
+        elArt.src = track.art;
+        elArtBg.src = track.art;
+    } else {
+        elArt.removeAttribute('src');
+        elArtBg.removeAttribute('src');
+    }
     document.querySelectorAll('.q-row').forEach((row) =>
         row.classList.toggle('active', Number((row as HTMLElement).dataset.index) === queue.currentTrackIndex())
     );
