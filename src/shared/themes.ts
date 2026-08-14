@@ -72,6 +72,17 @@ export const THEMES: Theme[] = [
         },
         pageBg: '#1e1e2e', pageText: '#cdd6f4',
     },
+    {
+        key: 'dracula', label: 'Dracula',
+        vars: {
+            'bg': '#282a36', 'titlebar': '#21222c', 'input': '#333547', 'bar': '#2d2f3d',
+            'panel': '#232530', 'card': '#343746', 'hover-bg': '#3a3d52',
+            'line': '#44475a', 'line-2': '#2f3242', 'scroll': '#4c5065',
+            'text': '#f8f8f2', 'text-2': '#d8d8d0', 'muted': '#9aa0b8', 'sub': '#6272a4',
+            'accent': '#bd93f9', 'hover-text': '#ffffff',
+        },
+        pageBg: '#282a36', pageText: '#f8f8f2',
+    },
 ];
 
 export function themeByKey(key: unknown): Theme {
