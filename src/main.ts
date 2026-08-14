@@ -356,7 +356,9 @@ function getTheme(): string {
 const chromeVarKeys = new WeakMap<Electron.WebContents, string>();
 function themeVarsCss(): string {
     const vars = Object.entries(themeByKey(getTheme()).vars);
-    return ':root { ' + vars.map(([k, v]) => '--' + k + ': ' + v + ';').join(' ') + ' }';
+    // user-origin styles LOSE to author origin at normal importance, so each var
+    // needs !important to beat the views' own :root defaults
+    return ':root { ' + vars.map(([k, v]) => '--' + k + ': ' + v + ' !important;').join(' ') + ' }';
 }
 async function applyChromeTheme(wc: Electron.WebContents): Promise<void> {
     try {
