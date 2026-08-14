@@ -85,7 +85,7 @@
         /* setting: seekbar above the transport buttons */
         body.seek-top .center { flex-direction: column-reverse; }
         .transport { display: flex; align-items: center; gap: 18px; }
-        .btn { background: none; border: none; color: var(--muted); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; }
+        .btn { background: none; border: none; color: var(--muted); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; transition: color .18s ease, transform .18s ease; }
         .btn:hover { color: var(--hover-text); }
         .btn.on { color: var(--accent); }
         .btn-play { background: var(--text); color: var(--bg); width: 32px; height: 32px; border-radius: 50%; }
