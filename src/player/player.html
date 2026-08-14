@@ -90,6 +90,8 @@
         .btn.on { color: var(--accent); }
         .btn-play { background: var(--text); color: var(--bg); width: 32px; height: 32px; border-radius: 50%; }
         .btn-play:hover { transform: scale(1.06); color: var(--bg); }
+        /* press feedback: quick shrink on click, springs back on release */
+        .btn-play:active { transform: scale(.85); transition: transform .06s ease; }
 
         .prog { display: flex; align-items: center; gap: 9px; width: 100%; font-size: 11px; color: var(--sub); }
         input[type="range"] {
