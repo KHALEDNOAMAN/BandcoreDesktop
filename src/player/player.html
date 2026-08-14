@@ -94,7 +94,8 @@
         .prog { display: flex; align-items: center; gap: 9px; width: 100%; font-size: 11px; color: var(--sub); }
         input[type="range"] {
             -webkit-appearance: none; appearance: none; height: 4px; border-radius: 2px;
-            background: var(--line); cursor: pointer; accent-color: var(--accent);
+            background: linear-gradient(to right, var(--accent) var(--fill, 0%), var(--line) var(--fill, 0%));
+            cursor: pointer; accent-color: var(--accent);
         }
         #seek { flex: 1; }
         input[type="range"]::-webkit-slider-thumb {

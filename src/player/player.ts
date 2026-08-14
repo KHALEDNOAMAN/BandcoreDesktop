@@ -82,6 +82,7 @@ async function playCurrent(): Promise<void> {
     try { audio.pause(); } catch { }
     if (hls) { hls.destroy(); hls = null; }
     seek.value = '0';
+    seek.style.setProperty('--fill', '0%');
     tCur.textContent = '0:00';
     tDur.textContent = track.duration ? fmt(track.duration) : '0:00';
 
@@ -248,6 +249,7 @@ audio.addEventListener('timeupdate', () => {
     if (!scrubbing && audio.duration) {
         seek.max = String(audio.duration);
         seek.value = String(audio.currentTime);
+        seek.style.setProperty('--fill', (audio.currentTime / audio.duration * 100) + '%');
         tCur.textContent = fmt(audio.currentTime);
         tDur.textContent = fmt(audio.duration);
     }
@@ -290,6 +292,7 @@ function doVolBy(delta: number): void {
     const v = Math.min(1, Math.max(0, Number(vol.value) + delta));
     vol.value = String(v);
     audio.volume = v;
+    volFill();
 }
 $('btn-play').addEventListener('click', doToggle);
 $('btn-prev').addEventListener('click', doPrev);
@@ -427,10 +430,16 @@ function flashCopied(): void {
 }
 
 seek.addEventListener('mousedown', () => (scrubbing = true));
+// live fill while dragging (input fires per move, change only on release)
+seek.addEventListener('input', () => {
+    seek.style.setProperty('--fill', (Number(seek.value) / Number(seek.max || 1) * 100) + '%');
+});
 seek.addEventListener('change', () => {
     audio.currentTime = Number(seek.value);
     scrubbing = false;
     emitNowPlaying(true);
 });
-vol.addEventListener('input', () => (audio.volume = Number(vol.value)));
+const volFill = () => vol.style.setProperty('--fill', (Number(vol.value) * 100) + '%');
+vol.addEventListener('input', () => { audio.volume = Number(vol.value); volFill(); });
 audio.volume = Number(vol.value);
+volFill();
