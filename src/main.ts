@@ -694,6 +694,10 @@ async function init() {
     playerView.webContents.once('did-finish-load', () => {
         playerView.webContents.send('player:seekbar-top', store.get('seekbarAbove', false) === true);
         playerView.webContents.send('player:blur', store.get('miniBlur', 18));
+        const lt = store.get('lastTrack') as any;
+        if (lt && lt.track && lt.track.id) {
+            playerView.webContents.send('player:restore', lt);
+        }
     });
 
     const session = contentView.webContents.session;
@@ -2214,6 +2218,19 @@ const entry: DlEntry = { id: entryId, name: `Playlist - ${p.name}`, album: '', a
             // fall thru to failure resp
         }
         return { token: req.token, ok: false, src: '', duration: 0, error: 'unresolved' };
+    });
+
+    // last-session persistence: the player reports track/position/state on a
+    // 5s throttle (forced on play/pause/end), and main stores it so the same
+    // track can be restored after a restart. the stored stream url expires, so
+    // the player always re-resolves from the ids.
+    ipcMain.on('player:session', (_e, data: any) => {
+        if (!data || !data.track || !data.track.id) return;
+        store.set('lastTrack', {
+            track: data.track,
+            position: Math.max(0, Math.floor(Number(data.position) || 0)),
+            isPlaying: data.isPlaying === true,
+        });
     });
 
     // downloads land in the chosen (or os default) folder w/o a save dialog, and

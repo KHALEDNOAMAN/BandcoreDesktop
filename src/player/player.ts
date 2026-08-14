@@ -73,9 +73,11 @@ async function ensureSrc(track: PlayerTrack): Promise<string> {
 
 let playToken = 0;
 
-async function playCurrent(): Promise<void> {
+// load + attach the current track's stream without starting playback.
+// returns the stream url, or '' when nothing could be resolved/loaded.
+async function loadTrack(): Promise<string> {
     const track = queue.current();
-    if (!track) return;
+    if (!track) return '';
 
     // stop outgoing track & reset prog ui now (possibly async) stream res otherwise time keeps advancing audibly & on seek bar until new url ready then snaps back
     const token = ++playToken;
@@ -91,12 +93,12 @@ async function playCurrent(): Promise<void> {
 
     const src = await ensureSrc(track);
     // newer play started while resolving, abandon this
-    if (token !== playToken) return;
+    if (token !== playToken) return '';
     if (!src) {
         // couldn't resolve, skip forward so queue doesn't wedge
         const next = queue.next();
-        if (next) return playCurrent();
-        return;
+        if (next) { void playCurrent(); }
+        return '';
     }
 
     if (src.includes('.m3u8') && typeof Hls !== 'undefined' && Hls.isSupported()) {
@@ -106,6 +108,12 @@ async function playCurrent(): Promise<void> {
     } else {
         audio.src = src;
     }
+    return src;
+}
+
+async function playCurrent(): Promise<void> {
+    const src = await loadTrack();
+    if (!src) return;
     try {
         await audio.play();
     } catch {
@@ -194,6 +202,22 @@ function emitNowPlaying(force = false): void {
     ipcRenderer.send('player:now-playing', payload);
 }
 
+// session snapshot for main proc to persist (track survives an app restart).
+// throttled: 5s during playback, forced on play/pause/end state changes.
+let lastSessionAt = 0;
+function sendSession(force = false): void {
+    const track = queue.current();
+    if (!track) return;
+    const now = Date.now();
+    if (!force && now - lastSessionAt < 5000) return;
+    lastSessionAt = now;
+    ipcRenderer.send('player:session', {
+        track,
+        position: Math.floor(audio.currentTime || 0),
+        isPlaying: !audio.paused,
+    });
+}
+
 // incoming streams
 
 let loadedSig = '';
@@ -238,11 +262,13 @@ audio.addEventListener('play', () => {
     iPlay.style.display = 'none';
     iPause.style.display = 'block';
     emitNowPlaying(true);
+    sendSession(true);
 });
 audio.addEventListener('pause', () => {
     iPlay.style.display = 'block';
     iPause.style.display = 'none';
     emitNowPlaying(true);
+    sendSession(true);
 });
 
 audio.addEventListener('timeupdate', () => {
@@ -254,9 +280,11 @@ audio.addEventListener('timeupdate', () => {
         tDur.textContent = fmt(audio.duration);
     }
     emitNowPlaying();
+    sendSession();
 });
 
 audio.addEventListener('ended', () => {
+    sendSession(true);
     if (queue.repeat === 'one') {
         audio.currentTime = 0;
         audio.play().catch(() => {});
@@ -328,6 +356,34 @@ ipcRenderer.on('player:seekbar-top', (_e, on: unknown) => {
 ipcRenderer.on('player:blur', (_e, px: unknown) => {
     const b = Math.min(40, Math.max(0, Math.round(Number(px) || 0)));
     document.documentElement.style.setProperty('--art-blur', b + 'px');
+});
+
+// app restart: reload the last session's track. stream urls from a previous
+// launch are long expired, so src is cleared to force a fresh resolve.
+let resumePos = 0;
+ipcRenderer.on('player:restore', (_e, data: any) => {
+    const track = data && data.track;
+    if (!track || !track.id || queue.tracks.length) return;
+    track.src = '';
+    resumePos = Math.max(0, Math.floor(Number(data.position) || 0));
+    queue.load([track], 0, 'single');
+    if (data.isPlaying === true) {
+        playCurrent();
+    } else {
+        // load the stream without playing so the seekbar/position work and
+        // pressing play starts instantly
+        void loadTrack();
+    }
+});
+
+audio.addEventListener('loadedmetadata', () => {
+    if (audio.duration) {
+        seek.max = String(audio.duration);
+        tDur.textContent = fmt(audio.duration);
+        // resume where the last session left off (clamped just short of the end)
+        if (resumePos > 3) audio.currentTime = Math.min(resumePos, Math.max(0, audio.duration - 1));
+    }
+    resumePos = 0;
 });
 
 // the release page's inline progress bar seeks by fraction
