@@ -108,6 +108,19 @@
         .wb-item svg { width: 16px; height: 16px; fill: currentColor; }
         .side-actions { margin-top: auto; padding: 12px 2px 4px; }
         .side-actions button { margin-top: 0; width: 100%; }
+        /* save button: swaps its label for a looping lottie while saving, then
+        flashes green 'Saved!' for 2s before returning - disabled the whole
+        time so it can't be interrupted or spammed */
+        #btnSave { position: relative; display: flex; align-items: center; justify-content: center; min-height: 33px; }
+        #btnSave .save-label, #btnSave .save-lottie { display: flex; align-items: center; }
+        #btnSave .save-lottie { width: 18px; height: 18px; display: none; pointer-events: none; }
+        #btnSave .save-lottie path { fill: var(--hover-text); }
+        #btnSave.saving .save-lottie { display: block; }
+        #btnSave.saving .save-label { display: none; }
+        #btnSave.saved { background: #3d9b5f; }
+        #btnSave.save-fail { background: #c9443f; }
+        #btnSave.saved .save-label, #btnSave.save-fail .save-label { color: #fff; display: flex; }
+        #btnSave:disabled { pointer-events: none; }
     </style>
 </head>
 <body>
@@ -126,7 +139,7 @@
             <button class="nav-item" data-pane="storage" type="button">Storage</button>
             <button class="nav-item" data-pane="about" type="button">About</button>
             <div class="side-actions">
-                <button id="btnSave">Save</button>
+                <button id="btnSave"><span class="save-label" id="saveLabel">Save</span><span class="save-lottie" id="saveLottie"></span></button>
             </div>
         </nav>
         <div class="pane-wrap">
@@ -642,9 +655,40 @@ ipcRenderer.invoke('settings:get').then((s) => {
         }
 
         if (ipcRenderer) {
-            $('btnSave').onclick = async () => {
-                log('save clicked');
-                await persist();
+            // save button state machine: lottie loading anim while saving,
+            // green 'Saved!' flash for 2s, then back to normal. busy the whole
+            // time so saving can't be interrupted or re-triggered
+            const btnSave = $('btnSave');
+            const saveLabel = $('saveLabel');
+            let saveAnim = null, saveBusy = false;
+            try {
+                const fs = require('fs');
+                const path = require('path');
+                const lottieData = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'assets', 'lottie', 'playpause.json'), 'utf8'));
+                saveAnim = require('../../assets/lottie/lottie.min.js').loadAnimation({
+                    container: $('saveLottie'), renderer: 'svg',
+                    loop: true, autoplay: false, animationData: lottieData,
+                });
+            } catch (e) { saveAnim = null; }
+
+            btnSave.onclick = async () => {
+                if (saveBusy) return;
+                saveBusy = true;
+                btnSave.disabled = true;
+                btnSave.classList.add('saving');
+                if (saveAnim) saveAnim.play(); else saveLabel.textContent = 'Saving…';
+                const res = await persist();
+                if (saveAnim) saveAnim.stop();
+                btnSave.classList.remove('saving');
+                const ok = !(res && res.ok === false);
+                btnSave.classList.add(ok ? 'saved' : 'save-fail');
+                saveLabel.textContent = ok ? 'Saved!' : 'Failed!';
+                setTimeout(() => {
+                    btnSave.classList.remove('saved', 'save-fail');
+                    saveLabel.textContent = 'Save';
+                    btnSave.disabled = false;
+                    saveBusy = false;
+                }, 2000);
             };
 
             $('btnDownloadDir').onclick = async () => {
