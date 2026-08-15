@@ -191,7 +191,15 @@ ipcRenderer.on('collection:index-done', () => {
 
 // --- search-results mode: the header search bar renders its grid here ------
 
-interface SearchMode { query: string; mode: string; items: SearchResultItem[] }
+interface SearchMode {
+    query: string;
+    mode: string;
+    items: SearchResultItem[];
+    page: number;      // next page to fetch for text modes
+    cursor: string;    // next discover cursor for genre mode
+    hasMore: boolean;
+    loadingMore: boolean;
+}
 let searchMode: SearchMode | null = null;
 const toolbarEl = $('toolbar');
 const sbar = $('sbar');
@@ -230,6 +238,49 @@ function renderSearchResults(): void {
     const frag = document.createDocumentFragment();
     for (const [i, it] of items.entries()) frag.appendChild(createSearchCard(it, i));
     grid.appendChild(frag);
+}
+
+// --- infinite scroll: page the search in as the grid approaches its bottom ---
+
+const SEARCH_LOAD_THRESHOLD = 400;
+
+grid.addEventListener('scroll', () => {
+    if (!searchMode || !searchMode.hasMore || searchMode.loadingMore) return;
+    if (grid.scrollTop + grid.clientHeight < grid.scrollHeight - SEARCH_LOAD_THRESHOLD) return;
+    void loadMoreResults();
+});
+
+async function loadMoreResults(): Promise<void> {
+    const sm = searchMode;
+    if (!sm || sm.loadingMore || !sm.hasMore) return;
+    sm.loadingMore = true;
+    let again = false;
+    try {
+        const res = await ipcRenderer.invoke('search:more', {
+            query: sm.query,
+            mode: sm.mode,
+            page: sm.mode === 'genre' ? undefined : sm.page,
+            cursor: sm.mode === 'genre' ? sm.cursor : undefined,
+        }) as { ok?: boolean; items?: SearchResultItem[]; hasMore?: boolean; cursor?: string; error?: string };
+        if (!res.ok || !res.items || !res.items.length) {
+            sm.hasMore = false;
+            return;
+        }
+        const start = sm.items.length;
+        sm.items.push(...res.items);
+        sm.hasMore = !!res.hasMore;
+        if (sm.mode === 'genre') sm.cursor = String(res.cursor || '');
+        else sm.page += 1;
+        const frag = document.createDocumentFragment();
+        for (const [i, it] of res.items.entries()) frag.appendChild(createSearchCard(it, start + i));
+        grid.appendChild(frag);
+        const n = sm.items.length;
+        smeta.textContent = `results for "${sm.query}" (${n} ${n === 1 ? 'result' : 'results'})`;
+        again = sm.hasMore && grid.scrollTop + grid.clientHeight >= grid.scrollHeight - SEARCH_LOAD_THRESHOLD;
+    } finally {
+        sm.loadingMore = false;
+    }
+    if (again) void loadMoreResults();
 }
 
 // index-based ids ('card-sN') keep the inline tracklist's re-seat/reposition
@@ -384,11 +435,15 @@ async function toggleSearchTracklist(it: SearchResultItem, card: HTMLElement): P
     });
 }
 
-ipcRenderer.on('collection:search-results', (_e, p: { query?: string; mode?: string; items?: SearchResultItem[] }) => {
+ipcRenderer.on('collection:search-results', (_e, p: { query?: string; mode?: string; items?: SearchResultItem[]; page?: number; cursor?: string; hasMore?: boolean }) => {
     enterSearchMode({
         query: String(p?.query || ''),
         mode: (p?.mode === 'album' || p?.mode === 'artist' || p?.mode === 'track' || p?.mode === 'genre') ? p.mode : 'all',
         items: p?.items || [],
+        page: Math.max(1, Math.floor(Number(p?.page) || 1)),
+        cursor: String(p?.cursor || ''),
+        hasMore: !!p?.hasMore,
+        loadingMore: false,
     });
 });
 ipcRenderer.on('collection:search-exit', () => exitSearchMode());

@@ -767,46 +767,55 @@ export class BandcampApi {
 
     /**
      * site-wide search for the header bar. bandcamp's search *page* is fully
-     * JS-rendered nowadays (no scrapeable result rows), so this routes through
-     * the autocomplete api - the same one their own search box uses (and the
-     * spotlight search already proves it works in-app). mode maps straight to
-     * its filter: album='a', artist='b', track='t', all=''.
+     * site-wide search for the header bar. bandcamp's search *page* serves
+     * server-rendered li.searchresult rows to trusted (cookie-bearing) sessions,
+     * so we fetch it like a browser and parse the rows - they carry the full
+     * metadata (tracks count, duration, year, tags, location) plus the tralbum
+     * ids via data-search. paginated through &page=N (the site's own paging),
+     * so infinite scroll stays one page at a time. mode maps straight to its
+     * filter: album='a', artist='b', track='t', all=''.
      */
-    async searchPage(text: string, mode: 'all' | 'album' | 'artist' | 'track' = 'all'): Promise<{
+    async searchPage(text: string, mode: 'all' | 'album' | 'artist' | 'track' = 'all', page = 1): Promise<{
         ok: boolean;
         items: SearchResultItem[];
+        hasMore: boolean;
         error?: string;
     }> {
+        const session = this.getSession();
+        if (!session || !text.trim()) return { ok: false, items: [], hasMore: false, error: 'no query' };
+        this.noteInteractive(); // user-driven: the index crawler yields
         const filter = mode === 'album' ? 'a' : mode === 'artist' ? 'b' : mode === 'track' ? 't' : '';
-        const res = await this.searchPublic(text, filter);
-        if (!res.ok) return { ok: false, items: [], error: res.error };
-        const items: SearchResultItem[] = res.results
-            .filter((r) => r.type === 'a' || r.type === 'b' || r.type === 't')
-            .map((r): SearchResultItem => {
-                const type: SearchResultItem['type'] = r.type === 'a' ? 'album' : r.type === 'b' ? 'artist' : 'track';
-                const item: SearchResultItem = { type, name: r.name, url: r.url, art: r.art };
-                if (type !== 'artist') item.artist = r.band;
-                if (type === 'track') item.album = r.album;
-                item.bandId = r.bandId;
-                item.albumId = r.albumId;
-                item.trackId = r.type === 't' ? r.id : '';
-                return item;
-            });
-        return { ok: true, items };
+        const url = 'https://bandcamp.com/search?q=' + encodeURIComponent(text.trim()) +
+            (filter ? '&item_type=' + filter : '') + '&page=' + Math.max(1, page);
+        try {
+            const r = await session.fetch(url, { credentials: 'include' } as any);
+            if (!r.ok) { this.notify429(r.status); return { ok: false, items: [], hasMore: false, error: 'http ' + r.status }; }
+            const html = await r.text();
+            return {
+                ok: true,
+                items: parseSearchPageHtml(html),
+                // pagination links (&page=N) only render while more pages exist
+                hasMore: /[?&]page=\d+/.test(html),
+            };
+        } catch (e: any) {
+            return { ok: false, items: [], hasMore: false, error: e?.message || 'search failed' };
+        }
     }
 
     /**
      * genre-mode search: the discover api's tag filter returns albums carrying
-     * that tag. an unknown tag yields zero results, so it falls back to a plain
-     * album search of the text.
+     * that tag, paged via its opaque cursor (24 per page). an unknown tag yields
+     * zero results on the first page, which falls back to a plain album search
+     * of the text; later empty pages just mean the list ran out.
      */
-    async searchGenre(text: string): Promise<{
+    async searchGenre(text: string, cursor = '*'): Promise<{
         ok: boolean;
         items: SearchResultItem[];
+        nextCursor: string;
         error?: string;
     }> {
         const session = this.getSession();
-        if (!session || !text.trim()) return { ok: false, items: [], error: 'no query' };
+        if (!session || !text.trim()) return { ok: false, items: [], nextCursor: '', error: 'no query' };
         this.noteInteractive(); // user-driven: the index crawler yields
         const tag = text.trim();
         try {
@@ -814,18 +823,19 @@ export class BandcampApi {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    category_id: 0, cursor: '*', geoname_id: 0,
+                    category_id: 0, cursor, geoname_id: 0,
                     include_result_types: ['a'], size: 24, slice: 'top',
                     tag_norm_names: [tag], time_facet_id: null,
                 }),
                 credentials: 'include',
             } as any);
-            if (!r.ok) { this.notify429(r.status); return { ok: false, items: [], error: 'http ' + r.status }; }
+            if (!r.ok) { this.notify429(r.status); return { ok: false, items: [], nextCursor: '', error: 'http ' + r.status }; }
             const d: any = await r.json();
             const rows: any[] = (d?.results || []).filter((x: any) => x?.result_type === 'a');
             if (rows.length) {
                 return {
                     ok: true,
+                    nextCursor: String(d?.cursor || ''),
                     items: rows.map((x: any): SearchResultItem => {
                         const artId = toId(x.primary_image?.image_id);
                         let url = String(x.item_url || '').trim();
@@ -860,10 +870,21 @@ export class BandcampApi {
                     }).filter((i: SearchResultItem) => i.name && i.url),
                 };
             }
+            // first page with zero rows = unknown tag: fall back to an album
+            // search of the text. later empty pages just mean the list ran out.
+            if (cursor === '*') {
+                const fallback = await this.searchPage(text, 'album', 1);
+                return { ok: fallback.ok, items: fallback.items, nextCursor: '', error: fallback.error };
+            }
+            return { ok: true, items: [], nextCursor: '' };
         } catch (e: any) {
-            // discover hiccup: fall through to the album search
+            // discover hiccup: fall through to the album search (first page only)
+            if (cursor === '*') {
+                const fallback = await this.searchPage(text, 'album', 1);
+                return { ok: fallback.ok, items: fallback.items, nextCursor: '', error: fallback.error };
+            }
+            return { ok: false, items: [], nextCursor: '', error: (e as any)?.message || 'genre search failed' };
         }
-        return this.searchPage(text, 'album');
     }
 
     // --- bandcamp fan playlists (import) -------------------------------------
@@ -1062,6 +1083,66 @@ export interface BandcampPlaylistPage {
 
 export function playlistPageError(error: string): BandcampPlaylistPage {
     return { ok: false, error, playlistId: 0, title: '', description: '', imageId: 0, tracks: [] };
+}
+
+/**
+ * parse the search *page's* server-rendered li.searchresult rows. each row
+ * carries the tralbum ids in its data-search json ({type, id}), the art, and
+ * rich meta: heading, subhead (artist/location), tracks count + length,
+ * release date, tags. never runs in the browser - this is regex over a saved
+ * fetch, so entity-decoding is done by hand (&amp; strictly last).
+ */
+export function parseSearchPageHtml(html: string): SearchResultItem[] {
+    const items: SearchResultItem[] = [];
+    const strip = (s: string): string => String(s || '')
+        .replace(/<[^>]*>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    const liRe = /<li[^>]*class="searchresult[^>]*data-search="([^"]+)"[^>]*>([\s\S]*?)<\/li>/g;
+    let m: RegExpExecArray | null;
+    while ((m = liRe.exec(html))) {
+        const ds = String(m[1]).replace(/&quot;/g, '"').replace(/&#0*39;/g, "'").replace(/&amp;/g, '&');
+        let type = '';
+        let id = '';
+        try {
+            const d = JSON.parse(ds);
+            type = String(d.type || '');
+            id = String(d.id || '');
+        } catch { /* unreadable row - skip */ }
+        if (type !== 'a' && type !== 'b' && type !== 't') continue;
+        const body = m[2];
+        const name = strip(/<div class="heading">([\s\S]*?)<\/div>/.exec(body)?.[1] || '');
+        const href = /<a class="artcont"[^>]*href="([^"]+)"/.exec(body)?.[1] || '';
+        if (!name || !href) continue;
+        const url = href.replace(/&amp;/g, '&').split('?')[0];
+        const art = /<img[^>]*src="([^"]+)"/.exec(body)?.[1] || '';
+        let sub = strip(/<div class="subhead">([\s\S]*?)<\/div>/.exec(body)?.[1] || '').replace(/^by\s+/i, '');
+        const item: SearchResultItem = {
+            type: type === 'a' ? 'album' : type === 'b' ? 'artist' : 'track',
+            name,
+            url,
+            art,
+            bandId: type === 'b' ? id : '',
+            albumId: type === 'a' ? id : '',
+            trackId: type === 't' ? id : '',
+        };
+        if (item.type !== 'artist') item.artist = sub;
+        else if (sub) item.location = sub;
+        const lenTxt = strip(/<div class="length">([\s\S]*?)<\/div>/.exec(body)?.[1] || '');
+        if (lenTxt) {
+            const nt = /(\d+)\s*tracks?/.exec(lenTxt);
+            if (nt) item.numTracks = Number(nt[1]);
+            const min = /(\d+)\s*minutes?/.exec(lenTxt);
+            if (min) item.duration = Number(min[1]) * 60;
+        }
+        const rel = strip(/<div class="released">([\s\S]*?)<\/div>/.exec(body)?.[1] || '');
+        const yr = /(19|20)\d{2}/.exec(rel);
+        if (yr) { const y = Number(yr[0]); if (y > 1900 && y < 3000) item.year = y; }
+        const tagsTxt = strip(/<div class="tags[^"]*"[^>]*>([\s\S]*?)<\/div>/.exec(body)?.[1] || '');
+        if (tagsTxt) item.tags = tagsTxt.replace(/^tags:\s*/i, '');
+        items.push(item);
+    }
+    return items;
 }
 
 /** pure parser so it can be tested against saved pages (no network). */

@@ -1172,21 +1172,52 @@ async function init() {
             return { ok: false, items: [], reason: 'url' };
         }
         const mode = (req?.mode === 'album' || req?.mode === 'artist' || req?.mode === 'track' || req?.mode === 'genre') ? req.mode : 'all';
-        let res: { ok: boolean; items: any[]; error?: string };
+        let res: { ok: boolean; items: any[]; error?: string; hasMore?: boolean; nextCursor?: string };
         try {
-            res = mode === 'genre'
-                ? await bandcampApi.searchGenre(input)
-                : await bandcampApi.searchPage(input, mode as 'all' | 'album' | 'artist' | 'track');
+            if (mode === 'genre') {
+                const g = await bandcampApi.searchGenre(input);
+                res = { ok: g.ok, items: g.items, error: g.error, hasMore: g.ok && g.items.length > 0 && !!g.nextCursor && g.nextCursor !== '*', nextCursor: g.nextCursor };
+            } else {
+                const p = await bandcampApi.searchPage(input, mode as 'all' | 'album' | 'artist' | 'track', 1);
+                res = { ok: p.ok, items: p.items, error: p.error, hasMore: p.hasMore };
+            }
         } catch (err: any) {
             if (devMode) console.log('[bcrpc:search] threw ' + (err && (err.message || err)));
             return { ok: false, items: [], error: (err && (err.message || err)) || 'search threw' };
         }
-        if (devMode) console.log('[bcrpc:search] mode=' + mode + ' ok=' + res.ok + ' n=' + res.items.length + (res.error ? ' err=' + res.error : ''));
+        if (devMode) console.log('[bcrpc:search] mode=' + mode + ' ok=' + res.ok + ' n=' + res.items.length + ' more=' + !!res.hasMore + (res.error ? ' err=' + res.error : ''));
         if (res.ok && collectionView && !collectionView.webContents.isDestroyed()) {
             openCollection();
-            collectionView.webContents.send('collection:search-results', { query: input, mode, items: res.items });
+            collectionView.webContents.send('collection:search-results', { query: input, mode, items: res.items, page: 1, cursor: res.nextCursor || '', hasMore: !!res.hasMore });
         }
         return { ok: res.ok, items: res.items, error: res.error };
+    });
+
+    // infinite scroll: the collection asks for the next page of the current
+    // search. text modes page via &page=N on the search page, genre via the
+    // discover cursor. handle+invoke - the renderer needs the rows back.
+    ipcMain.handle('search:more', async (_e, req: { query?: string; mode?: string; page?: number; cursor?: string }) => {
+        const input = String(req?.query || '').trim();
+        const mode = (req?.mode === 'album' || req?.mode === 'artist' || req?.mode === 'track' || req?.mode === 'genre') ? req.mode : 'all';
+        if (!input) return { ok: false, items: [], hasMore: false };
+        try {
+            if (mode === 'genre') {
+                const cursor = String(req?.cursor || '*');
+                const g = await bandcampApi.searchGenre(input, cursor);
+                return {
+                    ok: g.ok,
+                    items: g.items,
+                    hasMore: g.ok && g.items.length > 0 && !!g.nextCursor && g.nextCursor !== cursor,
+                    cursor: g.nextCursor,
+                    error: g.error,
+                };
+            }
+            const p = await bandcampApi.searchPage(input, mode as 'all' | 'album' | 'artist' | 'track', Math.max(1, Math.floor(Number(req?.page) || 1)));
+            return { ok: p.ok, items: p.items, hasMore: p.hasMore, error: p.error };
+        } catch (err: any) {
+            if (devMode) console.log('[bcrpc:search:more] threw ' + (err && (err.message || err)));
+            return { ok: false, items: [], hasMore: false, error: (err && (err.message || err)) || 'search:more threw' };
+        }
     });
 
     // click a result in the collection overlay: albums/artists navigate the
