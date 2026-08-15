@@ -18,6 +18,8 @@ const elArtBg = $('art-bg') as HTMLImageElement;
 const elArtBgOld = $('art-bg-old') as HTMLImageElement;
 const elTitle = $('title');
 const elArtist = $('artist');
+const elTitleText = $('title-text') as HTMLSpanElement;
+const elArtistText = $('artist-text') as HTMLSpanElement;
 const iPlay = $('i-play');
 const iPause = $('i-pause');
 const seek = $('seek') as HTMLInputElement;
@@ -139,14 +141,16 @@ function linkable(track: PlayerTrack | null): boolean {
 }
 
 function renderNowPlaying(track: PlayerTrack): void {
-    elTitle.textContent = track.title || 'Unknown Track';
-    elArtist.textContent = track.artist || 'Bandcamp';
+    elTitleText.textContent = track.title || 'Unknown Track';
+    elArtistText.textContent = track.artist || 'Bandcamp';
     elTitle.classList.toggle('link', linkable(track));
     elArtist.classList.toggle('link', linkable(track));
     // something's playing now, so reveal the art box (hidden at idle). no art ->
     // leave the src off so it shows the grey box, not a broken-image glyph
     elArt.style.display = 'block';
     elArtBg.style.display = 'block';
+    setupMarquee(elTitle, elTitleText);
+    setupMarquee(elArtist, elArtistText);
 if (track.art) {
         elArt.src = track.art;
         crossfadeBackdrop(track.art);
@@ -158,6 +162,17 @@ elArtBgOld.removeAttribute('src');
     document.querySelectorAll('.q-row').forEach((row) =>
         row.classList.toggle('active', Number((row as HTMLElement).dataset.index) === queue.currentTrackIndex())
     );
+}
+
+// marquee: when the line overflows its box, scroll it; otherwise plain ellipsis.
+// duration scales with the text width so both lines always move at the same speed
+function setupMarquee(line: HTMLElement, span: HTMLElement): void {
+    if (line.scrollWidth > line.clientWidth) {
+        line.classList.add('marquee');
+        line.style.setProperty('--d', `${(line.scrollWidth + 80) / 40}s`);
+    } else {
+        line.classList.remove('marquee');
+    }
 }
 
 // backdrop crossfade: the old blurred cover fades out on top of the new one,
