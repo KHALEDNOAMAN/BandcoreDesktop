@@ -962,6 +962,8 @@ export class BandcampApi {
                             art: toId(x.art_id) ? `https://f4.bcbits.com/img/a${toId(x.art_id)}_9.jpg` : '',
                             url: bandUrl + String(x.page_url || ''),
                             artist: String(x.artist || name).trim(),
+                            bandId: toId(x.band_id ?? bandId),
+                            year: 0,
                         }));
                 } catch { return out; }
             };
@@ -973,6 +975,17 @@ export class BandcampApi {
                     const mu = await session.fetch(bandUrl.replace(/\/+$/, '') + '/music', { credentials: 'include' } as any);
                     if (mu.ok) discography = parseDiscography(await mu.text());
                 } catch { /* keep the empty list */ }
+            }
+            // the grid markup carries no release dates - fill years from the
+            // tralbum endpoint (cached), in parallel.
+            if (discography.length) {
+                const years = await Promise.allSettled(discography.map((r) =>
+                    this.getReleaseYear(r.tralbumType, r.tralbumId) ||
+                    this.fetchReleaseYear({ tralbumType: r.tralbumType, tralbumId: r.tralbumId, bandId: r.bandId })));
+                discography = discography.map((r, i) => {
+                    const y = years[i].status === 'fulfilled' ? years[i].value : 0;
+                    return y ? { ...r, year: y } : r;
+                });
             }
             let bio = '';
             const bioIdx = html.indexOf('signed-out-artists-bio-text');
@@ -1255,6 +1268,8 @@ export interface ArtistPageData {
         art: string;
         url: string;
         artist: string;
+        bandId: string;
+        year: number;
     }[];
 }
 

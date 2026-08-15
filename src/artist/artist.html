@@ -214,7 +214,8 @@
             card.innerHTML =
                 `<div class="artwrap"><img class="art" loading="lazy" src="${(row.art || '').replace(/"/g, '&quot;')}"></div>` +
                 `<div class="t">${escapeHtml(row.title)}</div>` +
-                `<div class="a">${escapeHtml(row.artist || data.name || '')}</div>`;
+                `<div class="a">${escapeHtml(row.artist || data.name || '')}</div>` +
+                (row.year ? `<div class="y">${row.year}</div>` : '');
             card.id = 'card-' + index;
             card.addEventListener('click', () => { void clickHandler(row, card); });
             grid.appendChild(card);
