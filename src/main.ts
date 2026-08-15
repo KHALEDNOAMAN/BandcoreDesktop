@@ -800,6 +800,7 @@ async function init() {
         playerView.webContents.send('player:seekbar-top', store.get('seekbarAbove', false) === true);
         playerView.webContents.send('player:blur', store.get('miniBlur', 18));
         playerView.webContents.send('player:opacity', store.get('miniOpacity', 100));
+        playerView.webContents.send('player:info-spacing', store.get('infoSpacing', 3));
         const lt = store.get('lastTrack') as any;
         if (lt && lt.track && lt.track.id) {
             playerView.webContents.send('player:restore', lt);
@@ -2858,6 +2859,7 @@ const entry: DlEntry = { id: entryId, name: `${rel.albumArtist} - ${rel.album}`,
             seekbarAbove: store.get('seekbarAbove', false) === true,
             miniBlur: store.get('miniBlur', 18),
             miniOpacity: store.get('miniOpacity', 100),
+            infoSpacing: store.get('infoSpacing', 3),
             tooltips: store.get('tooltips', true) !== false,
             font: chromeFontKey(),
             fontOptions: Object.entries(CHROME_FONTS).map(([k, v]) => ({ key: k, label: v.label, family: v.family })),
@@ -2994,6 +2996,13 @@ const entry: DlEntry = { id: entryId, name: `${rel.albumArtist} - ${rel.album}`,
                 store.set('miniOpacity', o);
                 if (playerView && !playerView.webContents.isDestroyed()) {
                     playerView.webContents.send('player:opacity', o);
+                }
+            }
+            if (typeof data.infoSpacing === 'number') {
+                const g = Math.min(20, Math.max(0, Math.round(data.infoSpacing)));
+                store.set('infoSpacing', g);
+                if (playerView && !playerView.webContents.isDestroyed()) {
+                    playerView.webContents.send('player:info-spacing', g);
                 }
             }
             if (typeof data.tooltips === 'boolean') {

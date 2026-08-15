@@ -386,6 +386,12 @@ ipcRenderer.on('player:opacity', (_e, pct: unknown) => {
     document.documentElement.style.setProperty('--art-opacity', String(o / 100));
 });
 
+// settings: vertical gap between the title and artist lines
+ipcRenderer.on('player:info-spacing', (_e, px: unknown) => {
+    const g = Math.min(20, Math.max(0, Math.round(Number(px) || 0)));
+    document.documentElement.style.setProperty('--info-gap', g + 'px');
+});
+
 // global tooltips setting: strip/restore title attributes live. a mutation
 // observer keeps up with dynamically created buttons & live title updates
 // (e.g. the repeat button's state label).
