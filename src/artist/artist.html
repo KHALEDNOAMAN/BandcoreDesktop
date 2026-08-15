@@ -37,6 +37,12 @@
             position: relative; padding: 34px 26px 22px; overflow: hidden;
             display: flex; gap: 22px; align-items: flex-end; border-bottom: 1px solid var(--line);
         }
+        .hero::after {
+            content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 90px;
+            background: linear-gradient(to bottom, transparent, var(--bg));
+            pointer-events: none;
+        }
+        .hero-info, .hero-photo { z-index: 1; }
         .hero-bg {
             position: absolute; left: -40px; top: -60px; right: -40px; bottom: -40px;
             background-size: cover; background-position: center;
