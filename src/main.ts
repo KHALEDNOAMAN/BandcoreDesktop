@@ -801,6 +801,7 @@ async function init() {
         playerView.webContents.send('player:blur', store.get('miniBlur', 18));
         playerView.webContents.send('player:opacity', store.get('miniOpacity', 100));
         playerView.webContents.send('player:info-spacing', store.get('infoSpacing', 3));
+        playerView.webContents.send('player:marquee-speed', store.get('marqueeSpeed', 50));
         const lt = store.get('lastTrack') as any;
         if (lt && lt.track && lt.track.id) {
             playerView.webContents.send('player:restore', lt);
@@ -2860,6 +2861,7 @@ const entry: DlEntry = { id: entryId, name: `${rel.albumArtist} - ${rel.album}`,
             miniBlur: store.get('miniBlur', 18),
             miniOpacity: store.get('miniOpacity', 100),
             infoSpacing: store.get('infoSpacing', 3),
+            marqueeSpeed: store.get('marqueeSpeed', 50),
             tooltips: store.get('tooltips', true) !== false,
             font: chromeFontKey(),
             fontOptions: Object.entries(CHROME_FONTS).map(([k, v]) => ({ key: k, label: v.label, family: v.family })),
@@ -3003,6 +3005,13 @@ const entry: DlEntry = { id: entryId, name: `${rel.albumArtist} - ${rel.album}`,
                 store.set('infoSpacing', g);
                 if (playerView && !playerView.webContents.isDestroyed()) {
                     playerView.webContents.send('player:info-spacing', g);
+                }
+            }
+            if (typeof data.marqueeSpeed === 'number') {
+                const m = Math.min(100, Math.max(0, Math.round(data.marqueeSpeed)));
+                store.set('marqueeSpeed', m);
+                if (playerView && !playerView.webContents.isDestroyed()) {
+                    playerView.webContents.send('player:marquee-speed', m);
                 }
             }
             if (typeof data.tooltips === 'boolean') {

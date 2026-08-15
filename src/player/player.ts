@@ -174,17 +174,16 @@ function setupMarquee(line: HTMLElement, span: HTMLElement): void {
         oldTrack.remove();
         line.appendChild(span);
     }
-    if (line.scrollWidth > line.clientWidth) {
+    line.classList.remove('marquee');
+    if (marqueeSpeed > 0 && line.scrollWidth > line.clientWidth) {
         const track = document.createElement('span');
         track.className = 'mq-track';
         track.appendChild(span);
         track.appendChild(span.cloneNode(true));
         line.appendChild(track);
         line.style.setProperty('--w', `${line.clientWidth}px`);
-        line.style.setProperty('--d', `${(line.scrollWidth + 80) / 40}s`);
+        line.style.setProperty('--d', `${(line.scrollWidth + 80) / (40 * marqueeSpeed / 100)}s`);
         line.classList.add('marquee');
-    } else {
-        line.classList.remove('marquee');
     }
 }
 
@@ -443,6 +442,14 @@ ipcRenderer.on('player:opacity', (_e, pct: unknown) => {
 ipcRenderer.on('player:info-spacing', (_e, px: unknown) => {
     const g = Math.min(20, Math.max(0, Math.round(Number(px) || 0)));
     document.documentElement.style.setProperty('--info-gap', g + 'px');
+});
+
+// settings: marquee speed as a percentage of the default 40px/s; 0 disables
+// the marquee entirely (plain ellipsis, no edge fades)
+let marqueeSpeed = 50;
+ipcRenderer.on('player:marquee-speed', (_e, pct: unknown) => {
+    const raw = Number(pct);
+    marqueeSpeed = Math.min(100, Math.max(0, Math.round(Number.isFinite(raw) ? raw : 50)));
 });
 
 // global tooltips setting: strip/restore title attributes live. a mutation
