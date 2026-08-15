@@ -283,6 +283,18 @@ async function loadMoreResults(): Promise<void> {
     if (again) void loadMoreResults();
 }
 
+// cover art fades in once the bytes arrive (cached images are already
+// complete, so they show immediately); broken images fade in as the plain
+// tile instead of leaving an invisible card.
+function fadeInArt(img: HTMLImageElement): void {
+    const show = (): void => img.classList.add('in');
+    if (img.complete && img.naturalWidth) show();
+    else {
+        img.addEventListener('load', show);
+        img.addEventListener('error', show);
+    }
+}
+
 // index-based ids ('card-sN') keep the inline tracklist's re-seat/reposition
 // lookups stable across re-renders and distinct from collection ids ('a123').
 function createSearchCard(it: SearchResultItem, index: number): HTMLElement {
@@ -294,6 +306,8 @@ function createSearchCard(it: SearchResultItem, index: number): HTMLElement {
     wrap.className = 'artwrap';
     if (it.art) {
         wrap.innerHTML = `<img class="art" loading="lazy" src="${it.art.replace(/"/g, '&quot;')}">`;
+        const img = wrap.querySelector('img.art') as HTMLImageElement;
+        fadeInArt(img);
     } else {
         const np = document.createElement('div');
         np.className = 'art nophoto';
@@ -469,11 +483,12 @@ function createCard(it: CollectionItem): HTMLElement {
     const wrap = document.createElement('div');
     wrap.className = 'artwrap';
     wrap.innerHTML = `<img class="art" loading="lazy" src="${it.art}">`;
+    const img = wrap.querySelector('img.art') as HTMLImageElement;
+    fadeInArt(img);
     // dragging a cover exports the full-size art as a real file. hover prefetches
     // the full-size jpg; dragstart checks (sync) that it's ready and only then
     // hands the drag to main - startDrag must run inside the live drag gesture,
     // so if the file isn't there yet the default (thumbnail) drag proceeds.
-    const img = wrap.querySelector('img.art') as HTMLImageElement;
     const artReq = { tralbumType: it.tralbumType, tralbumId: it.tralbumId, art: it.art, title: it.title, artist: it.artist };
     img.addEventListener('mouseenter', () => ipcRenderer.send('collection:prefetch-art', artReq), { once: true });
     img.addEventListener('dragstart', (e) => {

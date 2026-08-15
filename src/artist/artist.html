@@ -89,10 +89,12 @@
             align-content: start; padding-bottom: 10px;
         }
         .card { cursor: pointer; }
-        .card .art {
+.card .art {
             width: 100%; aspect-ratio: 1 / 1; border-radius: 6px; background: var(--line);
-            object-fit: cover; display: block; transition: transform .12s ease;
+            object-fit: cover; display: block;
+            opacity: 0; transition: opacity .4s ease;
         }
+        .card .art.in { opacity: 1; }
         .card:hover .art { transform: scale(1.03); outline: 2px solid var(--accent); }
         .card .t { font-size: 12px; margin-top: 7px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .card .a { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
@@ -222,6 +224,15 @@
                 `<div class="t">${escapeHtml(row.title)}</div>` +
                 `<div class="a">${escapeHtml(row.artist || data.name || '')}</div>` +
                 (row.year ? `<div class="y">${row.year}</div>` : '');
+            const img = card.querySelector('img.art');
+            if (img) {
+                const show = () => img.classList.add('in');
+                if (img.complete && img.naturalWidth) show();
+                else {
+                    img.addEventListener('load', show);
+                    img.addEventListener('error', show);
+                }
+            }
             card.id = 'card-' + index;
             card.addEventListener('click', () => { void clickHandler(row, card); });
             grid.appendChild(card);
