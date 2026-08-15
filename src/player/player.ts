@@ -166,8 +166,8 @@ elArtBgOld.removeAttribute('src');
 
 // marquee: when the line overflows its box, scroll it back and forth; otherwise
 // plain ellipsis. the text glides left until its tail rests at the right edge,
-// holds, then glides back (ease-in-out). duration scales with the travel
-// distance so both lines always move at the same speed
+// then glides back (ease-in-out alternate, no pause). duration scales with the
+// travel distance so both lines always move at the same speed
 function setupMarquee(line: HTMLElement, span: HTMLElement): void {
     const oldTrack = line.querySelector('.mq-track');
     if (oldTrack) {
@@ -182,7 +182,7 @@ function setupMarquee(line: HTMLElement, span: HTMLElement): void {
         track.appendChild(span);
         line.appendChild(track);
         line.style.setProperty('--travel', `-${travel}px`);
-        line.style.setProperty('--d', `${2 * travel / (40 * marqueeSpeed / 100)}s`);
+        line.style.setProperty('--d', `${travel / (40 * marqueeSpeed / 100)}s`);
         line.classList.add('marquee');
     }
 }
