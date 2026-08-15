@@ -414,7 +414,11 @@ function cleanQueue(queue: PlayerTrack[]): PlayerTrack[] {
 
 // ui theme: maps the stored key to a chrome palette (pages are always native).
 function getTheme(): string {
-    return themeByKey(store.get('theme', 'dark')).key;
+    const k = store.get('theme', 'amoled');
+    // one-time migration of the old dark default so existing installs pick up
+    // the new AMOLED default
+    if (k === 'dark') { store.set('theme', 'amoled'); return 'amoled'; }
+    return themeByKey(k).key;
 }
 
 // darkreader page colors follow the chrome theme: with AMOLED selected, pages
