@@ -451,10 +451,16 @@ async function applyDarkHeaderPatch(wc: Electron.WebContents): Promise<void> {
 // user-origin override is what actually switches the palette.
 const chromeVarKeys = new WeakMap<Electron.WebContents, string>();
 function themeVarsCss(): string {
-    const vars = Object.entries(themeByKey(getTheme()).vars);
-    // user-origin styles LOSE to author origin at normal importance, so each var
-    // needs !important to beat the views' own :root defaults
-    return ':root { ' + vars.map(([k, v]) => '--' + k + ': ' + v + ' !important;').join(' ') + ' }';
+    const t = themeByKey(getTheme());
+    const vars = Object.entries(t.vars);
+    // registering every color var as a <color> lets :root transition them -
+    // unregistered custom properties swap instantly, registered ones crossfade.
+    // the transition lives on :root so all palettes ease into each other
+    const regs = vars.map(([k, v]) =>
+        `@property --${k} { syntax: '<color>'; inherits: true; initial-value: ${v}; }`).join(' ');
+    return regs + ' :root { ' +
+        vars.map(([k, v]) => '--' + k + ': ' + v + ' !important;').join(' ') +
+        ' transition: ' + vars.map(([k]) => '--' + k).join(' .4s ease, ') + ' .4s ease; }';
 }
 async function applyChromeTheme(wc: Electron.WebContents): Promise<void> {
     try {
