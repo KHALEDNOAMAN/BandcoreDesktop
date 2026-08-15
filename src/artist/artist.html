@@ -369,6 +369,21 @@
             }
             render(d);
         });
+        // release years stream in one at a time (paced, rate-limiter friendly);
+        // fill each card's year line as its value arrives.
+        ipcRenderer.on('artist:year', (_e, p) => {
+            if (!p || !data || !p.year) return;
+            if (p.bandId && data.bandId && p.bandId !== data.bandId) return;
+            const card = document.getElementById('card-a' + p.index) || document.getElementById('card-t' + p.index);
+            if (!card) return;
+            let y = card.querySelector('.y');
+            if (!y) {
+                y = document.createElement('div');
+                y.className = 'y';
+                card.appendChild(y);
+            }
+            y.textContent = String(p.year);
+        });
         ipcRenderer.on('artist:follow-result', (_e, p) => {
             if (!p) return;
             if (p.ok && data) data.isFollowing = !!p.isFollowing;

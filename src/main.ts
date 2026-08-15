@@ -250,6 +250,7 @@ let feedView: BrowserView;
 let feedVisible = false;
 let artistView: BrowserView;
 let artistVisible = false;
+let artistYearToken = 0; // bumps on each artist open; stale year streams abort
 let spotlightWin: BrowserWindow | null = null; // macOS-spotlight-style search popup
 
 interface Tab { id: number; view: BrowserView; title: string; }
@@ -401,14 +402,23 @@ function closeArtistView() {
 // open the artist view above whatever's showing (usually the collection's
 // search grid, so its back button returns to the results). header/player stay
 // on top like with every other overlay.
+// resolves once the artist view's page has finished loading for the current
+// open; artist:data is handed over only after that so it can't race a reload.
+let artistViewReady: Promise<void> = Promise.resolve();
 function openArtistView() {
-    if (artistVisible) return;
+    if (artistVisible) return artistViewReady;
     artistVisible = true;
     mainWindow.addBrowserView(artistView);
     mainWindow.setTopBrowserView(headerView); // keep header/player above it
     mainWindow.setTopBrowserView(playerView);
     adjustContentViews();
-    artistView.webContents.send('artist:shown');
+    // reload the page file on every open so view code changes land without an
+    // app restart (the view is stateless - data is always re-sent on open).
+    artistViewReady = new Promise<void>((res) => {
+        artistView.webContents.reload();
+        artistView.webContents.once('did-finish-load', () => res());
+    });
+    return artistViewReady;
 }
 
 // close the spotlight search popup (results are wiped on close by the popup itself)
@@ -1331,9 +1341,31 @@ async function init() {
             return;
         }
         if (devMode) console.log('[bcrpc:artist] ' + data.name + ' n=' + data.discography.length + ' following=' + data.isFollowing);
-        openArtistView();
+        await openArtistView();
         if (artistView && !artistView.webContents.isDestroyed()) {
             artistView.webContents.send('artist:data', { data });
+        }
+        // release years come from the tralbum endpoint - one call per release.
+        // stream them in one-by-one (cached years instantly, network paced) so
+        // the view fills up gradually and a 40-release artist never fires a
+        // parallel burst that trips the rate limiter.
+        if (data.discography.length) {
+            const token = ++artistYearToken;
+            for (let i = 0; i < data.discography.length && token === artistYearToken; i++) {
+                const r = data.discography[i];
+                let year = 0;
+                try {
+                    year = bandcampApi.getReleaseYear(r.tralbumType, r.tralbumId) ||
+                        await bandcampApi.fetchReleaseYear({ tralbumType: r.tralbumType, tralbumId: r.tralbumId, bandId: r.bandId });
+                } catch { /* keep 0 */ }
+                if (year && artistView && !artistView.webContents.isDestroyed()) {
+                    artistView.webContents.send('artist:year', { bandId: data.bandId, index: i, year });
+                }
+                if (devMode && (i < 3 || i % 25 === 0)) console.log('[bcrpc:artist] year i=' + i + ' y=' + year);
+                if (!bandcampApi.getReleaseYear(r.tralbumType, r.tralbumId)) {
+                    await new Promise((res) => setTimeout(res, 150)); // pace network calls
+                }
+            }
         }
     });
 

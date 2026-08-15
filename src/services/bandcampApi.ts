@@ -1011,17 +1011,9 @@ export class BandcampApi {
                     if (mu.ok) discography = parseDiscography(await mu.text());
                 } catch { /* keep the empty list */ }
             }
-            // the grid markup carries no release dates - fill years from the
-            // tralbum endpoint (cached), in parallel.
-            if (discography.length) {
-                const years = await Promise.allSettled(discography.map((r) =>
-                    this.getReleaseYear(r.tralbumType, r.tralbumId) ||
-                    this.fetchReleaseYear({ tralbumType: r.tralbumType, tralbumId: r.tralbumId, bandId: r.bandId })));
-                discography = discography.map((r, i) => {
-                    const y = years[i].status === 'fulfilled' ? years[i].value : 0;
-                    return y ? { ...r, year: y } : r;
-                });
-            }
+            // years are NOT fetched here: that would fire one tralbum call per
+            // release up front (a rate-limit burst on big catalogs). the main
+            // process streams them in paced, one by one, after the view renders.
             let bio = '';
             const bioIdx = html.indexOf('signed-out-artists-bio-text');
             if (bioIdx !== -1) {
