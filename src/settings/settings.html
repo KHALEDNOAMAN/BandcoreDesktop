@@ -85,8 +85,10 @@
         button {
             background: var(--accent); color: var(--hover-text); border: none; border-radius: 5px;
             padding: 8px 14px; font-size: 12px; cursor: pointer; margin-top: 14px;
+            transition: filter .18s ease, transform .18s ease;
         }
-        button:hover { filter: brightness(1.1); }
+        button:not(.nav-item):not(.winclose):hover { filter: brightness(1.1); transform: scale(1.03); }
+        button:not(.nav-item):not(.winclose):active { transform: scale(.98); transition: transform .08s ease; }
         button.ghost { background: var(--hover-bg); }
         .toggle { display: flex; align-items: center; gap: 8px; cursor: pointer; }
         .status { font-size: 11px; margin-top: 8px; min-height: 14px; }
@@ -103,9 +105,7 @@
         .wb-item:hover { border-color: var(--accent); background: var(--hover-bg); color: var(--hover-text); }
         .wb-item svg { width: 16px; height: 16px; fill: currentColor; }
         .side-actions { margin-top: auto; padding: 12px 2px 4px; }
-        .side-actions button { margin-top: 0; width: 100%; transition: filter .18s ease, transform .18s ease; }
-        .side-actions button:hover { transform: scale(1.03); }
-        .side-actions button:active { transform: scale(.98); transition: transform .08s ease; }
+        .side-actions button { margin-top: 0; width: 100%; }
     </style>
 </head>
 <body>
