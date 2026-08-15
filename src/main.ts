@@ -456,9 +456,10 @@ const chromeVarKeys = new WeakMap<Electron.WebContents, string>();
 // while plain buttons everywhere get the same subtle hover-grow + press-down
 const chromeButtonKeys = new WeakMap<Electron.WebContents, string>();
 function chromeButtonCss(): string {
-    return 'button { transition: transform .18s ease, filter .18s ease; } ' +
-        'button:hover { transform: scale(1.03); filter: brightness(1.1); } ' +
-        'button:active { transform: scale(.98); transition: transform .08s ease, filter .18s ease; }';
+    // window controls (_ [] X) are excluded - they keep their own plain hover
+    return 'button:not(.control):not(.winclose) { transition: transform .18s ease, filter .18s ease; } ' +
+        'button:not(.control):not(.winclose):hover { transform: scale(1.03); filter: brightness(1.1); } ' +
+        'button:not(.control):not(.winclose):active { transform: scale(.98); transition: transform .08s ease, filter .18s ease; }';
 }
 function themeVarsCss(): string {
     const t = themeByKey(getTheme());
