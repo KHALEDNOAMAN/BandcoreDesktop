@@ -75,7 +75,8 @@
         input:focus, select:focus { outline: none; border-color: var(--accent); }
         input[type="range"] {
             -webkit-appearance: none; appearance: none; height: 4px; border-radius: 2px;
-            background: var(--line); accent-color: var(--accent); cursor: pointer;
+            background: linear-gradient(to right, var(--accent) var(--fill, 0%), var(--line) var(--fill, 0%));
+            accent-color: var(--accent); cursor: pointer;
         }
         input[type="range"]::-webkit-slider-thumb {
             -webkit-appearance: none; width: 12px; height: 12px; border-radius: 50%; background: var(--text);
@@ -503,13 +504,20 @@
             const isp = Math.min(20, Math.max(0, Number(s.infoSpacing) ?? 3));
             $('infoSpacing').value = String(isp);
             $('infoSpacingVal').textContent = isp + ' px';
+            // filled range tracks (accent fill up to the thumb, like the seekbar)
+            const fillRange = (el) => {
+                const v = Number(el.value) || 0;
+                const mn = Number(el.min) || 0, mx = Number(el.max) || 100;
+                el.style.setProperty('--fill', ((v - mn) / (mx - mn) * 100) + '%');
+            };
+            for (const id of ['miniBlur', 'miniOpacity', 'infoSpacing']) fillRange($(id));
             // player bar toggles apply instantly, like the window bar list
             $('seekbarAbove').addEventListener('change', () => { persist(); });
-            $('miniBlur').addEventListener('input', () => { $('miniBlurVal').textContent = $('miniBlur').value + ' px'; });
+            $('miniBlur').addEventListener('input', () => { $('miniBlurVal').textContent = $('miniBlur').value + ' px'; fillRange($('miniBlur')); });
             $('miniBlur').addEventListener('change', () => { persist(); });
-            $('miniOpacity').addEventListener('input', () => { $('miniOpacityVal').textContent = $('miniOpacity').value + '%'; });
+            $('miniOpacity').addEventListener('input', () => { $('miniOpacityVal').textContent = $('miniOpacity').value + '%'; fillRange($('miniOpacity')); });
             $('miniOpacity').addEventListener('change', () => { persist(); });
-            $('infoSpacing').addEventListener('input', () => { $('infoSpacingVal').textContent = $('infoSpacing').value + ' px'; });
+            $('infoSpacing').addEventListener('input', () => { $('infoSpacingVal').textContent = $('infoSpacing').value + ' px'; fillRange($('infoSpacing')); });
             $('infoSpacing').addEventListener('change', () => { persist(); });
             $('showTooltips').addEventListener('change', () => { persist(); });
             // theme applies instantly too (chrome palette swap is live)
