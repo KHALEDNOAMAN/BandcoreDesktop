@@ -397,6 +397,21 @@ function isSocialHost(url: string): boolean {
 
 function toIdStr(v: unknown): string { const m = String(v ?? '').match(/\d+/); return m ? m[0] : ''; }
 
+// some bandcamp releases (notably various-artists compilations) ship track
+// titles already composed as "artist - title" while also carrying the artist
+// separately; the player renders both lines, so drop the duplicated prefix.
+function cleanQueue(queue: PlayerTrack[]): PlayerTrack[] {
+    return queue.map((t) => {
+        const artist = (t.artist || '').trim();
+        const title = (t.title || '').trim();
+        if (!artist || !title) return t;
+        const esc = artist.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const m = title.match(new RegExp('^' + esc + '\\s*[-–—]\\s+'));
+        if (m) return { ...t, title: title.slice(m[0].length).trim() || title };
+        return t;
+    });
+}
+
 // ui theme: maps the stored key to a chrome palette (pages are always native).
 function getTheme(): string {
     return themeByKey(store.get('theme', 'dark')).key;
@@ -839,7 +854,9 @@ async function init() {
                         }
                         if (stale) return; // newer play (or nav) superseded this one
                         if (data?.queue?.length && playerView && !playerView.webContents.isDestroyed()) {
-                            playerView.webContents.send('player:stream-incoming', data);
+                            if (devMode) console.log('[bcrpc] queue-in ' + data.context + ' n=' + data.queue.length +
+                                ' sample=' + JSON.stringify(data.queue.slice(0, 3).map((t: any) => [t.title, t.artist])));
+                            playerView.webContents.send('player:stream-incoming', { ...data, queue: cleanQueue(data.queue) });
                         }
                     })
                     .catch((err: any) => { if (devMode) console.log('[bcrpc] extract ERROR ' + (err && (err.message || err))); });
@@ -891,7 +908,7 @@ async function init() {
                 const active = Math.min(wanted, queue.length - 1);
                 if (devMode) console.log('[bcrpc] playlist-play blob n=' + queue.length + ' active=' + active);
                 if (playerView && !playerView.webContents.isDestroyed()) {
-                    playerView.webContents.send('player:stream-incoming', { queue, activeIndex: active, context: 'playlist', format: 'raw' });
+                    playerView.webContents.send('player:stream-incoming', { queue: cleanQueue(queue), activeIndex: active, context: 'playlist', format: 'raw' });
                 }
                 return;
             }
@@ -901,7 +918,7 @@ async function init() {
                     if (seq !== trapSeq) return;
                     if (devMode) console.log('[bcrpc] playlist-play legacy ' + (data?.queue ? 'n=' + data.queue.length : 'EMPTY'));
                     if (data?.queue?.length && playerView && !playerView.webContents.isDestroyed()) {
-                        playerView.webContents.send('player:stream-incoming', data);
+                        playerView.webContents.send('player:stream-incoming', { ...data, queue: cleanQueue(data.queue) });
                     }
                 })
                 .catch(() => { /* nothing to play */ });
