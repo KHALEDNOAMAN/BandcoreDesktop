@@ -1,5 +1,5 @@
 import type { Session } from 'electron';
-import type { PlayerTrack, TralbumType, CollectionItem, DownloadFormat, FeedStory } from '../shared/types';
+import type { PlayerTrack, TralbumType, CollectionItem, DownloadFormat, FeedStory, SearchResultItem } from '../shared/types';
 
 // mirrors res strat used by bandcamp player ext: hit cred tralbum endpoints to obtain full tracklist (w/ direct stream urls) for release. this is what lets player advance thru album or collection w/out scraping per track dom.
 
@@ -750,13 +750,120 @@ export class BandcampApi {
                         art,
                         url: String(x.item_url_path || x.item_url_root || '').trim(),
                         bandId: toId(x.band_id),
-                        albumId: toId(x.album_id),
+                        // the api never sends album_id: for albums `id` IS the
+                        // tralbum id (what fetchTralbum/resolveRelease need);
+                        // tracks resolve through their parent album by track id.
+                        albumId: toId(x.type === 'a' ? x.id : x.album_id),
+                        trackId: toId(x.type === 't' ? x.id : x.track_id),
                     };
                 }).filter((x: any) => x.name),
             };
         } catch (e: any) {
             return { ok: false, results: [], error: e?.message || 'search failed' };
         }
+    }
+
+    // --- header search bar (autocomplete api + discover api) ------------------
+
+    /**
+     * site-wide search for the header bar. bandcamp's search *page* is fully
+     * JS-rendered nowadays (no scrapeable result rows), so this routes through
+     * the autocomplete api - the same one their own search box uses (and the
+     * spotlight search already proves it works in-app). mode maps straight to
+     * its filter: album='a', artist='b', track='t', all=''.
+     */
+    async searchPage(text: string, mode: 'all' | 'album' | 'artist' | 'track' = 'all'): Promise<{
+        ok: boolean;
+        items: SearchResultItem[];
+        error?: string;
+    }> {
+        const filter = mode === 'album' ? 'a' : mode === 'artist' ? 'b' : mode === 'track' ? 't' : '';
+        const res = await this.searchPublic(text, filter);
+        if (!res.ok) return { ok: false, items: [], error: res.error };
+        const items: SearchResultItem[] = res.results
+            .filter((r) => r.type === 'a' || r.type === 'b' || r.type === 't')
+            .map((r): SearchResultItem => {
+                const type: SearchResultItem['type'] = r.type === 'a' ? 'album' : r.type === 'b' ? 'artist' : 'track';
+                const item: SearchResultItem = { type, name: r.name, url: r.url, art: r.art };
+                if (type !== 'artist') item.artist = r.band;
+                if (type === 'track') item.album = r.album;
+                item.bandId = r.bandId;
+                item.albumId = r.albumId;
+                item.trackId = r.type === 't' ? r.id : '';
+                return item;
+            });
+        return { ok: true, items };
+    }
+
+    /**
+     * genre-mode search: the discover api's tag filter returns albums carrying
+     * that tag. an unknown tag yields zero results, so it falls back to a plain
+     * album search of the text.
+     */
+    async searchGenre(text: string): Promise<{
+        ok: boolean;
+        items: SearchResultItem[];
+        error?: string;
+    }> {
+        const session = this.getSession();
+        if (!session || !text.trim()) return { ok: false, items: [], error: 'no query' };
+        this.noteInteractive(); // user-driven: the index crawler yields
+        const tag = text.trim();
+        try {
+            const r = await session.fetch('https://bandcamp.com/api/discover/1/discover_web', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    category_id: 0, cursor: '*', geoname_id: 0,
+                    include_result_types: ['a'], size: 24, slice: 'top',
+                    tag_norm_names: [tag], time_facet_id: null,
+                }),
+                credentials: 'include',
+            } as any);
+            if (!r.ok) { this.notify429(r.status); return { ok: false, items: [], error: 'http ' + r.status }; }
+            const d: any = await r.json();
+            const rows: any[] = (d?.results || []).filter((x: any) => x?.result_type === 'a');
+            if (rows.length) {
+                return {
+                    ok: true,
+                    items: rows.map((x: any): SearchResultItem => {
+                        const artId = toId(x.primary_image?.image_id);
+                        let url = String(x.item_url || '').trim();
+                        if (url) {
+                            try {
+                                const u = new URL(url);
+                                if (u.searchParams.get('from') === 'discover_page') {
+                                    u.searchParams.delete('from');
+                                    u.searchParams.delete('from_item_id');
+                                    u.searchParams.delete('from_discover_category');
+                                }
+                                url = u.toString();
+                            } catch { /* keep raw */ }
+                        }
+                        const item: SearchResultItem = {
+                            type: 'album',
+                            name: String(x.title || '').trim(),
+                            url,
+                            art: artId ? `https://f4.bcbits.com/img/a${artId}_9.jpg` : '',
+                            artist: String(x.album_artist || x.band_name || '').trim(),
+                            genre: tag,
+                        };
+                        if (x.band_location) item.location = String(x.band_location).trim();
+                        const rawDate = x.release_date;
+                        if (rawDate != null && rawDate !== '') {
+                            let y = 0;
+                            if (typeof rawDate === 'number') y = new Date(rawDate > 1e12 ? rawDate : rawDate * 1000).getFullYear();
+                            else { const t = Date.parse(String(rawDate)); if (!isNaN(t)) y = new Date(t).getFullYear(); }
+                            if (y > 1900 && y < 3000) item.year = y;
+                        }
+                        return item;
+                    }).filter((i: SearchResultItem) => i.name && i.url),
+                };
+            }
+        } catch (e: any) {
+            // discover hiccup: fall through to the album search
+        }
+        return this.searchPage(text, 'album');
     }
 
     // --- bandcamp fan playlists (import) -------------------------------------

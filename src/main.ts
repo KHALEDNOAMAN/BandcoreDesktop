@@ -365,6 +365,22 @@ function closeCollection() {
     if (headerView && !headerView.webContents.isDestroyed()) headerView.webContents.send('collection:state', false);
 }
 
+// open the custom collection overlay (one overlay at a time, like the toggle)
+function openCollection() {
+    if (collectionVisible) return;
+    closeFeed(); closeSearch(); // one overlay at a time
+    collectionVisible = true;
+    mainWindow.addBrowserView(collectionView);
+    mainWindow.setTopBrowserView(headerView); // keep header/player above it
+    mainWindow.setTopBrowserView(playerView);
+    adjustContentViews();
+    collectionView.webContents.send('collection:shown');
+    collectionView.webContents.send('collection:load');
+    if (headerView && !headerView.webContents.isDestroyed()) {
+        headerView.webContents.send('collection:state', true);
+    }
+}
+
 // hide the custom feed overlay (close btn / home btn / navigation)
 function closeFeed() {
     if (feedVisible && feedView) mainWindow.removeBrowserView(feedView);
@@ -1138,24 +1154,90 @@ async function init() {
         hardLoad(url);
     });
 
+    // run a search from the header bar. URL-looking input still navigates
+    // (the bar is the old address bar); anything else is searched and the
+    // results are rendered as a grid in the collection overlay.
+    // NOTE: an `on` listener, not `handle` - every caller (header bar, results
+    // chips) fires and forgets via ipcRenderer.send, which in this electron
+    // version never reaches ipcMain.handle handlers.
+    ipcMain.on('search:run', async (_e, req: { text?: string; mode?: string }) => {
+        const input = String(req?.text || '').trim();
+        if (!input) return { ok: false, items: [], reason: 'empty' };
+        let url: string | null = null;
+        if (/^https?:\/\//i.test(input)) url = input;
+        else if (/^[\w-]+(\.[\w-]+)+(:\d+)?(\/|$|\?)/.test(input)) url = 'https://' + input;
+        if (url) {
+            closeCollection();
+            hardLoad(url);
+            return { ok: false, items: [], reason: 'url' };
+        }
+        const mode = (req?.mode === 'album' || req?.mode === 'artist' || req?.mode === 'track' || req?.mode === 'genre') ? req.mode : 'all';
+        let res: { ok: boolean; items: any[]; error?: string };
+        try {
+            res = mode === 'genre'
+                ? await bandcampApi.searchGenre(input)
+                : await bandcampApi.searchPage(input, mode as 'all' | 'album' | 'artist' | 'track');
+        } catch (err: any) {
+            if (devMode) console.log('[bcrpc:search] threw ' + (err && (err.message || err)));
+            return { ok: false, items: [], error: (err && (err.message || err)) || 'search threw' };
+        }
+        if (devMode) console.log('[bcrpc:search] mode=' + mode + ' ok=' + res.ok + ' n=' + res.items.length + (res.error ? ' err=' + res.error : ''));
+        if (res.ok && collectionView && !collectionView.webContents.isDestroyed()) {
+            openCollection();
+            collectionView.webContents.send('collection:search-results', { query: input, mode, items: res.items });
+        }
+        return { ok: res.ok, items: res.items, error: res.error };
+    });
+
+    // click a result in the collection overlay: albums/artists navigate the
+    // active tab (overlay closes so the page isn't loading invisibly below it),
+    // tracks play straight from the overlay (single-track, like the spotlight).
+    ipcMain.on('search:open-result', (_e, req: { type?: string; url?: string; bandId?: string; albumId?: string; trackId?: string }) => {
+        const url = typeof req?.url === 'string' ? req.url : '';
+        if (!/^https:\/\//.test(url)) return;
+        if (req?.type === 'track') {
+            const albumId = toIdStr(req.albumId || '');
+            const trackId = toIdStr(req.trackId || '');
+            if (albumId || trackId) {
+                void playTralbum({
+                    tralbumId: albumId || trackId,
+                    tralbumType: albumId ? 'a' : 't',
+                    bandId: toIdStr(req.bandId || ''),
+                    trackId: trackId || undefined,
+                    trackOnly: !!trackId,
+                });
+                return;
+            }
+        }
+        closeCollection();
+        hardLoad(url);
+    });
+
+    // "back to collection" in the overlay's search-mode strip
+    ipcMain.on('search:exit', () => {
+        if (collectionView && !collectionView.webContents.isDestroyed()) {
+            collectionView.webContents.send('collection:search-exit');
+        }
+    });
+
+    // genre-mode (discover api) search results carry no resolve ids, only the
+    // release url: resolve it to a playable tracklist so the overlay can render
+    // the inline tracklist panel and play rows like autocomplete albums do.
+    ipcMain.handle('search:resolve', async (_e, req: { url?: string }) => {
+        const url = typeof req?.url === 'string' ? req.url : '';
+        try {
+            const tracks = await bandcampApi.fetchTracksFromUrl(url);
+            return { ok: true, tracks };
+        } catch (err: any) {
+            return { ok: false, error: err?.message || 'resolve failed', tracks: [] };
+        }
+    });
+
     // custom collection view
     ipcMain.on('collection:log', (_e, msg: unknown) => { if (devMode) console.log('[bcrpc:collection] ' + String(msg)); });
     ipcMain.on('collection:toggle', () => {
-        collectionVisible = !collectionVisible;
-        if (collectionVisible) {
-            closeFeed(); closeSearch(); // one overlay at a time
-            mainWindow.addBrowserView(collectionView);
-            mainWindow.setTopBrowserView(headerView); // keep header/player above it
-            mainWindow.setTopBrowserView(playerView);
-            adjustContentViews();
-            collectionView.webContents.send('collection:shown');
-            collectionView.webContents.send('collection:load');
-        } else {
-            mainWindow.removeBrowserView(collectionView);
-        }
-        if (headerView && !headerView.webContents.isDestroyed()) {
-            headerView.webContents.send('collection:state', collectionVisible);
-        }
+        if (collectionVisible) closeCollection();
+        else openCollection();
     });
     ipcMain.on('collection:close', () => closeCollection());
 
@@ -1346,7 +1428,9 @@ async function init() {
     };
 
     // play release chosen in custom view: resolve full tracklist & hand to player (bypasses page trap entirely)
-    ipcMain.handle('collection:play', async (_e, req: { tralbumId: string; tralbumType: TralbumType; bandId: string; activeIndex?: number; trackId?: string; trackOnly?: boolean }) => {
+    // play a release (or a single track of it) into the player. shared by the
+    // collection view, the spotlight search and the header search bar.
+    const playTralbum = async (req: { tralbumId: string; tralbumType: TralbumType; bandId: string; activeIndex?: number; trackId?: string; trackOnly?: boolean }): Promise<{ ok: boolean; error?: string }> => {
         try {
             const resolved = await resolveRelease(req);
             let tracks = resolved.tracks;
@@ -1373,7 +1457,8 @@ async function init() {
         } catch (err: any) {
             return { ok: false, error: err?.message || 'play failed' };
         }
-    });
+    };
+    ipcMain.handle('collection:play', (_e, req: { tralbumId: string; tralbumType: TralbumType; bandId: string; activeIndex?: number; trackId?: string; trackOnly?: boolean }) => playTralbum(req));
 
     // fetch a release's tracklist (+ resolved release year) for the collection view
     ipcMain.handle('collection:tracklist', async (_e, req: { tralbumId: string; tralbumType: TralbumType; bandId: string }) => {

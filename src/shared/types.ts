@@ -106,6 +106,30 @@ export interface DownloadFormat {
     url: string;
 }
 
+/** one result row of the header search bar (bandcamp autocomplete / discover api). */
+export interface SearchResultItem {
+    type: 'album' | 'artist' | 'track';
+    name: string;
+    url: string;
+    art: string;
+    /** album: artist; track: artist; '' when unknown. */
+    artist?: string;
+    /** track: source album; '' when unknown. */
+    album?: string;
+    /** album: release year; 0 when unknown. */
+    year?: number;
+    numTracks?: number;
+    /** track/album length in secs, 0 when unknown. */
+    duration?: number;
+    genre?: string;
+    tags?: string;
+    location?: string;
+    /** resolve/play handles (autocomplete carries them; discover items don't). */
+    bandId?: string;
+    albumId?: string;
+    trackId?: string;
+}
+
 /** one story in the custom feed view (new releases / activity from artists & fans you follow). */
 export interface FeedStory {
     /** bandcamp story type: 'nr' new release, 'df' fan collected, others pass through. */

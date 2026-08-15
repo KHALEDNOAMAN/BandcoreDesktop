@@ -1,5 +1,5 @@
 import { ipcRenderer } from 'electron';
-import type { CollectionItem, TralbumType } from '../shared/types';
+import type { CollectionItem, TralbumType, SearchResultItem } from '../shared/types';
 
 ipcRenderer.send('collection:log', 'booted');
 
@@ -143,6 +143,7 @@ function sortedFiltered(): CollectionItem[] {
 // terse status line: "importing x/y" while loading, "indexing x/y" while the
 // index builds, else just the release count (filtered as "n / total")
 function updateHeaderCount(): void {
+    if (searchMode) return; // the results strip carries its own count
     if (loading) { countEl.textContent = `importing ${items.length}/${expected || '?'}`; return; }
     if (indexing) {
         countEl.textContent = `indexing ${searchIndex.size}/${items.length}` + (indexStatus ? ` (${indexStatus})` : '');
@@ -186,6 +187,221 @@ ipcRenderer.on('collection:index-done', () => {
     // a throttled run stops early; let the next Reload (or app restart) resume it
     if (searchIndex.size < items.length) indexRequested = false;
     updateHeaderCount();
+});
+
+// --- search-results mode: the header search bar renders its grid here ------
+
+interface SearchMode { query: string; mode: string; items: SearchResultItem[] }
+let searchMode: SearchMode | null = null;
+const toolbarEl = $('toolbar');
+const sbar = $('sbar');
+const smeta = $('smeta');
+
+function enterSearchMode(mode: SearchMode): void {
+    searchMode = mode;
+    closeTracklist();
+    toolbarEl.style.display = 'none';
+    sbar.style.display = 'flex';
+    document.querySelectorAll('#sbar .chip').forEach((c) => {
+        c.classList.toggle('on', (c as HTMLElement).dataset.mode === mode.mode);
+    });
+    const n = mode.items.length;
+    smeta.textContent = `results for "${mode.query}" (${n} ${n === 1 ? 'result' : 'results'})`;
+    renderSearchResults();
+}
+
+function exitSearchMode(): void {
+    if (!searchMode) return;
+    searchMode = null;
+    closeTracklist();
+    sbar.style.display = 'none';
+    toolbarEl.style.display = '';
+    forceRender();
+}
+
+function renderSearchResults(): void {
+    grid.innerHTML = '';
+    if (!searchMode) return;
+    const { query, mode, items } = searchMode;
+    if (!items.length) {
+        setState(`no ${mode === 'genre' ? 'albums tagged' : mode + ' results'} for "${query}". try another search or filter.`);
+        return;
+    }
+    const frag = document.createDocumentFragment();
+    for (const [i, it] of items.entries()) frag.appendChild(createSearchCard(it, i));
+    grid.appendChild(frag);
+}
+
+// index-based ids ('card-sN') keep the inline tracklist's re-seat/reposition
+// lookups stable across re-renders and distinct from collection ids ('a123').
+function createSearchCard(it: SearchResultItem, index: number): HTMLElement {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.title = it.url;
+
+    const wrap = document.createElement('div');
+    wrap.className = 'artwrap';
+    if (it.art) {
+        wrap.innerHTML = `<img class="art" loading="lazy" src="${it.art.replace(/"/g, '&quot;')}">`;
+    } else {
+        const np = document.createElement('div');
+        np.className = 'art nophoto';
+        np.textContent = (it.name || '?').charAt(0).toUpperCase();
+        wrap.appendChild(np);
+    }
+    const badge = document.createElement('span');
+    badge.className = 'typb';
+    badge.textContent = it.type.toUpperCase();
+    wrap.appendChild(badge);
+    card.appendChild(wrap);
+
+    const meta = document.createElement('div');
+    const sub = it.type === 'artist' ? (it.location || it.genre || '') : (it.artist || '');
+    let extra = '';
+    if (it.type === 'album') {
+        extra = [it.year ? String(it.year) : '', it.numTracks ? it.numTracks + ' tracks' : ''].filter(Boolean).join(' · ');
+    } else if (it.type === 'track') {
+        extra = [it.duration ? fmtDur(it.duration) : '', it.year ? String(it.year) : ''].filter(Boolean).join(' · ');
+    }
+    meta.innerHTML =
+        `<div class="t">${escapeHtml(it.name)}</div>` +
+        `<div class="a">${escapeHtml(sub)}</div>` +
+        `<div class="y">${escapeHtml(extra)}</div>`;
+    card.appendChild(meta);
+
+    // albums expand an inline tracklist (like the collection's own albums);
+    // artists navigate, tracks play straight from the overlay.
+    if (it.type === 'album') {
+        card.id = 'card-s' + index;
+        card.addEventListener('click', () => { void toggleSearchTracklist(it, card); });
+    } else {
+        card.addEventListener('click', () => ipcRenderer.send('search:open-result', {
+            type: it.type, url: it.url, bandId: it.bandId, albumId: it.albumId, trackId: it.trackId,
+        }));
+    }
+    return card;
+}
+
+// search results: clicking an album expands an inline tracklist panel, same UX
+// as the collection's albums. autocomplete albums carry resolve ids; genre-mode
+// (discover) albums only carry a url, so main resolves the release page first.
+// play-all / rows / queue / right-click-to-playlist all work like in the
+// collection. tags aren't shown - the search apis don't provide them.
+async function toggleSearchTracklist(it: SearchResultItem, card: HTMLElement): Promise<void> {
+    const id = card.id.slice('card-'.length);
+    const wasOpen = openId === id && !!tlEl;
+    closeTracklist();
+    if (wasOpen) return;
+
+    openId = id;
+    const panel = document.createElement('div');
+    panel.className = 'tlinline';
+    panel.addEventListener('click', (e) => e.stopPropagation());
+    panel.innerHTML =
+        (it.art ? `<div class="tlbg"><img class="tlbg-img" src="${it.art.replace(/"/g, '&quot;')}" alt=""></div>` : '') +
+        `<div class="tlleft"><img class="tlart" src="${(it.art || '').replace(/"/g, '&quot;')}">` +
+        `<div class="tltitle">${escapeHtml(it.name)}</div>` +
+        `<div class="tlartist">${escapeHtml(it.artist || '')}</div>` +
+        `<div class="tlyear">${it.year || ''}</div>` +
+        `<div class="tlbtns"><button class="tlplayall">Play all</button>` +
+        `<button class="tlqueue">Queue</button><button class="tlclosebtn">Close</button></div></div>` +
+        `<div class="tlright"><div class="tlstate">loading tracklist…</div></div>`;
+    endOfRow(card).after(panel);
+    tlEl = panel;
+
+    const right = panel.querySelector('.tlright') as HTMLElement;
+    panel.querySelector('.tlclosebtn')!.addEventListener('click', closeTracklist);
+
+    // resolve play ids: autocomplete items carry them, discover (genre) items
+    // only carry the release url.
+    let q: { tralbumId: string; tralbumType: 'a' | 't'; bandId: string } | null = null;
+    let rows: { id: string; title: string; duration: number }[] | null = null;
+    if (it.albumId || it.bandId) {
+        q = { tralbumId: String(it.albumId), tralbumType: 'a', bandId: String(it.bandId || '') };
+    } else {
+        const resolved = await ipcRenderer.invoke('search:resolve', { url: it.url }) as
+            { ok: boolean; tracks?: { id: string; title: string; duration: number; tralbumId: string; tralbumType: 'a' | 't'; bandId: string }[] };
+        if (tlEl !== panel) return;
+        if (resolved.ok && resolved.tracks && resolved.tracks.length) {
+            const first = resolved.tracks[0];
+            q = { tralbumId: String(first.tralbumId), tralbumType: first.tralbumType, bandId: String(first.bandId || '') };
+            rows = resolved.tracks.map((t) => ({ id: t.id, title: t.title, duration: t.duration }));
+        }
+    }
+    if (!q) {
+        right.innerHTML = `<div class="tlstate">couldn't load the tracklist</div>`;
+        return;
+    }
+    panel.querySelector('.tlplayall')!.addEventListener('click', () => { void ipcRenderer.invoke('collection:play', { ...q, activeIndex: 0 }); });
+    panel.querySelector('.tlqueue')!.addEventListener('click', async (e) => {
+        const b = e.target as HTMLElement; b.textContent = 'adding…';
+        const r = await ipcRenderer.invoke('collection:enqueue', q);
+        b.textContent = r && r.ok ? 'added ✓' : 'failed';
+    });
+    if (!rows) {
+        const res = await ipcRenderer.invoke('collection:tracklist', q) as
+            { ok: boolean; year?: number; tracks?: { id: string; title: string; duration: number }[] };
+        if (tlEl !== panel) return;
+        if (res.year && res.year !== it.year) {
+            it.year = res.year;
+            (panel.querySelector('.tlyear') as HTMLElement).textContent = String(res.year);
+        }
+        if (!res.ok || !res.tracks || !res.tracks.length) {
+            right.innerHTML = `<div class="tlstate">couldn't load the tracklist</div>`;
+            return;
+        }
+        rows = res.tracks;
+    }
+    right.innerHTML = '';
+    rows.forEach((t, i) => {
+        const row = document.createElement('div');
+        row.className = 'tlrow';
+        row.innerHTML =
+            `<span class="tlnum">${i + 1}</span>` +
+            `<span class="tltrk">${escapeHtml(t.title)}</span>` +
+            `<span class="tldur">${fmtDur(t.duration)}</span>`;
+        row.addEventListener('click', () => { void ipcRenderer.invoke('collection:play', { ...q, activeIndex: i }); });
+        row.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            openPlaylistPicker({ ...q, trackId: t.id }, e.clientX, e.clientY);
+        });
+        if (t.id) {
+            const btn = document.createElement('button');
+            btn.className = 'tlq';
+            btn.title = 'add this song to queue';
+            btn.innerHTML = ICONS.plus;
+            btn.addEventListener('click', async (ev) => {
+                ev.stopPropagation();
+                btn.textContent = '…';
+                const r = await ipcRenderer.invoke('collection:enqueue', { ...q, trackId: t.id });
+                btn.textContent = r && r.ok ? '✓' : '×';
+                setTimeout(() => { btn.innerHTML = ICONS.plus; }, 900);
+            });
+            row.appendChild(btn);
+        }
+        right.appendChild(row);
+    });
+}
+
+ipcRenderer.on('collection:search-results', (_e, p: { query?: string; mode?: string; items?: SearchResultItem[] }) => {
+    enterSearchMode({
+        query: String(p?.query || ''),
+        mode: (p?.mode === 'album' || p?.mode === 'artist' || p?.mode === 'track' || p?.mode === 'genre') ? p.mode : 'all',
+        items: p?.items || [],
+    });
+});
+ipcRenderer.on('collection:search-exit', () => exitSearchMode());
+document.getElementById('sback')!.addEventListener('click', () => ipcRenderer.send('search:exit'));
+document.querySelectorAll('#sbar .chip').forEach((chip) => {
+    chip.addEventListener('click', () => {
+        if (!searchMode) return;
+        document.querySelectorAll('#sbar .chip').forEach((c) => c.classList.toggle('on', c === chip));
+        ipcRenderer.send('search:run', {
+            text: searchMode.query,
+            mode: (chip as HTMLElement).dataset.mode || 'all',
+        });
+    });
 });
 
 // Generates a single DOM node for an album card
@@ -308,6 +524,10 @@ function openLocalCardMenu(e: MouseEvent, it: CollectionItem): void {
 
 // CRITICAL FIX: Only appends new items during load so the open tracklist isn't destroyed
 function softRender(): void {
+    // header-search results own the grid and are independent of the collection,
+    // so streaming item/index batches must not touch them - re-rendering (or
+    // re-seating the open tracklist panel) would restart its enter animation.
+    if (searchMode) return;
     const list = sortedFiltered();
     updateHeaderCount();
 
@@ -780,6 +1000,7 @@ async function toggleTracklist(it: CollectionItem, card: HTMLElement): Promise<v
     panel.className = 'tlinline';
     panel.addEventListener('click', (e) => e.stopPropagation());
     panel.innerHTML =
+        (it.art ? `<div class="tlbg"><img class="tlbg-img" src="${it.art.replace(/"/g, '&quot;')}" alt=""></div>` : '') +
         `<div class="tlleft"><img class="tlart" src="${it.art}">` +
         `<div class="tltitle">${escapeHtml(it.title)}</div>` +
         `<div class="tlartist">${escapeHtml(it.artist)}</div>` +
@@ -1028,6 +1249,7 @@ dirBtn.addEventListener('click', () => {
     forceRender();
 });
 function reloadCollection(full: boolean): void {
+    exitSearchMode();
     fullRescan = full;
     items = [];
     itemKeys.clear();
@@ -1131,7 +1353,10 @@ ipcRenderer.on('collection:items', (_e, p: { items: CollectionItem[] }) => {
 });
 
 ipcRenderer.on('collection:load', () => load());
-ipcRenderer.on('collection:shown', () => { if (!items.length) load(); });
+ipcRenderer.on('collection:shown', () => {
+    if (searchMode) { renderSearchResults(); return; } // results were already sent; just re-render
+    if (!items.length) load();
+});
 
 // ---- playlists: build & play custom playlists out of your collection --------
 // the panel swaps in for the grid (which keeps rendering hidden underneath, so

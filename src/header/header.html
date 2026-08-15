@@ -52,10 +52,11 @@
             gap: 4px;
         }
 
-        /* url bar wrapper holds the input + the refresh button on its right */
+        /* url bar wrapper holds the input + the search button on its right */
         .urlwrap {
             -webkit-app-region: no-drag;
             position: relative; flex: 4; min-width: 0; margin: 0 0 0 10px;
+            display: flex; align-items: center;
         }
         /* blank space after the url bar (~1/4 of the bar's width) before the controls */
         .spacer { flex: 1; height: 100%; -webkit-app-region: drag; }
@@ -68,7 +69,7 @@
         }
         .url-bar:focus { border-color: var(--accent); color: var(--hover-text); }
         .url-bar::selection { background: var(--accent); color: var(--hover-text); }
-        /* refresh button lives inside the url bar, on its right */
+        /* search button lives inside the url bar, on its right */
         #btn-reload {
             position: absolute; right: 3px; top: 50%; transform: translateY(-50%);
             width: 26px; height: 22px; border-radius: 11px;
@@ -187,11 +188,11 @@
 
 <div id="tabs" class="tabs"></div>
 
-<div class="urlwrap">
+<div class="urlwrap" id="urlwrap">
     <input id="url-bar" class="url-bar" type="text" spellcheck="false" autocomplete="off"
            placeholder="Search Bandcamp or enter a link" aria-label="Address bar">
-    <button id="btn-reload" title="Refresh">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v4h-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <button id="btn-reload" title="Search">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
     </button>
 </div>
 
@@ -230,7 +231,7 @@
 
     document.getElementById('btn-back').onclick = () => ipcRenderer.send('app:back');
     document.getElementById('btn-forward').onclick = () => ipcRenderer.send('app:forward');
-    document.getElementById('btn-reload').onclick = () => ipcRenderer.send('app:reload');
+    document.getElementById('btn-reload').onclick = () => runSearch();
     document.getElementById('btn-home').onclick = () => ipcRenderer.send('app:home');
     document.getElementById('btn-settings').onclick = () => ipcRenderer.send('app:settings');
 
@@ -301,17 +302,26 @@
     document.getElementById('btn-max').onclick = () => ipcRenderer.send('window:maximize');
     document.getElementById('btn-close').onclick = () => ipcRenderer.send('window:close');
 
-    // address bar: shows current page URL & navigates on enter
-    // while user editing, stop overwriting value w nav updates
+    // address bar / search bar: shows current page URL & navigates on enter;
+    // free text runs a site search whose results render in the collection
+    // overlay (mode switching happens on the overlay's filter strip).
     const urlBar = document.getElementById('url-bar');
     let urlFocused = false;
+    function runSearch() {
+        const text = urlBar.value.trim();
+        if (!text) return;
+        ipcRenderer.send('search:run', { text, mode: 'all' });
+    }
     urlBar.addEventListener('focus', () => { urlFocused = true; urlBar.select(); });
     urlBar.addEventListener('blur', () => { urlFocused = false; });
     urlBar.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') { ipcRenderer.send('app:navigate-url', urlBar.value); urlBar.blur(); }
+        if (e.key === 'Enter') { runSearch(); urlBar.blur(); }
         else if (e.key === 'Escape') { urlBar.blur(); }
     });
-    ipcRenderer.on('nav:url', (_e, url) => { if (!urlFocused) urlBar.value = url || ''; });
+    ipcRenderer.on('nav:url', (_e, url) => {
+        if (urlFocused) return;
+        urlBar.value = url || '';
+    });
 
     // media hotkeys while the header is focused (space play/pause, ←/→ scrub,
     // shift+←/→ prev/next, shift+↑/↓ volume) forwarded to the player via main.
