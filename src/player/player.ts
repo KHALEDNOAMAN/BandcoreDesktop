@@ -15,6 +15,7 @@ const $ = (id: string) => document.getElementById(id) as HTMLElement;
 const audio = $('engine') as HTMLAudioElement;
 const elArt = $('art') as HTMLImageElement;
 const elArtBg = $('art-bg') as HTMLImageElement;
+const elArtBgOld = $('art-bg-old') as HTMLImageElement;
 const elTitle = $('title');
 const elArtist = $('artist');
 const iPlay = $('i-play');
@@ -146,16 +147,33 @@ function renderNowPlaying(track: PlayerTrack): void {
     // leave the src off so it shows the grey box, not a broken-image glyph
     elArt.style.display = 'block';
     elArtBg.style.display = 'block';
-    if (track.art) {
+if (track.art) {
         elArt.src = track.art;
-        elArtBg.src = track.art;
+        crossfadeBackdrop(track.art);
     } else {
         elArt.removeAttribute('src');
         elArtBg.removeAttribute('src');
+elArtBgOld.removeAttribute('src');
     }
     document.querySelectorAll('.q-row').forEach((row) =>
         row.classList.toggle('active', Number((row as HTMLElement).dataset.index) === queue.currentTrackIndex())
     );
+}
+
+// backdrop crossfade: the old blurred cover fades out on top of the new one,
+// which is already visible beneath it (both layers rest at var(--art-opacity))
+function crossfadeBackdrop(src: string): void {
+    const cur = elArtBg.getAttribute('src');
+    elArtBg.src = src;
+    if (!cur || cur === src) return;
+    elArtBgOld.src = cur;
+    // snap the old layer back to full rest opacity (no transition), then let it
+    // transition down to 0 so it fades out; it stays hidden until the next swap
+    elArtBgOld.style.transition = 'none';
+    elArtBgOld.style.opacity = '';
+    void elArtBgOld.offsetWidth;
+    elArtBgOld.style.transition = '';
+    elArtBgOld.style.opacity = '0';
 }
 
 function renderQueue(): void {

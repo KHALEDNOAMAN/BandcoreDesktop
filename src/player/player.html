@@ -71,7 +71,10 @@
             filter: blur(var(--art-blur, 18px)) brightness(.72);
             opacity: var(--art-opacity, 1);
             transform: scale(1.4);
+            transition: opacity .7s ease;
         }
+        /* old backdrop fades out on top of the new one (crossfade) */
+        .np-bg img#art-bg-old { position: absolute; top: 0; left: 0; }
 
         .now-playing { position: relative; display: flex; align-items: center; gap: 12px; width: 26%; min-width: 150px; overflow: hidden; }
         /* hidden until something is playing so there's no empty grey box at idle */
@@ -135,7 +138,7 @@
 
     <!-- PLAYER BAR -->
     <div class="player-bar">
-        <div class="np-bg"><img id="art-bg" alt=""></div>
+        <div class="np-bg"><img id="art-bg" alt=""><img id="art-bg-old" alt=""></div>
         <div class="now-playing">
             <img class="art" id="art" alt="">
             <div class="info">
