@@ -915,7 +915,13 @@ export class BandcampApi {
             const followInfo = jsonAttr('data-band-follow-info');
             if (!band || !followInfo) return fail('not an artist page');
             const bandId = toId(band.id);
-            const bandUrl = String(band.url || band.https_url || '').trim();
+            // band root: data-band usually carries url/https_url, but bands whose
+            // root url is a (featured) tralbum page ship none - the page origin
+            // is the band's own subdomain, so derive it from there.
+            let bandUrl = String(band.url || band.https_url || '').trim();
+            if (!bandUrl) {
+                try { bandUrl = new URL(url).origin; } catch { bandUrl = ''; }
+            }
             const name = String(band.name || '').trim();
             // artist photo: the follow-info carries the band image id; the
             // banner is the desktop header image. artist images live under
@@ -925,9 +931,11 @@ export class BandcampApi {
             const bannerUrl = band.header_desktop?.image_id
                 ? `https://f4.bcbits.com/img/${toId(band.header_desktop.image_id)}_100.png` : '';
             // "Name.\nUK.\n" - the location is the second line of the meta
+            // description. tralbum landing pages describe the release instead
+            // (a long tracklist) - only trust short descriptions.
             let location = '';
             const md = html.match(/<meta name="description" content="([^"]*)"/);
-            if (md) {
+            if (md && String(md[1]).length < 200) {
                 const lines = String(md[1]).replace(/&amp;/g, '&').split(/\s*\n\s*/).map((s) => s.trim()).filter(Boolean);
                 if (lines.length > 1) location = lines.slice(1).join(' ');
             }

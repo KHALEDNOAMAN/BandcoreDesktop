@@ -71,7 +71,7 @@
         .hbtn svg { width: 15px; height: 15px; display: block; }
         .hbtn.following { background: transparent; color: var(--muted); }
         .hbtn.following:hover { color: var(--text); border-color: var(--line); }
-        .bio { padding: 16px 26px 4px; font-size: 13px; color: var(--muted); line-height: 1.6; max-width: 860px; }
+        .bio { font-size: 13px; color: var(--muted); line-height: 1.55; max-width: 860px; margin-top: 8px; text-shadow: 0 1px 8px rgba(0,0,0,.4); }
         .section { padding: 18px 26px 6px; }
         .section h2 {
             font-size: 14px; font-weight: 700; letter-spacing: .02em; margin-bottom: 14px;
@@ -166,6 +166,7 @@
             <img class="hero-photo" id="hero-photo" alt="">
             <div class="hero-info">
                 <div class="hero-name" id="hero-name"></div>
+                <div class="bio" id="bio"></div>
                 <div class="hero-meta" id="hero-meta"></div>
                 <div class="hero-btns">
                     <button class="hbtn primary" id="playall">
@@ -175,7 +176,6 @@
                 </div>
             </div>
         </div>
-        <div class="bio" id="bio"></div>
         <div class="section" id="sec-albums">
             <h2>Albums <span class="cnt" id="albums-cnt"></span></h2>
             <div class="grid" id="albums"></div>
