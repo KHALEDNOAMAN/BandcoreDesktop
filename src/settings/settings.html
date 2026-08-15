@@ -111,10 +111,9 @@
         /* save button: swaps its label for a looping lottie while saving, then
         flashes green 'Saved!' for 2s before returning - disabled the whole
         time so it can't be interrupted or spammed */
-        #btnSave { position: relative; display: flex; align-items: center; justify-content: center; min-height: 33px; transition: background-color .3s ease; }
+        #btnSave { position: relative; display: flex; align-items: center; justify-content: center; min-height: 33px; transition: filter .18s ease, transform .18s ease, background-color .3s ease; }
         #btnSave .save-label, #btnSave .save-lottie { display: flex; align-items: center; }
         #btnSave .save-lottie { width: 18px; height: 18px; display: none; pointer-events: none; }
-        #btnSave .save-lottie path { fill: var(--hover-text); }
         #btnSave.saving .save-lottie { display: block; }
         #btnSave.saving .save-label { display: none; }
         #btnSave.saved { background: #3d9b5f; }
@@ -664,7 +663,7 @@ ipcRenderer.invoke('settings:get').then((s) => {
             try {
                 const fs = require('fs');
                 const path = require('path');
-                const lottieData = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'assets', 'lottie', 'playpause.json'), 'utf8'));
+                const lottieData = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'assets', 'lottie', 'loading.json'), 'utf8'));
                 saveAnim = require('../../assets/lottie/lottie.min.js').loadAnimation({
                     container: $('saveLottie'), renderer: 'svg',
                     loop: true, autoplay: false, animationData: lottieData,
