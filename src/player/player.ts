@@ -380,6 +380,12 @@ ipcRenderer.on('player:blur', (_e, px: unknown) => {
     document.documentElement.style.setProperty('--art-blur', b + 'px');
 });
 
+// settings: backdrop transparency (0 = invisible, 100 = current full look)
+ipcRenderer.on('player:opacity', (_e, pct: unknown) => {
+    const o = Math.min(100, Math.max(0, Math.round(Number(pct) || 100)));
+    document.documentElement.style.setProperty('--art-opacity', String(o / 100));
+});
+
 // global tooltips setting: strip/restore title attributes live. a mutation
 // observer keeps up with dynamically created buttons & live title updates
 // (e.g. the repeat button's state label).

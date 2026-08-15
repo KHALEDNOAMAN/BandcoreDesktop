@@ -799,6 +799,7 @@ async function init() {
     playerView.webContents.once('did-finish-load', () => {
         playerView.webContents.send('player:seekbar-top', store.get('seekbarAbove', false) === true);
         playerView.webContents.send('player:blur', store.get('miniBlur', 18));
+        playerView.webContents.send('player:opacity', store.get('miniOpacity', 100));
         const lt = store.get('lastTrack') as any;
         if (lt && lt.track && lt.track.id) {
             playerView.webContents.send('player:restore', lt);
@@ -2856,6 +2857,7 @@ const entry: DlEntry = { id: entryId, name: `${rel.albumArtist} - ${rel.album}`,
             discordOpts: presenceService.options(),
             seekbarAbove: store.get('seekbarAbove', false) === true,
             miniBlur: store.get('miniBlur', 18),
+            miniOpacity: store.get('miniOpacity', 100),
             tooltips: store.get('tooltips', true) !== false,
             font: chromeFontKey(),
             fontOptions: Object.entries(CHROME_FONTS).map(([k, v]) => ({ key: k, label: v.label, family: v.family })),
@@ -2985,6 +2987,13 @@ const entry: DlEntry = { id: entryId, name: `${rel.albumArtist} - ${rel.album}`,
                 store.set('miniBlur', b);
                 if (playerView && !playerView.webContents.isDestroyed()) {
                     playerView.webContents.send('player:blur', b);
+                }
+            }
+            if (typeof data.miniOpacity === 'number') {
+                const o = Math.min(100, Math.max(0, Math.round(data.miniOpacity)));
+                store.set('miniOpacity', o);
+                if (playerView && !playerView.webContents.isDestroyed()) {
+                    playerView.webContents.send('player:opacity', o);
                 }
             }
             if (typeof data.tooltips === 'boolean') {
