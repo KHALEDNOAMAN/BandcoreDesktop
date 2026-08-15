@@ -111,7 +111,7 @@
         /* save button: swaps its label for a looping lottie while saving, then
         flashes green 'Saved!' for 2s before returning - disabled the whole
         time so it can't be interrupted or spammed */
-        #btnSave { position: relative; display: flex; align-items: center; justify-content: center; min-height: 33px; }
+        #btnSave { position: relative; display: flex; align-items: center; justify-content: center; min-height: 33px; transition: background-color .3s ease; }
         #btnSave .save-label, #btnSave .save-lottie { display: flex; align-items: center; }
         #btnSave .save-lottie { width: 18px; height: 18px; display: none; pointer-events: none; }
         #btnSave .save-lottie path { fill: var(--hover-text); }
