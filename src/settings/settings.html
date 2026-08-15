@@ -642,10 +642,7 @@ ipcRenderer.invoke('settings:get').then((s) => {
         if (ipcRenderer) {
             $('btnSave').onclick = async () => {
                 log('save clicked');
-                const res = await persist();
-                log('save result ' + JSON.stringify(res));
-                if (res && res.ok === false) { $('saveStatus').textContent = 'save failed: ' + (res.error || '?'); $('saveStatus').className = 'status err'; }
-                else { $('saveStatus').textContent = 'saved.'; $('saveStatus').className = 'status ok'; }
+                await persist();
             };
 
             $('btnDownloadDir').onclick = async () => {
