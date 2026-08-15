@@ -100,7 +100,7 @@
         .title.link, .artist.link { cursor: pointer; }
         .title.link:hover, .artist.link:hover { text-decoration: underline; }
 
-        .center { position: absolute; left: 50%; transform: translateX(-50%); width: 320px; max-width: calc(100% - 330px); display: flex; flex-direction: column; align-items: center; gap: 5px; }
+        .center { position: absolute; left: 50%; transform: translateX(-50%); width: 560px; max-width: calc(100% - 330px); display: flex; flex-direction: column; align-items: center; gap: 5px; }
         /* setting: seekbar above the transport buttons */
         body.seek-top .center { flex-direction: column-reverse; }
         .transport { display: flex; align-items: center; gap: 18px; }
@@ -114,7 +114,7 @@
         /* lottie play/pause morph (triangle <-> two bars). colors/thickness
         are overridden so the artwork follows the theme */
         #lottie-play { width: 16px; height: 16px; }
-        #lottie-play svg * { fill: var(--bg); stroke: var(--bg); stroke-width: 22; }
+        #lottie-play svg * { fill: var(--bg); stroke: var(--bg); stroke-width: 13; }
         /* the static fallback icons are hidden while the lottie morph is active */
         body.lottie-on #i-play, body.lottie-on #i-pause { display: none !important; }
 
