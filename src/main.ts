@@ -450,6 +450,16 @@ async function applyDarkHeaderPatch(wc: Electron.WebContents): Promise<void> {
 // the same vars in author CSS (dark defaults) so they work standalone; this
 // user-origin override is what actually switches the palette.
 const chromeVarKeys = new WeakMap<Electron.WebContents, string>();
+// universal button press feedback for every chrome view (header, player,
+// collection, feed, search, downloads, settings...): user-origin, so any view
+// that defines its own button transforms/transitions keeps them (author wins)
+// while plain buttons everywhere get the same subtle hover-grow + press-down
+const chromeButtonKeys = new WeakMap<Electron.WebContents, string>();
+function chromeButtonCss(): string {
+    return 'button { transition: transform .18s ease, filter .18s ease; } ' +
+        'button:hover { transform: scale(1.03); filter: brightness(1.1); } ' +
+        'button:active { transform: scale(.98); transition: transform .08s ease, filter .18s ease; }';
+}
 function themeVarsCss(): string {
     const t = themeByKey(getTheme());
     const vars = Object.entries(t.vars);
@@ -468,6 +478,10 @@ async function applyChromeTheme(wc: Electron.WebContents): Promise<void> {
         if (prev) await wc.removeInsertedCSS(prev).catch(() => {});
         const key = await wc.insertCSS(themeVarsCss(), { cssOrigin: 'user' });
         chromeVarKeys.set(wc, key);
+        const bprev = chromeButtonKeys.get(wc);
+        if (bprev) await wc.removeInsertedCSS(bprev).catch(() => {});
+        const bkey = await wc.insertCSS(chromeButtonCss(), { cssOrigin: 'user' });
+        chromeButtonKeys.set(wc, bkey);
         const fprev = fontKeys.get(wc);
         if (fprev) await wc.removeInsertedCSS(fprev).catch(() => {});
         const fcss = chromeFontCss();
