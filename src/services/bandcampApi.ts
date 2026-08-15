@@ -941,31 +941,66 @@ export class BandcampApi {
             }
             const site = Array.isArray(band.sites) ? band.sites.map((s: any) => String(s.url || '')).find(Boolean) : '';
             // the discography grid section carries the release list as a
-            // data-client-items array right before the first music-grid-item li
+            // data-client-items array right before the first music-grid-item li.
+            // newer layouts ship no such attribute - the ids sit on the li
+            // itself (data-item-id / data-band-id) with an optional
+            // artist-override span for VA/label releases.
+            const strip = (s: string): string => String(s || '')
+                .replace(/<[^>]*>/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
             const parseDiscography = (h: string): ArtistPageData['discography'] => {
                 const out: ArtistPageData['discography'] = [];
                 const gridIdx = h.indexOf('music-grid-item');
                 if (gridIdx === -1) return out;
                 const attrIdx = h.lastIndexOf('data-client-items="', gridIdx);
-                if (attrIdx === -1) return out;
-                const start = attrIdx + 'data-client-items="'.length;
-                const end = h.indexOf('"', start);
-                if (end === -1) return out;
-                try {
-                    const rows: any[] = JSON.parse(decode(h.slice(start, end)));
-                    return rows
-                        .filter((x: any) => (x.type === 'album' || x.type === 'track') && x.id && x.page_url)
-                        .map((x: any): ArtistPageData['discography'][number] => ({
-                            tralbumId: toId(x.id),
-                            tralbumType: x.type === 'track' ? 't' : 'a',
-                            title: String(x.title || '').trim(),
-                            art: toId(x.art_id) ? `https://f4.bcbits.com/img/a${toId(x.art_id)}_9.jpg` : '',
-                            url: bandUrl + String(x.page_url || ''),
-                            artist: String(x.artist || name).trim(),
-                            bandId: toId(x.band_id ?? bandId),
-                            year: 0,
-                        }));
-                } catch { return out; }
+                if (attrIdx !== -1) {
+                    const start = attrIdx + 'data-client-items="'.length;
+                    const end = h.indexOf('"', start);
+                    if (end !== -1) {
+                        try {
+                            const rows: any[] = JSON.parse(decode(h.slice(start, end)));
+                            return rows
+                                .filter((x: any) => (x.type === 'album' || x.type === 'track') && x.id && x.page_url)
+                                .map((x: any): ArtistPageData['discography'][number] => ({
+                                    tralbumId: toId(x.id),
+                                    tralbumType: x.type === 'track' ? 't' : 'a',
+                                    title: String(x.title || '').trim(),
+                                    art: toId(x.art_id) ? `https://f4.bcbits.com/img/a${toId(x.art_id)}_9.jpg` : '',
+                                    url: bandUrl + String(x.page_url || ''),
+                                    artist: String(x.artist || name).trim(),
+                                    bandId: toId(x.band_id ?? bandId),
+                                    year: 0,
+                                }));
+                        } catch { /* fall through to the per-item parse */ }
+                    }
+                }
+                const liRe = /<li[^>]*data-item-id="(album|track)-(\d+)"[^>]*data-band-id="(\d+)"[^>]*>([\s\S]*?)<\/li>/g;
+                let m: RegExpExecArray | null;
+                while ((m = liRe.exec(h))) {
+                    const type = m[1] === 'track' ? 't' : 'a';
+                    const id = toId(m[2]);
+                    const liBand = toId(m[3]);
+                    const body = m[4];
+                    const href = /<a[^>]*href="([^"]+)"/.exec(body)?.[1] || '';
+                    if (!id || !href) continue;
+                    const art = /<img[^>]*src="([^"]+)"/.exec(body)?.[1] || '';
+                    const override = /<span class="artist-override">([\s\S]*?)<\/span>/.exec(body)?.[1];
+                    const titleHtml = /<p class="title">([\s\S]*?)<\/p>/.exec(body)?.[1] || '';
+                    const title = strip(override ? titleHtml.replace(/<span class="artist-override">[\s\S]*?<\/span>/, '') : titleHtml);
+                    if (!title) continue;
+                    out.push({
+                        tralbumId: id,
+                        tralbumType: type,
+                        title,
+                        art: art.replace(/&amp;/g, '&'),
+                        url: bandUrl + String(href || '').replace(/&amp;/g, '&'),
+                        artist: strip(override || '') || name,
+                        bandId: liBand,
+                        year: 0,
+                    });
+                }
+                return out;
             };
             let discography = parseDiscography(html);
             // bands whose root url IS their (featured) tralbum page render no
