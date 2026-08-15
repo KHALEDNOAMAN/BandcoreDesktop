@@ -113,8 +113,8 @@
         .btn-play:active { transform: scale(.97); transition: transform .08s ease; }
         /* lottie play/pause morph (triangle <-> two bars). colors/thickness
         are overridden so the artwork follows the theme */
-        #lottie-play { width: 16px; height: 16px; }
-        #lottie-play svg * { fill: var(--bg); stroke: var(--bg); stroke-width: 9; }
+        #lottie-play { width: 200px; height: 200px; flex-shrink: 0; transform: scale(0.1); transform-origin: center; pointer-events: none; }
+        #lottie-play svg * { fill: var(--bg); stroke: var(--bg); }
         /* the static fallback icons are hidden while the lottie morph is active */
         body.lottie-on #i-play, body.lottie-on #i-pause { display: none !important; }
 
