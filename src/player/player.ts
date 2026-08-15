@@ -374,16 +374,23 @@ ipcRenderer.on('player:seekbar-top', (_e, on: unknown) => {
     document.body.classList.toggle('seek-top', on === true);
 });
 
-// settings: blur intensity of the now-playing cover backdrop (miniplayer)
+// settings: backdrop transparency (0 = invisible, 100 = current full look).
+// at 0 the backdrop blur is dropped entirely (no filter work) and restored
+// from the stored blur value once the backdrop comes back
+let artBlur = 18;
+let artOpacity = 100;
 ipcRenderer.on('player:blur', (_e, px: unknown) => {
-    const b = Math.min(40, Math.max(0, Math.round(Number(px) || 0)));
-    document.documentElement.style.setProperty('--art-blur', b + 'px');
+    const raw = Number(px);
+    const b = Math.min(40, Math.max(0, Math.round(Number.isFinite(raw) ? raw : 18)));
+    artBlur = b;
+    if (artOpacity > 0) document.documentElement.style.setProperty('--art-blur', b + 'px');
 });
-
-// settings: backdrop transparency (0 = invisible, 100 = current full look)
 ipcRenderer.on('player:opacity', (_e, pct: unknown) => {
-    const o = Math.min(100, Math.max(0, Math.round(Number(pct) || 100)));
+    const raw = Number(pct);
+    const o = Math.min(100, Math.max(0, Math.round(Number.isFinite(raw) ? raw : 100)));
+    artOpacity = o;
     document.documentElement.style.setProperty('--art-opacity', String(o / 100));
+    document.documentElement.style.setProperty('--art-blur', o === 0 ? '0px' : artBlur + 'px');
 });
 
 // settings: vertical gap between the title and artist lines
