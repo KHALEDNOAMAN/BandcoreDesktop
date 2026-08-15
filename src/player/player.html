@@ -100,7 +100,7 @@
         .title.link, .artist.link { cursor: pointer; }
         .title.link:hover, .artist.link:hover { text-decoration: underline; }
 
-        .center { position: relative; display: flex; flex-direction: column; align-items: center; gap: 5px; flex: 1; max-width: 560px; }
+        .center { position: absolute; left: 50%; transform: translateX(-50%); width: 320px; max-width: calc(100% - 330px); display: flex; flex-direction: column; align-items: center; gap: 5px; }
         /* setting: seekbar above the transport buttons */
         body.seek-top .center { flex-direction: column-reverse; }
         .transport { display: flex; align-items: center; gap: 18px; }
@@ -126,7 +126,7 @@
         #seek::-webkit-slider-thumb { transition: transform .3s ease; }
         body.paused #seek::-webkit-slider-thumb { transform: scale(.7); }
 
-        .right { position: relative; display: flex; align-items: center; justify-content: flex-end; gap: 14px; width: 26%; min-width: 150px; }
+        .right { position: relative; display: flex; align-items: center; justify-content: flex-end; gap: 14px; width: 26%; min-width: 150px; margin-left: auto; }
         #vol { width: 84px; }
 
         /* repeat-one: the "1" sits centered inside the repeat loop */
