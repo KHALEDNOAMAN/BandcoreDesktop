@@ -458,9 +458,57 @@ async function applyChromeTheme(wc: Electron.WebContents): Promise<void> {
         if (prev) await wc.removeInsertedCSS(prev).catch(() => {});
         const key = await wc.insertCSS(themeVarsCss(), { cssOrigin: 'user' });
         chromeVarKeys.set(wc, key);
+        const fprev = fontKeys.get(wc);
+        if (fprev) await wc.removeInsertedCSS(fprev).catch(() => {});
+        const fcss = chromeFontCss();
+        if (fcss) {
+            const fkey = await wc.insertCSS(fcss, { cssOrigin: 'user' });
+            fontKeys.set(wc, fkey);
+        } else {
+            fontKeys.delete(wc);
+        }
     } catch (err) { console.error('applyChromeTheme failed:', err); }
 }
 function chromeBg(): string { return themeByKey(getTheme()).vars['bg']; }
+
+// UI font picker: modern google-font families applied to the chrome views.
+// the webfonts are bundled locally (assets/fonts/*.css + *.woff2, latin &
+// latin-ext subsets) so the injected css needs no @import / network access;
+// system keeps the default stacks.
+const CHROME_FONTS: Record<string, { label: string; family: string }> = {
+    system: { label: 'System default', family: '' },
+    inter: { label: 'Inter', family: "'Inter'" },
+    manrope: { label: 'Manrope', family: "'Manrope'" },
+    grotesk: { label: 'Space Grotesk', family: "'Space Grotesk'" },
+    dmsans: { label: 'DM Sans', family: "'DM Sans'" },
+    outfit: { label: 'Outfit', family: "'Outfit'" },
+    jakarta: { label: 'Plus Jakarta Sans', family: "'Plus Jakarta Sans'" },
+    poppins: { label: 'Poppins', family: "'Poppins'" },
+    montserrat: { label: 'Montserrat', family: "'Montserrat'" },
+    nunito: { label: 'Nunito', family: "'Nunito'" },
+    raleway: { label: 'Raleway', family: "'Raleway'" },
+    plexsans: { label: 'IBM Plex Sans', family: "'IBM Plex Sans'" },
+    lato: { label: 'Lato', family: "'Lato'" },
+};
+function chromeFontKey(): string {
+    const k = String(store.get('font', 'system'));
+    return CHROME_FONTS[k] ? k : 'system';
+}
+const fontCssCache = new Map<string, string>();
+function chromeFontCss(): string {
+    const k = chromeFontKey();
+    const f = CHROME_FONTS[k];
+    if (!f || !f.family) return '';
+    let faces = fontCssCache.get(k);
+    if (faces === undefined) {
+        try { faces = fs.readFileSync(path.join(__dirname, '..', 'assets', 'fonts', `${k}.css`), 'utf8'); }
+        catch { faces = ''; }
+        fontCssCache.set(k, faces);
+    }
+    return (faces ? faces + '\n' : '') +
+        `body, button, input, select, textarea { font-family: ${f.family}, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif !important; }`;
+}
+const fontKeys = new WeakMap<Electron.WebContents, string>();
 
 // page dark mode (darkreader on bandcamp pages) - independent of the UI theme.
 // artist / label pages (subdomains & bandcamp-pro custom domains) are left
@@ -2792,6 +2840,8 @@ const entry: DlEntry = { id: entryId, name: `${rel.albumArtist} - ${rel.album}`,
             seekbarAbove: store.get('seekbarAbove', false) === true,
             miniBlur: store.get('miniBlur', 18),
             tooltips: store.get('tooltips', true) !== false,
+            font: chromeFontKey(),
+            fontOptions: Object.entries(CHROME_FONTS).map(([k, v]) => ({ key: k, label: v.label, family: v.family })),
         };
     });
 
@@ -2900,6 +2950,12 @@ const entry: DlEntry = { id: entryId, name: `${rel.albumArtist} - ${rel.album}`,
                     ).catch(() => {});
                     applyDarkHeaderPatch(wc).catch(() => {});
                 });
+            }
+            if (typeof data.font === 'string' && data.font !== chromeFontKey() && CHROME_FONTS[data.font]) {
+                store.set('font', data.font);
+                for (const w of [headerView, playerView, collectionView, feedView, settingsWindow, spotlightWin, downloadsWin, notice429Win]) {
+                    if (w && !w.webContents.isDestroyed()) applyChromeTheme(w.webContents);
+                }
             }
             if (typeof data.seekbarAbove === 'boolean') {
                 store.set('seekbarAbove', data.seekbarAbove);
