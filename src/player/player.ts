@@ -450,6 +450,8 @@ let marqueeSpeed = 50;
 ipcRenderer.on('player:marquee-speed', (_e, pct: unknown) => {
     const raw = Number(pct);
     marqueeSpeed = Math.min(100, Math.max(0, Math.round(Number.isFinite(raw) ? raw : 50)));
+    setupMarquee(elTitle, elTitleText);
+    setupMarquee(elArtist, elArtistText);
 });
 
 // global tooltips setting: strip/restore title attributes live. a mutation
