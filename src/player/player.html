@@ -84,16 +84,21 @@
         .title { font-size: 13px; font-weight: 600; color: var(--hover-text); text-overflow: ellipsis; overflow: hidden; }
         .artist { font-size: 11px; color: var(--muted); text-overflow: ellipsis; overflow: hidden; }
         /* marquee: only applied when the line overflows (JS sets the class).
-        two identical copies side by side, sliding by exactly one copy per loop,
-        so the cycle is seamless - no jump back. edge fade via a gradient mask
-        on the line, so text glides in and out softly instead of hard clipping */
+        the text glides left until its tail rests at the right edge, holds,
+        then glides back - smooth ease-in-out bounce instead of a one-way
+        loop. edge fade via a gradient mask on the line, so text glides in
+        and out softly instead of hard clipping */
         .marquee {
             -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 12%, #000 88%, transparent 100%);
             mask-image: linear-gradient(to right, transparent 0%, #000 12%, #000 88%, transparent 100%);
         }
-        .marquee .mq-track { display: inline-block; white-space: nowrap; animation: marquee var(--d, 10s) linear infinite; will-change: transform; }
-        .marquee .mq-track span { padding-left: var(--w, 100%); }
-        @keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+        .marquee .mq-track { display: inline-block; white-space: nowrap; animation: marquee var(--d, 10s) ease-in-out infinite; will-change: transform; }
+        @keyframes marquee {
+            0% { transform: translateX(0); }
+            45% { transform: translateX(var(--travel, -100%)); }
+            55% { transform: translateX(var(--travel, -100%)); }
+            100% { transform: translateX(0); }
+        }
         .title.link, .artist.link { cursor: pointer; }
         .title.link:hover, .artist.link:hover { text-decoration: underline; }
 

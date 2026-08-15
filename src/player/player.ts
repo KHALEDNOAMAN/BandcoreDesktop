@@ -164,10 +164,10 @@ elArtBgOld.removeAttribute('src');
     );
 }
 
-// marquee: when the line overflows its box, scroll it; otherwise plain ellipsis.
-// the line gets a track holding two identical copies of the text and slides by
-// exactly one copy per loop, so the cycle is seamless (no jump back). duration
-// scales with the text width so both lines always move at the same speed
+// marquee: when the line overflows its box, scroll it back and forth; otherwise
+// plain ellipsis. the text glides left until its tail rests at the right edge,
+// holds, then glides back (ease-in-out). duration scales with the travel
+// distance so both lines always move at the same speed
 function setupMarquee(line: HTMLElement, span: HTMLElement): void {
     const oldTrack = line.querySelector('.mq-track');
     if (oldTrack) {
@@ -176,13 +176,13 @@ function setupMarquee(line: HTMLElement, span: HTMLElement): void {
     }
     line.classList.remove('marquee');
     if (marqueeSpeed > 0 && line.scrollWidth > line.clientWidth) {
+        const travel = line.scrollWidth - line.clientWidth;
         const track = document.createElement('span');
         track.className = 'mq-track';
         track.appendChild(span);
-        track.appendChild(span.cloneNode(true));
         line.appendChild(track);
-        line.style.setProperty('--w', `${line.clientWidth}px`);
-        line.style.setProperty('--d', `${(line.scrollWidth + 80) / (40 * marqueeSpeed / 100)}s`);
+        line.style.setProperty('--travel', `-${travel}px`);
+        line.style.setProperty('--d', `${2 * travel / (40 * marqueeSpeed / 100)}s`);
         line.classList.add('marquee');
     }
 }
