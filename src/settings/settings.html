@@ -51,8 +51,10 @@
             background: none; border: none; border-radius: 6px;
             color: var(--muted); font-size: 12px; line-height: 1.4;
             padding: 7px 10px; margin-bottom: 2px; cursor: pointer;
+            transition: background .18s ease, color .18s ease, transform .18s ease;
         }
-        .nav-item:hover { background: var(--line-2); color: var(--text-2); }
+        .nav-item:hover { background: var(--line-2); color: var(--text-2); transform: scale(1.03); }
+        .nav-item:active { transform: scale(.98); transition: transform .08s ease; }
         .nav-item.active { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
         .pane-wrap { flex: 1; min-width: 0; overflow-y: auto; display: flex; flex-direction: column; }
         .pane { padding: 20px 22px; }
