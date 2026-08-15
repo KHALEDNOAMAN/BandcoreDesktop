@@ -676,8 +676,13 @@ ipcRenderer.invoke('settings:get').then((s) => {
                 saveBusy = true;
                 btnSave.disabled = true;
                 btnSave.classList.add('saving');
+                const t0 = Date.now();
                 if (saveAnim) saveAnim.play(); else saveLabel.textContent = 'Saving…';
                 const res = await persist();
+                // keep the loading anim on screen for at least 1s total, so the
+                // save flash reads even when persisting is near-instant
+                const left = 1000 - (Date.now() - t0);
+                if (left > 0) await new Promise((r) => setTimeout(r, left));
                 if (saveAnim) saveAnim.stop();
                 btnSave.classList.remove('saving');
                 const ok = !(res && res.ok === false);
