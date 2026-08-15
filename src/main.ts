@@ -467,6 +467,18 @@ async function applyChromeTheme(wc: Electron.WebContents): Promise<void> {
         } else {
             fontKeys.delete(wc);
         }
+        // preload every pickable font's @font-face rules (latin/latin-ext)
+        // so dropdown previews render in their own font before being applied;
+        // the woff2 files are only fetched for families actually used in text
+        const aprev = allFontKeys.get(wc);
+        if (aprev) await Promise.all(aprev.map((k) => wc.removeInsertedCSS(k).catch(() => {})));
+        const akeys: string[] = [];
+        for (const k of Object.keys(CHROME_FONTS)) {
+            if (k === 'system') continue;
+            const faces = fontCssCached(k);
+            if (faces) akeys.push(await wc.insertCSS(faces, { cssOrigin: 'user' }));
+        }
+        allFontKeys.set(wc, akeys);
     } catch (err) { console.error('applyChromeTheme failed:', err); }
 }
 function chromeBg(): string { return themeByKey(getTheme()).vars['bg']; }
@@ -495,19 +507,24 @@ function chromeFontKey(): string {
     return CHROME_FONTS[k] ? k : 'system';
 }
 const fontCssCache = new Map<string, string>();
-function chromeFontCss(): string {
-    const k = chromeFontKey();
-    const f = CHROME_FONTS[k];
-    if (!f || !f.family) return '';
+function fontCssCached(k: string): string {
     let faces = fontCssCache.get(k);
     if (faces === undefined) {
         try { faces = fs.readFileSync(path.join(__dirname, '..', 'assets', 'fonts', `${k}.css`), 'utf8'); }
         catch { faces = ''; }
         fontCssCache.set(k, faces);
     }
+    return faces;
+}
+function chromeFontCss(): string {
+    const k = chromeFontKey();
+    const f = CHROME_FONTS[k];
+    if (!f || !f.family) return '';
+    const faces = fontCssCached(k);
     return (faces ? faces + '\n' : '') +
         `body, button, input, select, textarea { font-family: ${f.family}, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif !important; }`;
 }
+const allFontKeys = new WeakMap<Electron.WebContents, string[]>();
 const fontKeys = new WeakMap<Electron.WebContents, string>();
 
 // page dark mode (darkreader on bandcamp pages) - independent of the UI theme.
