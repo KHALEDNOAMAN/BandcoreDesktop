@@ -1,4 +1,5 @@
 import { ipcRenderer, clipboard } from 'electron';
+import * as path from 'path';
 import { Queue } from './queue';
 import type {
     StreamPayload,
@@ -33,6 +34,26 @@ const panel = $('queue-panel');
 const queueList = $('queue-list');
 
 const queue = new Queue();
+// lottie play/pause morph (triangle <-> two bars). vendored locally in assets,
+// no CDN. if anything fails (file missing etc.) we fall back to the static
+// svg icons (i-play/i-pause), which the css hides once lottie is live
+const lottie: any = require('../../assets/lottie/lottie.min.js');
+let lottieAnim: any = null;
+try {
+    const fs = require('fs');
+    const lottieData = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'assets', 'lottie', 'play-pause.json'), 'utf8'));
+    lottieAnim = lottie.loadAnimation({
+        container: $('lottie-play'),
+        renderer: 'svg',
+        loop: false,
+        autoplay: false,
+        animationData: lottieData,
+    });
+    lottieAnim.goToAndStop(0, true);
+    document.body.classList.add('lottie-on');
+} catch {
+    lottieAnim = null;
+}
 // a failed art load would show a broken-image glyph; drop the src so it falls back to the grey box
 elArt.addEventListener('error', () => elArt.removeAttribute('src'));
 elArtBg.addEventListener('error', () => elArtBg.removeAttribute('src'));
@@ -322,9 +343,21 @@ const startRaf = () => { if (!rafId) rafId = requestAnimationFrame(rafSeek); };
 
 // transport/ audio events
 
+// play/pause icon: lottie morph when available, static svg icons as fallback.
+// resumes from the current morph frame so rapid toggles stay smooth
+function setPlayIcon(playing: boolean): void {
+    if (lottieAnim) {
+        const f = lottieAnim.currentFrame;
+        if (playing) lottieAnim.playSegments(f > 0 && f < 12 ? [f, 12] : [0, 12], true);
+        else lottieAnim.playSegments(f > 0 && f < 12 ? [f, 0] : [12, 0], true);
+    } else {
+        iPlay.style.display = playing ? 'none' : 'block';
+        iPause.style.display = playing ? 'block' : 'none';
+    }
+}
+
 audio.addEventListener('play', () => {
-    iPlay.style.display = 'none';
-    iPause.style.display = 'block';
+    setPlayIcon(true);
     document.body.classList.remove('paused');
     syncBaseline();
     startRaf();
@@ -332,8 +365,7 @@ audio.addEventListener('play', () => {
     sendSession(true);
 });
 audio.addEventListener('pause', () => {
-    iPlay.style.display = 'block';
-    iPause.style.display = 'none';
+    setPlayIcon(false);
     document.body.classList.add('paused');
     emitNowPlaying(true);
     sendSession(true);

@@ -111,6 +111,12 @@
         .btn-play:hover { transform: scale(1.06); color: var(--bg); }
         /* press feedback: quick shrink on click, springs back on release */
         .btn-play:active { transform: scale(.97); transition: transform .08s ease; }
+        /* lottie play/pause morph (triangle <-> two bars). colors/thickness
+        are overridden so the artwork follows the theme */
+        #lottie-play { width: 16px; height: 16px; }
+        #lottie-play svg * { fill: var(--bg); stroke: var(--bg); stroke-width: 22; }
+        /* the static fallback icons are hidden while the lottie morph is active */
+        body.lottie-on #i-play, body.lottie-on #i-pause { display: none !important; }
 
         .prog { display: flex; align-items: center; gap: 9px; width: 100%; font-size: 11px; color: var(--sub); }
         input[type="range"] {
@@ -170,6 +176,7 @@
                     <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 5V19M18 6L10 12L18 18V6Z"/></svg>
                 </button>
                 <button id="btn-play" class="btn btn-play" title="Play / Pause">
+                    <div id="lottie-play"></div>
                     <svg id="i-play" width="15" height="15" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 5L19 12L7 19V5Z"/></svg>
                     <svg id="i-pause" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M8 5V19M16 5V19"/></svg>
                 </button>
