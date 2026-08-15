@@ -801,6 +801,7 @@ async function init() {
         playerView.webContents.send('player:blur', store.get('miniBlur', 18));
         playerView.webContents.send('player:opacity', store.get('miniOpacity', 100));
         playerView.webContents.send('player:info-spacing', store.get('infoSpacing', 3));
+        playerView.webContents.send('player:seek-width', store.get('seekbarWidth', 560));
         playerView.webContents.send('player:marquee-speed', store.get('marqueeSpeed', 50));
         const lt = store.get('lastTrack') as any;
         if (lt && lt.track && lt.track.id) {
@@ -2861,6 +2862,7 @@ const entry: DlEntry = { id: entryId, name: `${rel.albumArtist} - ${rel.album}`,
             miniBlur: store.get('miniBlur', 18),
             miniOpacity: store.get('miniOpacity', 100),
             infoSpacing: store.get('infoSpacing', 3),
+            seekbarWidth: store.get('seekbarWidth', 560),
             marqueeSpeed: store.get('marqueeSpeed', 50),
             tooltips: store.get('tooltips', true) !== false,
             font: chromeFontKey(),
@@ -3012,6 +3014,13 @@ const entry: DlEntry = { id: entryId, name: `${rel.albumArtist} - ${rel.album}`,
                 store.set('marqueeSpeed', m);
                 if (playerView && !playerView.webContents.isDestroyed()) {
                     playerView.webContents.send('player:marquee-speed', m);
+                }
+            }
+            if (typeof data.seekbarWidth === 'number') {
+                const w = Math.min(900, Math.max(300, Math.round(data.seekbarWidth)));
+                store.set('seekbarWidth', w);
+                if (playerView && !playerView.webContents.isDestroyed()) {
+                    playerView.webContents.send('player:seek-width', w);
                 }
             }
             if (typeof data.tooltips === 'boolean') {

@@ -100,7 +100,7 @@
         .title.link, .artist.link { cursor: pointer; }
         .title.link:hover, .artist.link:hover { text-decoration: underline; }
 
-        .center { position: absolute; left: 50%; transform: translateX(-50%); width: 320px; max-width: calc(100% - 330px); display: flex; flex-direction: column; align-items: center; gap: 5px; }
+        .center { position: absolute; left: 50%; transform: translateX(-50%); width: var(--seek-width, 560px); max-width: calc(100% - 330px); display: flex; flex-direction: column; align-items: center; gap: 5px; transition: width .3s ease; }
         /* setting: seekbar above the transport buttons */
         body.seek-top .center { flex-direction: column-reverse; }
         .transport { display: flex; align-items: center; gap: 18px; }

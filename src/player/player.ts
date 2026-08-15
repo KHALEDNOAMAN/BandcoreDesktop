@@ -444,6 +444,13 @@ ipcRenderer.on('player:info-spacing', (_e, px: unknown) => {
     document.documentElement.style.setProperty('--info-gap', g + 'px');
 });
 
+// settings: seekbar width (the width of the center column holding it)
+ipcRenderer.on('player:seek-width', (_e, px: unknown) => {
+    const raw = Number(px);
+    const w = Math.min(900, Math.max(300, Math.round(Number.isFinite(raw) ? raw : 560)));
+    document.documentElement.style.setProperty('--seek-width', w + 'px');
+});
+
 // settings: marquee speed as a percentage of the default 40px/s; 0 disables
 // the marquee entirely (plain ellipsis, no edge fades)
 let marqueeSpeed = 50;
