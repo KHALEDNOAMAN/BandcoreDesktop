@@ -887,6 +887,144 @@ export class BandcampApi {
         }
     }
 
+    // --- artist pages (the artist view) --------------------------------------
+
+    /** one artist page's worth of data for the artist view: identity, banner,
+     * follow state, bio and the discography (tralbum ids, art, page urls). all
+     * from the server-rendered page: the data-band json, the follow-info
+     * attribute and the discography array attribute on the grid section. */
+    async getArtistPage(url: string): Promise<ArtistPageData> {
+        const fail = (error: string): ArtistPageData => ({ ok: false, error, bandId: '', name: '', url, photoUrl: '', bannerUrl: '', location: '', website: '', bio: '', isFollowing: false, discography: [] });
+        const session = this.getSession();
+        if (!session || !url) return fail('no query');
+        this.noteInteractive(); // user-driven: the index crawler yields
+        try {
+            const r = await session.fetch(url, { credentials: 'include' } as any);
+            if (!r.ok) { this.notify429(r.status); return fail('page fetch failed (' + r.status + ')'); }
+            const html = await r.text();
+            const decode = (s: string): string => String(s || '')
+                .replace(/&quot;/g, '"').replace(/&#0*39;/g, "'")
+                .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+                .replace(/&amp;/g, '&');
+            const jsonAttr = (name: string): any | null => {
+                const m = html.match(new RegExp(name + '="([^"]+)"'));
+                if (!m) return null;
+                try { return JSON.parse(decode(m[1])); } catch { return null; }
+            };
+            const band = jsonAttr('data-band');
+            const followInfo = jsonAttr('data-band-follow-info');
+            if (!band || !followInfo) return fail('not an artist page');
+            const bandId = toId(band.id);
+            const bandUrl = String(band.url || band.https_url || '').trim();
+            const name = String(band.name || '').trim();
+            // artist photo: the follow-info carries the band image id; the
+            // banner is the desktop header image. artist images live under
+            // img/{id}_{fmt} (no 'a' prefix - that's album art).
+            const photoUrl = followInfo.band_image_id
+                ? `https://f4.bcbits.com/img/${toId(followInfo.band_image_id)}_23.jpg` : '';
+            const bannerUrl = band.header_desktop?.image_id
+                ? `https://f4.bcbits.com/img/${toId(band.header_desktop.image_id)}_100.png` : '';
+            // "Name.\nUK.\n" - the location is the second line of the meta
+            let location = '';
+            const md = html.match(/<meta name="description" content="([^"]*)"/);
+            if (md) {
+                const lines = String(md[1]).replace(/&amp;/g, '&').split(/\s*\n\s*/).map((s) => s.trim()).filter(Boolean);
+                if (lines.length > 1) location = lines.slice(1).join(' ');
+            }
+            const site = Array.isArray(band.sites) ? band.sites.map((s: any) => String(s.url || '')).find(Boolean) : '';
+            // the discography grid section carries the release list as a
+            // data-client-items array right before the first music-grid-item li
+            let discography: ArtistPageData['discography'] = [];
+            const gridIdx = html.indexOf('music-grid-item');
+            if (gridIdx !== -1) {
+                const attrIdx = html.lastIndexOf('data-client-items="', gridIdx);
+                if (attrIdx !== -1) {
+                    const start = attrIdx + 'data-client-items="'.length;
+                    const end = html.indexOf('"', start);
+                    if (end !== -1) {
+                        try {
+                            const rows: any[] = JSON.parse(decode(html.slice(start, end)));
+                            discography = rows
+                                .filter((x: any) => (x.type === 'album' || x.type === 'track') && x.id && x.page_url)
+                                .map((x: any): ArtistPageData['discography'][number] => ({
+                                    tralbumId: toId(x.id),
+                                    tralbumType: x.type === 'track' ? 't' : 'a',
+                                    title: String(x.title || '').trim(),
+                                    art: toId(x.art_id) ? `https://f4.bcbits.com/img/a${toId(x.art_id)}_9.jpg` : '',
+                                    url: bandUrl + String(x.page_url || ''),
+                                    artist: String(x.artist || name).trim(),
+                                }));
+                        } catch { /* unreadable list - leave empty */ }
+                    }
+                }
+            }
+            let bio = '';
+            const bioIdx = html.indexOf('signed-out-artists-bio-text');
+            if (bioIdx !== -1) {
+                const gt = html.indexOf('>', bioIdx);
+                const end = gt === -1 ? -1 : html.indexOf('</div>', gt);
+                if (gt !== -1 && end !== -1) bio = this.htmlToText(html.slice(gt + 1, end));
+            }
+            return {
+                ok: true,
+                bandId,
+                name,
+                url: bandUrl,
+                photoUrl,
+                bannerUrl,
+                location,
+                website: site,
+                bio,
+                isFollowing: !!followInfo.is_following,
+                discography,
+            };
+        } catch (e: any) {
+            return fail(e?.message || 'artist fetch failed');
+        }
+    }
+
+    /** follow/unfollow a band through the fan's session. the page's data-crumbs
+     * carry the signed crumb and follow-info the fan id; POST goes to the same
+     * /fan_follow_band_cb endpoint the site uses (multipart form). */
+    async followBand(bandUrl: string, bandId: string, follow: boolean): Promise<{ ok: boolean; isFollowing?: boolean; error?: string }> {
+        const session = this.getSession();
+        if (!session || !bandUrl || !bandId) return { ok: false, error: 'no query' };
+        this.noteInteractive();
+        try {
+            const r = await session.fetch(bandUrl, { credentials: 'include' } as any);
+            if (!r.ok) { this.notify429(r.status); return { ok: false, error: 'page fetch failed (' + r.status + ')' }; }
+            const html = await r.text();
+            const decode = (s: string): string => String(s || '')
+                .replace(/&quot;/g, '"').replace(/&#0*39;/g, "'")
+                .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+                .replace(/&amp;/g, '&');
+            const crumbsM = html.match(/id="js-crumbs-data" data-crumbs="([^"]+)"/);
+            const followM = html.match(/data-band-follow-info="([^"]+)"/);
+            if (!crumbsM || !followM) return { ok: false, error: 'follow data missing (not signed in?)' };
+            let crumb = '';
+            let fanId = '';
+            try {
+                const crumbs = JSON.parse(decode(crumbsM[1]));
+                crumb = String(crumbs.fan_follow_band_cb || '');
+                const fi = JSON.parse(decode(followM[1]));
+                fanId = toId(fi.fan_id);
+            } catch { return { ok: false, error: 'unreadable follow data' }; }
+            if (!crumb || !fanId) return { ok: false, error: 'follow data missing (not signed in?)' };
+            const fd = new FormData();
+            fd.append('band_id', bandId);
+            fd.append('action', follow ? 'follow' : 'unfollow');
+            fd.append('fan_id', fanId);
+            fd.append('crumb', crumb);
+            const post = await session.fetch('https://bandcamp.com/fan_follow_band_cb', { method: 'POST', credentials: 'include', body: fd } as any);
+            if (!post.ok) { this.notify429(post.status); return { ok: false, error: 'follow failed (' + post.status + ')' }; }
+            const d: any = await post.json();
+            if (d?.ok && typeof d.is_following === 'boolean') return { ok: true, isFollowing: d.is_following };
+            return { ok: false, error: d?.error_message || d?.error || 'follow failed' };
+        } catch (e: any) {
+            return { ok: false, error: e?.message || 'follow failed' };
+        }
+    }
+
     // --- bandcamp fan playlists (import) -------------------------------------
 
     /** fetch + parse a fan playlist page (bandcamp.com/playlist/…). */
@@ -1079,6 +1217,29 @@ export interface BandcampPlaylistPage {
     description: string;
     imageId: number;
     tracks: BandcampPlaylistTrack[];
+}
+
+/** everything the artist view needs about one band. */
+export interface ArtistPageData {
+    ok: boolean;
+    error?: string;
+    bandId: string;
+    name: string;
+    url: string;
+    photoUrl: string;
+    bannerUrl: string;
+    location: string;
+    website: string;
+    bio: string;
+    isFollowing: boolean;
+    discography: {
+        tralbumId: string;
+        tralbumType: 'a' | 't';
+        title: string;
+        art: string;
+        url: string;
+        artist: string;
+    }[];
 }
 
 export function playlistPageError(error: string): BandcampPlaylistPage {

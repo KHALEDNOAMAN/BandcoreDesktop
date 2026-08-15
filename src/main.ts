@@ -10,6 +10,7 @@ import { autoUpdater } from 'electron-updater';
 import { PresenceService } from './services/presenceService';
 import { LastfmService } from './services/lastfmService';
 import { BandcampApi, parseBandcampPlaylistBlob } from './services/bandcampApi';
+import type { ArtistPageData } from './services/bandcampApi';
 import { buildExtractorScript } from './services/queueExtractor';
 import { buildId3v23 } from './services/id3';
 import { readLocalTags, AUDIO_EXTENSIONS } from './services/localTags';
@@ -247,6 +248,8 @@ let collectionView: BrowserView;
 let collectionVisible = false;
 let feedView: BrowserView;
 let feedVisible = false;
+let artistView: BrowserView;
+let artistVisible = false;
 let spotlightWin: BrowserWindow | null = null; // macOS-spotlight-style search popup
 
 interface Tab { id: number; view: BrowserView; title: string; }
@@ -313,9 +316,10 @@ function adjustContentViews() {
         height: height - (headerHeight + playerHeight),
     };
     contentView.setBounds(contentRect);
-    // collection / feed views (added only while open) fill the content area
+    // collection / feed / artist views (added only while open) fill the content area
     if (collectionView && collectionVisible) collectionView.setBounds(contentRect);
     if (feedView && feedVisible) feedView.setBounds(contentRect);
+    if (artistView && artistVisible) artistView.setBounds(contentRect);
 }
 
 function setupTray() {
@@ -386,6 +390,25 @@ function closeFeed() {
     if (feedVisible && feedView) mainWindow.removeBrowserView(feedView);
     feedVisible = false;
     if (headerView && !headerView.webContents.isDestroyed()) headerView.webContents.send('feed:state', false);
+}
+
+// close the artist view (its own back button / any overlay toggle)
+function closeArtistView() {
+    if (artistVisible && artistView) mainWindow.removeBrowserView(artistView);
+    artistVisible = false;
+}
+
+// open the artist view above whatever's showing (usually the collection's
+// search grid, so its back button returns to the results). header/player stay
+// on top like with every other overlay.
+function openArtistView() {
+    if (artistVisible) return;
+    artistVisible = true;
+    mainWindow.addBrowserView(artistView);
+    mainWindow.setTopBrowserView(headerView); // keep header/player above it
+    mainWindow.setTopBrowserView(playerView);
+    adjustContentViews();
+    artistView.webContents.send('artist:shown');
 }
 
 // close the spotlight search popup (results are wiped on close by the popup itself)
@@ -798,9 +821,18 @@ async function init() {
     feedView.setBackgroundColor(chromeBg());
     feedView.webContents.on('dom-ready', () => applyChromeTheme(feedView.webContents));
 
+    artistView = new BrowserView({
+        webPreferences: { nodeIntegration: true, contextIsolation: false, devTools: devMode }
+    });
+    artistView.setBackgroundColor(chromeBg());
+    artistView.webContents.on('dom-ready', () => applyChromeTheme(artistView.webContents));
+
     if (devMode) {
         feedView.webContents.on('did-fail-load', (_e, code, desc, url) =>
             console.log('[bcrpc] feed view FAILED ' + code + ' ' + desc + ' ' + url));
+        artistView.webContents.on('did-finish-load', () => console.log('[bcrpc] artist view loaded'));
+        artistView.webContents.on('did-fail-load', (_e, code, desc, url) =>
+            console.log('[bcrpc] artist view FAILED ' + code + ' ' + desc + ' ' + url));
     }
 
     mainWindow.addBrowserView(contentView);
@@ -812,8 +844,9 @@ async function init() {
 
     collectionView.webContents.loadFile(path.join(__dirname, 'collection', 'collection.html'));
     feedView.webContents.loadFile(path.join(__dirname, 'feed', 'feed.html'));
+    artistView.webContents.loadFile(path.join(__dirname, 'artist', 'artist.html'));
     // shortcuts work no matter which pane has focus
-    for (const v of [headerView, playerView, collectionView, feedView]) wireShortcutsOn(v.webContents);
+    for (const v of [headerView, playerView, collectionView, feedView, artistView]) wireShortcutsOn(v.webContents);
 
     // opt-in (settings, off by default): pre-fetch the collection in the background
     // right after startup so opening the view is instant. small delay so the fetch
@@ -1220,12 +1253,17 @@ async function init() {
         }
     });
 
-    // click a result in the collection overlay: albums/artists navigate the
-    // active tab (overlay closes so the page isn't loading invisibly below it),
-    // tracks play straight from the overlay (single-track, like the spotlight).
+    // click a result in the collection overlay: albums navigate the active tab
+    // (overlay closes so the page isn't loading invisibly below it), artists
+    // open the artist view, tracks play straight from the overlay (single-track,
+    // like the spotlight).
     ipcMain.on('search:open-result', (_e, req: { type?: string; url?: string; bandId?: string; albumId?: string; trackId?: string }) => {
         const url = typeof req?.url === 'string' ? req.url : '';
         if (!/^https:\/\//.test(url)) return;
+        if (req?.type === 'artist') {
+            ipcMain.emit('artist:open', null, { url });
+            return;
+        }
         if (req?.type === 'track') {
             const albumId = toIdStr(req.albumId || '');
             const trackId = toIdStr(req.trackId || '');
@@ -1261,6 +1299,69 @@ async function init() {
             return { ok: true, tracks };
         } catch (err: any) {
             return { ok: false, error: err?.message || 'resolve failed', tracks: [] };
+        }
+    });
+
+    // the artist view: fetch the artist's page and hand everything to the view.
+    // on failure fall back to navigating the active tab to the artist's page.
+    ipcMain.on('artist:open', async (_e, req: { url?: string }) => {
+        const url = typeof req?.url === 'string' ? req.url : '';
+        if (!/^https:\/\//.test(url)) return;
+        if (devMode) console.log('[bcrpc:artist] open ' + url);
+        let data: ArtistPageData;
+        try {
+            data = await bandcampApi.getArtistPage(url);
+        } catch (err: any) {
+            data = { ok: false, error: (err && (err.message || err)) || 'artist fetch threw', bandId: '', name: '', url, photoUrl: '', bannerUrl: '', location: '', website: '', bio: '', isFollowing: false, discography: [] };
+        }
+        if (!data.ok) {
+            if (devMode) console.log('[bcrpc:artist] fetch failed: ' + (data.error || ''));
+            closeArtistView();
+            hardLoad(url);
+            return;
+        }
+        if (devMode) console.log('[bcrpc:artist] ' + data.name + ' n=' + data.discography.length + ' following=' + data.isFollowing);
+        openArtistView();
+        if (artistView && !artistView.webContents.isDestroyed()) {
+            artistView.webContents.send('artist:data', { data });
+        }
+    });
+
+    // the view's back button returns to whatever was underneath
+    ipcMain.on('artist:close', () => closeArtistView());
+
+    // follow/unfollow through the fan's session; the view flips its button from
+    // the {isFollowing} in the response.
+    ipcMain.on('artist:follow', async (_e, req: { url?: string; bandId?: string; follow?: boolean }) => {
+        const url = typeof req?.url === 'string' ? req.url : '';
+        const bandId = toIdStr(req?.bandId || '');
+        const follow = !!req?.follow;
+        const res = await bandcampApi.followBand(url, bandId, follow);
+        if (devMode) console.log('[bcrpc:artist] follow=' + follow + ' ok=' + res.ok + (res.isFollowing !== undefined ? ' now=' + res.isFollowing : '') + (res.error ? ' err=' + res.error : ''));
+        if (artistView && !artistView.webContents.isDestroyed()) {
+            artistView.webContents.send('artist:follow-result', { ok: res.ok, isFollowing: res.isFollowing, error: res.error });
+        }
+    });
+
+    // play the full discography: resolve every release in page order (the
+    // artist's own discography ordering) and hand the concatenated tracklist
+    // to the player as one queue.
+    ipcMain.on('artist:play', async (_e, req: { discography?: { tralbumId?: string; tralbumType?: string; bandId?: string }[] }) => {
+        const rows = Array.isArray(req?.discography) ? req.discography : [];
+        const queue: PlayerTrack[] = [];
+        for (const row of rows) {
+            const tralbumId = toIdStr(row?.tralbumId || '');
+            const bandId = toIdStr(row?.bandId || '');
+            if (!tralbumId) continue;
+            try {
+                const resolved = await resolveRelease({ tralbumId, tralbumType: row?.tralbumType === 't' ? 't' : 'a', bandId });
+                queue.push(...resolved.tracks);
+            } catch { /* skip release that refuses to resolve */ }
+        }
+        if (devMode) console.log('[bcrpc:artist] play discography -> ' + queue.length + ' tracks');
+        if (queue.length && playerView && !playerView.webContents.isDestroyed()) {
+            trapSeq++; // supersede any in flight page trap
+            playerView.webContents.send('player:stream-incoming', { queue, activeIndex: 0, context: 'artist', format: 'raw' });
         }
     });
 

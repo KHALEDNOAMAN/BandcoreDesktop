@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Artist</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; scrollbar-width: none; -ms-overflow-style: none; }
+        ::-webkit-scrollbar { width: 0; height: 0; display: none; }
+        :root {
+            --bg: #181a1b; --titlebar: #121415; --input: #121415; --bar: #1b1e1f;
+            --panel: #161819; --card: #202325; --hover-bg: #24282a;
+            --line: #2a2e30; --line-2: #1e2224; --scroll: #3a3f42;
+            --text: #e8e6e3; --text-2: #cfcac2; --muted: #9a968e; --sub: #848079;
+            --accent: #1da0c3; --hover-text: #ffffff;
+        }
+        html, body { height: 100%; }
+        body {
+            background: var(--bg); color: var(--text); overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Roboto, sans-serif;
+            display: flex; flex-direction: column; user-select: none;
+        }
+        .topbar {
+            display: flex; align-items: center; gap: 12px; padding: 10px 18px;
+            border-bottom: 1px solid var(--line); background: var(--bar); flex-shrink: 0;
+        }
+        .back {
+            display: inline-flex; align-items: center; gap: 6px; background: var(--hover-bg);
+            border: 1px solid var(--line); color: var(--text); border-radius: 6px;
+            padding: 6px 12px; font-size: 12px; cursor: pointer; font-family: inherit;
+        }
+        .back:hover { border-color: var(--accent); }
+        .back svg { width: 14px; height: 14px; display: block; }
+        .crumb { font-size: 12px; color: var(--sub); }
+        .crumb b { color: var(--text); font-weight: 600; }
+        .scroll { flex: 1; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--scroll) transparent; }
+        .hero {
+            position: relative; padding: 34px 26px 22px; overflow: hidden;
+            display: flex; gap: 22px; align-items: flex-end; border-bottom: 1px solid var(--line);
+        }
+        .hero-bg {
+            position: absolute; left: -40px; top: -60px; right: -40px; bottom: -40px;
+            background-size: cover; background-position: center;
+            filter: blur(26px) brightness(.34) saturate(1.15);
+            transform: scale(1.25); pointer-events: none;
+        }
+        .hero-bg.fade {
+            -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 55%, transparent 100%);
+            mask-image: linear-gradient(to bottom, #000 0%, #000 55%, transparent 100%);
+        }
+        .hero-photo {
+            width: 150px; height: 150px; border-radius: 10px; object-fit: cover;
+            border: 1px solid rgba(255,255,255,.12); position: relative;
+            box-shadow: 0 10px 30px rgba(0,0,0,.45); flex-shrink: 0;
+            background: var(--line);
+        }
+        .hero-info { position: relative; min-width: 0; padding-bottom: 2px; }
+        .hero-name { font-size: 30px; font-weight: 800; letter-spacing: -.02em; line-height: 1.15; text-shadow: 0 2px 12px rgba(0,0,0,.5); }
+        .hero-meta { font-size: 12px; color: var(--muted); margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+        .hero-meta .dot { color: var(--sub); }
+        .hero-meta a { color: var(--muted); text-decoration: none; }
+        .hero-meta a:hover { color: var(--accent); text-decoration: underline; }
+        .hero-btns { display: flex; gap: 10px; margin-top: 16px; }
+        .hbtn {
+            display: inline-flex; align-items: center; gap: 8px; border-radius: 999px;
+            border: 1px solid var(--line); background: var(--hover-bg); color: var(--text);
+            padding: 9px 20px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;
+        }
+        .hbtn:hover { border-color: var(--accent); }
+        .hbtn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+        .hbtn.primary:hover { filter: brightness(1.12); }
+        .hbtn svg { width: 15px; height: 15px; display: block; }
+        .hbtn.following { background: transparent; color: var(--muted); }
+        .hbtn.following:hover { color: var(--text); border-color: var(--line); }
+        .bio { padding: 16px 26px 4px; font-size: 13px; color: var(--muted); line-height: 1.6; max-width: 860px; }
+        .section { padding: 18px 26px 6px; }
+        .section h2 {
+            font-size: 14px; font-weight: 700; letter-spacing: .02em; margin-bottom: 14px;
+            display: flex; align-items: baseline; gap: 10px;
+        }
+        .section h2 .cnt { font-size: 11px; color: var(--sub); font-weight: 500; }
+        .grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 16px;
+            align-content: start; padding-bottom: 10px;
+        }
+        .card { cursor: pointer; }
+        .card .art {
+            width: 100%; aspect-ratio: 1 / 1; border-radius: 6px; background: var(--line);
+            object-fit: cover; display: block; transition: transform .12s ease;
+        }
+        .card:hover .art { transform: scale(1.03); outline: 2px solid var(--accent); }
+        .card .t { font-size: 12px; margin-top: 7px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .card .a { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+        .card .y { font-size: 10px; color: var(--sub); margin-top: 1px; }
+        .state { padding: 40px 26px; color: var(--muted); font-size: 13px; }
+
+        /* inline tracklist panel: same treatment as the collection's */
+        .tlinline {
+            position: relative;
+            grid-column: 1 / -1; display: flex; gap: 24px; align-items: flex-start;
+            background: color-mix(in srgb, var(--bar) 86%, transparent);
+            backdrop-filter: blur(6px);
+            border: 1px solid var(--line); border-radius: 10px;
+            padding: 20px; margin: 4px 0; height: max-content;
+            animation: tlslide .18s ease;
+        }
+        @keyframes tlslide { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+        .tlbg {
+            position: absolute; left: 0; top: 0; bottom: 0; width: 40%;
+            border-radius: 9px; overflow: hidden; pointer-events: none;
+            -webkit-mask-image: linear-gradient(to right, #000 0%, #000 45%, transparent 100%);
+            mask-image: linear-gradient(to right, #000 0%, #000 45%, transparent 100%);
+        }
+        .tlbg-img {
+            width: 100%; height: 100%; object-fit: cover;
+            filter: blur(18px) brightness(.5);
+            transform: scale(1.4);
+        }
+        .tlleft { width: 180px; flex-shrink: 0; position: sticky; top: 20px; }
+        .tlart { width: 100%; aspect-ratio: 1/1; border-radius: 6px; object-fit: cover; background: var(--line); display: block; }
+        .tltitle { font-size: 14px; font-weight: 600; margin-top: 12px; line-height: 1.3; }
+        .tlartist { font-size: 12px; color: var(--muted); margin-top: 4px; }
+        .tlyear { font-size: 11px; color: var(--sub); margin-top: 2px; }
+        .tlbtns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+        .tlbtns button {
+            background: var(--hover-bg); border: 1px solid var(--line); color: var(--text);
+            border-radius: 6px; padding: 6px 12px; font-size: 11px; cursor: pointer; font-family: inherit;
+            flex: 1; text-align: center;
+        }
+        .tlbtns .tlplayall { background: var(--accent); border-color: var(--accent); color: #fff; flex: 100%; }
+        .tlbtns button:hover { filter: brightness(1.12); }
+        .tlright {
+            position: relative; flex: 1; display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 4px 24px; align-content: start;
+        }
+        .tlstate { color: var(--muted); font-size: 13px; padding: 8px 0; grid-column: 1 / -1; }
+        .tlrow {
+            display: flex; align-items: center; gap: 10px; padding: 6px 8px; cursor: pointer;
+            font-size: 13px; border-radius: 5px; height: 32px;
+        }
+        .tlrow:hover { background: rgba(255,255,255,.06); }
+        .tlnum { width: 20px; text-align: right; color: var(--sub); font-size: 12px; flex-shrink: 0; }
+        .tltrk { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .tldur { color: var(--sub); font-size: 12px; flex-shrink: 0; }
+        .tlq {
+            width: 22px; height: 22px; border: none; border-radius: 50%; background: rgba(24,26,27,.82);
+            color: #fff; font-size: 14px; line-height: 1; cursor: pointer; flex-shrink: 0;
+            display: inline-flex; align-items: center; justify-content: center;
+        }
+        .tlq:hover { background: var(--accent); }
+        .tlq svg { width: 12px; height: 12px; }
+        .err { padding: 40px 26px; color: var(--muted); font-size: 13px; }
+    </style>
+</head>
+<body>
+    <div class="topbar">
+        <button class="back" id="back">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+            Back
+        </button>
+        <div class="crumb" id="crumb"></div>
+    </div>
+    <div class="scroll" id="scroll">
+        <div class="hero" id="hero">
+            <div class="hero-bg fade" id="hero-bg"></div>
+            <img class="hero-photo" id="hero-photo" alt="">
+            <div class="hero-info">
+                <div class="hero-name" id="hero-name"></div>
+                <div class="hero-meta" id="hero-meta"></div>
+                <div class="hero-btns">
+                    <button class="hbtn primary" id="playall">
+                        Play discography
+                    </button>
+                    <button class="hbtn" id="follow">Follow</button>
+                </div>
+            </div>
+        </div>
+        <div class="bio" id="bio"></div>
+        <div class="section" id="sec-albums">
+            <h2>Albums <span class="cnt" id="albums-cnt"></span></h2>
+            <div class="grid" id="albums"></div>
+        </div>
+        <div class="section" id="sec-singles">
+            <h2>Singles &amp; EPs <span class="cnt" id="singles-cnt"></span></h2>
+            <div class="grid" id="singles"></div>
+        </div>
+        <div class="err" id="err" style="display:none"></div>
+    </div>
+    <script>
+        const { ipcRenderer } = require('electron');
+        const ICONS = { plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>' };
+        const $ = (id) => document.getElementById(id);
+        const escapeHtml = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        const fmtDur = (s) => (!s || s < 0 ? '' : Math.floor(s / 60) + ':' + Math.floor(s % 60).toString().padStart(2, '0'));
+
+        let data = null;
+        let tlEl = null;
+        let openId = '';
+        const closeTracklist = () => { if (tlEl) { tlEl.remove(); tlEl = null; } openId = ''; };
+
+        function endOfRow(card) {
+            const grid = card.parentElement;
+            const cards = Array.from(grid.querySelectorAll('.card'));
+            const top = card.offsetTop;
+            let last = card;
+            for (const c of cards) { if (c.offsetTop === top) last = c; else if (c.offsetTop > top) break; }
+            return last;
+        }
+
+        function buildCard(row, index, grid, clickHandler) {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.title = row.url;
+            card.innerHTML =
+                `<div class="artwrap"><img class="art" loading="lazy" src="${(row.art || '').replace(/"/g, '&quot;')}"></div>` +
+                `<div class="t">${escapeHtml(row.title)}</div>` +
+                `<div class="a">${escapeHtml(row.artist || data.name || '')}</div>`;
+            card.id = 'card-' + index;
+            card.addEventListener('click', () => { void clickHandler(row, card); });
+            grid.appendChild(card);
+            return card;
+        }
+
+        async function toggleTracklist(row, card) {
+            const id = card.id;
+            const wasOpen = openId === id && !!tlEl;
+            closeTracklist();
+            if (wasOpen) return;
+            openId = id;
+            const panel = document.createElement('div');
+            panel.className = 'tlinline';
+            panel.addEventListener('click', (e) => e.stopPropagation());
+            panel.innerHTML =
+                (row.art ? `<div class="tlbg"><img class="tlbg-img" src="${row.art.replace(/"/g, '&quot;')}" alt=""></div>` : '') +
+                `<div class="tlleft"><img class="tlart" src="${(row.art || '').replace(/"/g, '&quot;')}">` +
+                `<div class="tltitle">${escapeHtml(row.title)}</div>` +
+                `<div class="tlartist">${escapeHtml(row.artist || data.name || '')}</div>` +
+                `<div class="tlbtns"><button class="tlplayall">Play all</button>` +
+                `<button class="tlqueue">Queue</button><button class="tlclosebtn">Close</button></div></div>` +
+                `<div class="tlright"><div class="tlstate">loading tracklist…</div></div>`;
+            endOfRow(card).after(panel);
+            tlEl = panel;
+            const right = panel.querySelector('.tlright');
+            panel.querySelector('.tlclosebtn').addEventListener('click', closeTracklist);
+            const q = { tralbumId: String(row.tralbumId), tralbumType: row.tralbumType, bandId: String(data.bandId) };
+            panel.querySelector('.tlplayall').addEventListener('click', () => { void ipcRenderer.invoke('collection:play', { ...q, activeIndex: 0 }); });
+            panel.querySelector('.tlqueue').addEventListener('click', async (e) => {
+                const b = e.target; b.textContent = 'adding…';
+                const r = await ipcRenderer.invoke('collection:enqueue', q);
+                b.textContent = r && r.ok ? 'added ✓' : 'failed';
+            });
+            const res = await ipcRenderer.invoke('collection:tracklist', q);
+            if (tlEl !== panel) return;
+            if (!res.ok || !res.tracks || !res.tracks.length) {
+                right.innerHTML = `<div class="tlstate">couldn't load the tracklist</div>`;
+                return;
+            }
+            if (res.year) {
+                const yr = panel.querySelector('.tlartist');
+                yr.textContent = (yr.textContent + ' · ' + res.year).trim();
+            }
+            right.innerHTML = '';
+            res.tracks.forEach((t, i) => {
+                const rowEl = document.createElement('div');
+                rowEl.className = 'tlrow';
+                rowEl.innerHTML =
+                    `<span class="tlnum">${i + 1}</span>` +
+                    `<span class="tltrk">${escapeHtml(t.title)}</span>` +
+                    `<span class="tldur">${fmtDur(t.duration)}</span>`;
+                rowEl.addEventListener('click', () => { void ipcRenderer.invoke('collection:play', { ...q, activeIndex: i }); });
+                if (t.id) {
+                    const btn = document.createElement('button');
+                    btn.className = 'tlq';
+                    btn.title = 'add this song to queue';
+                    btn.innerHTML = ICONS.plus;
+                    btn.addEventListener('click', async (ev) => {
+                        ev.stopPropagation();
+                        btn.textContent = '…';
+                        const r = await ipcRenderer.invoke('collection:enqueue', { ...q, trackId: t.id });
+                        btn.textContent = r && r.ok ? '✓' : '×';
+                        setTimeout(() => { btn.innerHTML = ICONS.plus; }, 900);
+                    });
+                    rowEl.appendChild(btn);
+                }
+                right.appendChild(rowEl);
+            });
+        }
+
+        function render(d) {
+            data = d;
+            closeTracklist();
+            $('crumb').innerHTML = `artist · <b>${escapeHtml(d.name)}</b>`;
+            $('hero-bg').style.backgroundImage = d.bannerUrl ? `url("${d.bannerUrl}")` : (d.photoUrl ? `url("${d.photoUrl}")` : '');
+            const photo = $('hero-photo');
+            if (d.photoUrl) photo.src = d.photoUrl; else photo.style.display = 'none';
+            $('hero-name').textContent = d.name;
+            const metaParts = [];
+            if (d.location) metaParts.push(escapeHtml(d.location));
+            if (d.website) metaParts.push(`<a href="${escapeHtml(d.website)}">${escapeHtml(d.website)}</a>`);
+            $('hero-meta').innerHTML = metaParts.join(' <span class="dot">·</span> ');
+            $('bio').textContent = d.bio;
+            $('bio').style.display = d.bio ? '' : 'none';
+            const albums = d.discography.filter((r) => r.tralbumType === 'a');
+            const singles = d.discography.filter((r) => r.tralbumType === 't');
+            $('albums-cnt').textContent = albums.length ? `(${albums.length})` : '';
+            $('singles-cnt').textContent = singles.length ? `(${singles.length})` : '';
+            $('sec-albums').style.display = albums.length ? '' : 'none';
+            $('sec-singles').style.display = singles.length ? '' : 'none';
+            const ag = $('albums');
+            const sg = $('singles');
+            ag.innerHTML = '';
+            sg.innerHTML = '';
+            albums.forEach((r, i) => buildCard(r, 'a' + i, ag, toggleTracklist));
+            singles.forEach((r, i) => {
+                buildCard(r, 't' + i, sg, (row) => {
+                    void ipcRenderer.invoke('collection:play', { tralbumId: String(row.tralbumId), tralbumType: 't', bandId: String(data.bandId), activeIndex: 0 });
+                });
+            });
+            $('playall').disabled = d.discography.length === 0;
+            $('playall').style.opacity = d.discography.length ? '' : '.4';
+            setFollowBtn(d.isFollowing);
+            $('err').style.display = 'none';
+        }
+
+        function setFollowBtn(following) {
+            const b = $('follow');
+            b.classList.toggle('following', !!following);
+            b.textContent = following ? 'Following' : 'Follow';
+        }
+
+        $('back').addEventListener('click', () => ipcRenderer.send('artist:close'));
+        $('follow').addEventListener('click', () => {
+            if (!data) return;
+            ipcRenderer.send('artist:follow', { url: data.url, bandId: data.bandId, follow: !data.isFollowing });
+            $('follow').textContent = '…';
+        });
+        $('playall').addEventListener('click', () => {
+            if (!data || !data.discography.length) return;
+            ipcRenderer.send('artist:play', {
+                discography: data.discography.map((r) => ({ tralbumId: r.tralbumId, tralbumType: r.tralbumType, bandId: data.bandId })),
+            });
+        });
+
+        ipcRenderer.on('artist:data', (_e, p) => {
+            const d = p && p.data;
+            if (!d || !d.ok) {
+                data = null;
+                $('err').textContent = (d && d.error) || 'couldn\'t load this artist';
+                $('err').style.display = '';
+                return;
+            }
+            render(d);
+        });
+        ipcRenderer.on('artist:follow-result', (_e, p) => {
+            if (!p) return;
+            if (p.ok && data) data.isFollowing = !!p.isFollowing;
+            setFollowBtn(data ? !!data.isFollowing : false);
+            if (!p.ok) {
+                $('follow').textContent = (p.error || 'failed') + ' — try again';
+                setTimeout(() => { if (data) setFollowBtn(data.isFollowing); }, 1800);
+            }
+        });
+    </script>
+</body>
+</html>
