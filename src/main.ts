@@ -507,7 +507,10 @@ const CHROME_FONTS: Record<string, { label: string; family: string }> = {
     lato: { label: 'Lato', family: "'Lato'" },
 };
 function chromeFontKey(): string {
-    const k = String(store.get('font', 'system'));
+    const k = String(store.get('font', 'grotesk'));
+    // one-time migration of the old system-default so existing installs pick
+    // up Space Grotesk as the default
+    if (k === 'system') { store.set('font', 'grotesk'); return 'grotesk'; }
     return CHROME_FONTS[k] ? k : 'system';
 }
 const fontCssCache = new Map<string, string>();
