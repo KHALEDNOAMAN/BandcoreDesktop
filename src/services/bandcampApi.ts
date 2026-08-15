@@ -934,29 +934,37 @@ export class BandcampApi {
             const site = Array.isArray(band.sites) ? band.sites.map((s: any) => String(s.url || '')).find(Boolean) : '';
             // the discography grid section carries the release list as a
             // data-client-items array right before the first music-grid-item li
-            let discography: ArtistPageData['discography'] = [];
-            const gridIdx = html.indexOf('music-grid-item');
-            if (gridIdx !== -1) {
-                const attrIdx = html.lastIndexOf('data-client-items="', gridIdx);
-                if (attrIdx !== -1) {
-                    const start = attrIdx + 'data-client-items="'.length;
-                    const end = html.indexOf('"', start);
-                    if (end !== -1) {
-                        try {
-                            const rows: any[] = JSON.parse(decode(html.slice(start, end)));
-                            discography = rows
-                                .filter((x: any) => (x.type === 'album' || x.type === 'track') && x.id && x.page_url)
-                                .map((x: any): ArtistPageData['discography'][number] => ({
-                                    tralbumId: toId(x.id),
-                                    tralbumType: x.type === 'track' ? 't' : 'a',
-                                    title: String(x.title || '').trim(),
-                                    art: toId(x.art_id) ? `https://f4.bcbits.com/img/a${toId(x.art_id)}_9.jpg` : '',
-                                    url: bandUrl + String(x.page_url || ''),
-                                    artist: String(x.artist || name).trim(),
-                                }));
-                        } catch { /* unreadable list - leave empty */ }
-                    }
-                }
+            const parseDiscography = (h: string): ArtistPageData['discography'] => {
+                const out: ArtistPageData['discography'] = [];
+                const gridIdx = h.indexOf('music-grid-item');
+                if (gridIdx === -1) return out;
+                const attrIdx = h.lastIndexOf('data-client-items="', gridIdx);
+                if (attrIdx === -1) return out;
+                const start = attrIdx + 'data-client-items="'.length;
+                const end = h.indexOf('"', start);
+                if (end === -1) return out;
+                try {
+                    const rows: any[] = JSON.parse(decode(h.slice(start, end)));
+                    return rows
+                        .filter((x: any) => (x.type === 'album' || x.type === 'track') && x.id && x.page_url)
+                        .map((x: any): ArtistPageData['discography'][number] => ({
+                            tralbumId: toId(x.id),
+                            tralbumType: x.type === 'track' ? 't' : 'a',
+                            title: String(x.title || '').trim(),
+                            art: toId(x.art_id) ? `https://f4.bcbits.com/img/a${toId(x.art_id)}_9.jpg` : '',
+                            url: bandUrl + String(x.page_url || ''),
+                            artist: String(x.artist || name).trim(),
+                        }));
+                } catch { return out; }
+            };
+            let discography = parseDiscography(html);
+            // bands whose root url IS their (featured) tralbum page render no
+            // discography grid at all - the full catalog lives on /music.
+            if (!discography.length) {
+                try {
+                    const mu = await session.fetch(bandUrl.replace(/\/+$/, '') + '/music', { credentials: 'include' } as any);
+                    if (mu.ok) discography = parseDiscography(await mu.text());
+                } catch { /* keep the empty list */ }
             }
             let bio = '';
             const bioIdx = html.indexOf('signed-out-artists-bio-text');

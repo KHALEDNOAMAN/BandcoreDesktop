@@ -363,12 +363,13 @@ async function toggleSearchTracklist(it: SearchResultItem, card: HTMLElement): P
     const right = panel.querySelector('.tlright') as HTMLElement;
     panel.querySelector('.tlclosebtn')!.addEventListener('click', closeTracklist);
 
-    // resolve play ids: autocomplete items carry them, discover (genre) items
-    // only carry the release url.
+    // resolve play ids: autocomplete items carry them, discover (genre) and
+    // search-page items only carry the release url (search rows have no band id
+    // and the tralbum apis demand one, so the page has to be resolved for it).
     let q: { tralbumId: string; tralbumType: 'a' | 't'; bandId: string } | null = null;
     let rows: { id: string; title: string; duration: number }[] | null = null;
-    if (it.albumId || it.bandId) {
-        q = { tralbumId: String(it.albumId), tralbumType: 'a', bandId: String(it.bandId || '') };
+    if (it.albumId && it.bandId) {
+        q = { tralbumId: String(it.albumId), tralbumType: 'a', bandId: String(it.bandId) };
     } else {
         const resolved = await ipcRenderer.invoke('search:resolve', { url: it.url }) as
             { ok: boolean; tracks?: { id: string; title: string; duration: number; tralbumId: string; tralbumType: 'a' | 't'; bandId: string }[] };

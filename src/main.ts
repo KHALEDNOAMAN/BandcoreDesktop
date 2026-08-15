@@ -1257,7 +1257,7 @@ async function init() {
     // (overlay closes so the page isn't loading invisibly below it), artists
     // open the artist view, tracks play straight from the overlay (single-track,
     // like the spotlight).
-    ipcMain.on('search:open-result', (_e, req: { type?: string; url?: string; bandId?: string; albumId?: string; trackId?: string }) => {
+    ipcMain.on('search:open-result', async (_e, req: { type?: string; url?: string; bandId?: string; albumId?: string; trackId?: string }) => {
         const url = typeof req?.url === 'string' ? req.url : '';
         if (!/^https:\/\//.test(url)) return;
         if (req?.type === 'artist') {
@@ -1268,10 +1268,20 @@ async function init() {
             const albumId = toIdStr(req.albumId || '');
             const trackId = toIdStr(req.trackId || '');
             if (albumId || trackId) {
+                let bandId = toIdStr(req.bandId || '');
+                // search-page rows carry no band id (only the tralbum id) and
+                // the tralbum apis demand one: resolve the release page for it.
+                if (!bandId && req.url) {
+                    try {
+                        const tracks = await bandcampApi.fetchTracksFromUrl(req.url);
+                        const f = tracks[0];
+                        if (f && f.bandId) bandId = toIdStr(f.bandId);
+                    } catch { /* fall through to the bandless attempt */ }
+                }
                 void playTralbum({
                     tralbumId: albumId || trackId,
                     tralbumType: albumId ? 'a' : 't',
-                    bandId: toIdStr(req.bandId || ''),
+                    bandId,
                     trackId: trackId || undefined,
                     trackOnly: !!trackId,
                 });
