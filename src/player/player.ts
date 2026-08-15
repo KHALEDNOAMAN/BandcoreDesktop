@@ -165,11 +165,24 @@ elArtBgOld.removeAttribute('src');
 }
 
 // marquee: when the line overflows its box, scroll it; otherwise plain ellipsis.
-// duration scales with the text width so both lines always move at the same speed
+// the line gets a track holding two identical copies of the text and slides by
+// exactly one copy per loop, so the cycle is seamless (no jump back). duration
+// scales with the text width so both lines always move at the same speed
 function setupMarquee(line: HTMLElement, span: HTMLElement): void {
+    const oldTrack = line.querySelector('.mq-track');
+    if (oldTrack) {
+        oldTrack.remove();
+        line.appendChild(span);
+    }
     if (line.scrollWidth > line.clientWidth) {
-        line.classList.add('marquee');
+        const track = document.createElement('span');
+        track.className = 'mq-track';
+        track.appendChild(span);
+        track.appendChild(span.cloneNode(true));
+        line.appendChild(track);
+        line.style.setProperty('--w', `${line.clientWidth}px`);
         line.style.setProperty('--d', `${(line.scrollWidth + 80) / 40}s`);
+        line.classList.add('marquee');
     } else {
         line.classList.remove('marquee');
     }
