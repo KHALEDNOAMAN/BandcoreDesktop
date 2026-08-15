@@ -322,17 +322,21 @@
         }
         // font dropdown: options come from main's registry (settings:get),
         // where the font is validated + applied live on save
-        const fontSel = $('fontSel');
-        ipcRenderer.invoke('settings:get').then((s) => {
-            for (const f of (s && s.fontOptions) || []) {
-                const o = document.createElement('option');
-                o.value = f.key;
-                o.textContent = f.label;
-                if (f.family) o.style.fontFamily = f.family + ", -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif";
-                fontSel.appendChild(o);
-            }
-            if (s && s.font) fontSel.value = s.font;
-        }).catch(() => {});
+// font dropdown: options come from main's registry (settings:get); the
+// selection is tracked in fontChoice (load + change) so a late-resolving
+// settings:get can never snap the dropdown back to a stale value
+let fontChoice = 'system';
+const fontSel = $('fontSel');
+ipcRenderer.invoke('settings:get').then((s) => {
+    for (const f of (s && s.fontOptions) || []) {
+        const o = document.createElement('option');
+        o.value = f.key;
+        o.textContent = f.label;
+        if (f.family) o.style.fontFamily = f.family + ", -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif";
+        fontSel.appendChild(o);
+    }
+    fontSel.value = fontChoice;
+}).catch(() => {});
 
         // sidebar section switching
         const navItems = Array.from(document.querySelectorAll('.nav-item'));
@@ -486,6 +490,8 @@
             $('cacheReleases').checked = s.cacheReleases === true;
             refreshCacheInfo();
             $('themeSel').value = s.theme; // unknown keys snap back to dark via main
+            fontChoice = s.font || 'system';
+            $('fontSel').value = fontChoice;
             $('darkMode').checked = s.darkMode !== false; // dark pages by default
             // stored setting is "apply dark to artist pages" (default off); the
             // checkbox is the inverse ("disable…"), so it starts checked
@@ -523,7 +529,7 @@
             // theme applies instantly too (chrome palette swap is live)
             $('themeSel').addEventListener('change', () => { persist(); });
             // font applies instantly as well (chrome font swap is live)
-            $('fontSel').addEventListener('change', () => { persist(); });
+            $('fontSel').addEventListener('change', () => { fontChoice = $('fontSel').value; persist(); });
             $('darkMode').addEventListener('change', () => { persist(); });
             $('noDarkArtistPages').addEventListener('change', () => { persist(); });
             $('downloadDir').value = s.downloadDir || '';
@@ -585,7 +591,7 @@
                 musicFolderScan: $('musicFolderScan').checked,
                 cacheReleases: $('cacheReleases').checked,
                 theme: $('themeSel').value,
-                font: $('fontSel').value,
+                font: fontChoice,
                 darkMode: $('darkMode').checked,
                 darkArtistPages: !$('noDarkArtistPages').checked,
                 seekbarAbove: $('seekbarAbove').checked,
