@@ -257,9 +257,18 @@
                 else art.onload = () => art.classList.add('in');
             }
             $('hero-title').textContent = d.title;
-            $('hero-artist').innerHTML = d.bandName
-                ? `by <a href="#" id="bandlink">${escapeHtml(d.bandName)}</a>`
-                : `by ${escapeHtml(d.artist)}`;
+            const a = (d.artist || '').trim();
+            const b = (d.bandName || '').trim();
+            // release artist first; the uploader only shows when it differs
+            // ("by TETSURO on dojikko records"), and the bandlink always points
+            // at the page main resolved the data from
+            if (a && b && a !== b) {
+                $('hero-artist').innerHTML = `by <b>${escapeHtml(a)}</b> on <a href="#" id="bandlink">${escapeHtml(b)}</a>`;
+            } else if (b) {
+                $('hero-artist').innerHTML = `by <a href="#" id="bandlink">${escapeHtml(a || b)}</a>`;
+            } else {
+                $('hero-artist').innerHTML = `by ${escapeHtml(a)}`;
+            }
             const bl = $('bandlink');
             if (bl) bl.addEventListener('click', (e) => {
                 e.preventDefault();

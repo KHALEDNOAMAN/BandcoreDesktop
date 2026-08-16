@@ -1101,7 +1101,9 @@ export class BandcampApi {
                 .filter((c: any) => c.name);
             const rows: any[] = Array.isArray(data.trackinfo) ? data.trackinfo : [];
             const tracks = rows.map((t: any, i: number) => {
-                const trkArtist = String((t && (t.artist || t.band_name)) || '').trim() || bandName;
+                // per-track artist when set, else the release's own artist - the
+                // UPLOADER (label) is only a fallback, never the row's artist
+                const trkArtist = String((t && (t.artist || t.band_name)) || '').trim() || artist;
                 let title = String((t && t.title) || '').trim() || `Track ${i + 1}`;
                 // some releases (notably VA compilations) ship titles already
                 // composed as "artist - title" while also carrying the artist
