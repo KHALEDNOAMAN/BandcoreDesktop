@@ -1125,7 +1125,7 @@ export class BandcampApi {
     async fetchReleaseForDownload(q: { url?: string; tralbumId?: string; tralbumType?: TralbumType; bandId?: string }): Promise<{
         ok: boolean; error?: string;
         album: string; albumArtist: string; year: number; artUrl: string;
-        tracks: { title: string; artist: string; trackNum: number; lyrics: string; stream: string; duration: number }[];
+        tracks: { id: string; title: string; artist: string; trackNum: number; lyrics: string; stream: string; duration: number }[];
     }> {
         this.noteInteractive();
         const empty = (error: string) => ({ ok: false, error, album: '', albumArtist: '', year: 0, artUrl: '', tracks: [] });
@@ -1174,6 +1174,7 @@ export class BandcampApi {
         const artUrl = artId ? `https://f4.bcbits.com/img/a${artId}_10.jpg` : '';
         const rows: any[] = Array.isArray(data.trackinfo) ? data.trackinfo : Array.isArray(data.tracks) ? data.tracks : [];
         const tracks = rows.map((t: any, i: number) => ({
+            id: String((t && (t.id || t.track_id)) || ''),
             title: String((t && t.title) || '').trim() || `Track ${i + 1}`,
             artist: String((t && (t.artist || t.band_name)) || '').trim() || albumArtist,
             trackNum: Number(t && t.track_num) || i + 1,

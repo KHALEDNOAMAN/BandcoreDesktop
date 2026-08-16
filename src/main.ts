@@ -2999,6 +2999,95 @@ const entry: DlEntry = { id: entryId, name: `${rel.albumArtist} - ${rel.album}`,
     }
     ipcMain.handle('download:release', (_e, req: { url?: string; tralbumId?: string; tralbumType?: TralbumType; bandId?: string }) => startStreamDownload(req || {}));
 
+    // download a single track from a release (track context menu): same naming
+    // and tag settings as the release downloader, but just that one mp3 into
+    // the download folder. shares the stream-download guard so it never
+    // overlaps a release download.
+    ipcMain.handle('download:track', async (_e, req: { tralbumId?: string; tralbumType?: TralbumType; bandId?: string; trackId?: string }): Promise<{ ok: boolean; error?: string }> => {
+        if (streamDlActive) return { ok: false, error: 'a download is already running' };
+        const trackId = String(req?.trackId || '').trim();
+        const rel = await bandcampApi.fetchReleaseForDownload({ tralbumId: req?.tralbumId, tralbumType: req?.tralbumType, bandId: req?.bandId });
+        if (!rel.ok) return { ok: false, error: rel.error };
+        const t = rel.tracks.find((x) => x.id === trackId) || rel.tracks.find((x) => String(x.trackNum) === trackId);
+        if (!t) return { ok: false, error: 'track not found' };
+        streamDlActive = true;
+
+        openDownloadsPanel();
+
+        const entryId = ++dlSeq;
+        const dlState = { canceled: false };
+        streamDownloads.set(entryId, dlState);
+
+        const entry: DlEntry = { id: entryId, name: `${rel.albumArtist} - ${t.title}`, album: rel.album, artist: rel.albumArtist, state: 'progressing', percent: 0, file: '', at: Date.now(), receivedBytes: 0, totalBytes: 0, speed: 0, lastTime: Date.now(), lastBytes: 0, art: rel.artUrl };
+        dlRegistry.unshift(entry);
+
+        const prog = (state: string, percent: number, name: string) => {
+            entry.state = state;
+            entry.percent = Math.max(0, percent);
+            broadcastDownloads();
+        };
+
+        void (async () => {
+            try {
+                const fileFmt = store.get('fileNameFmt', '{tracknum} {artist} - {title}') as string;
+                const modifyTags = store.get('modifyTags', true) !== false;
+                const tagOn = (k: string) => store.get(k, true) !== false;
+                const coverInTags = tagOn('coverInTags');
+
+                const formatFileName = (fmt: string, trackTitle: string, trackArtist: string, trackNum: string) => {
+                    let name = (fmt || '{tracknum} {artist} - {title}').replace(/\{albumartist\}/gi, sanitizeName(rel.albumArtist))
+                        .replace(/\{artist\}/gi, sanitizeName(trackArtist))
+                        .replace(/\{album\}/gi, sanitizeName(rel.album))
+                        .replace(/\{title\}/gi, sanitizeName(trackTitle))
+                        .replace(/\{year\}/gi, rel.year ? String(rel.year) : '')
+                        .replace(/\{tracknum\}/gi, trackNum.padStart(2, '0'));
+                    if (!name.toLowerCase().endsWith('.mp3')) name += '.mp3';
+                    return name;
+                };
+
+                const fileName = formatFileName(fileFmt, t.title, t.artist, String(t.trackNum));
+                const file = path.join(getDownloadDir(), fileName);
+                entry.file = file;
+
+                let art: Buffer | null = null;
+                if (rel.artUrl && coverInTags) {
+                    art = await bandcampApi.fetchBinary(rel.artUrl);
+                }
+
+                prog('progressing', 40, t.title);
+                const buf = await bandcampApi.fetchBinary(t.stream);
+                if (!buf || !buf.length) { prog('interrupted', 0, t.title); return; }
+
+                if (modifyTags) {
+                    const tag = buildId3v23({
+                        title: tagOn('tagTitle') ? t.title : '',
+                        artist: tagOn('tagArtist') ? t.artist : '',
+                        albumArtist: tagOn('tagAlbumArtist') ? rel.albumArtist : '',
+                        album: tagOn('tagAlbum') ? rel.album : '',
+                        trackNum: tagOn('tagTrackNum') ? t.trackNum : 0,
+                        trackTotal: tagOn('tagTrackNum') ? rel.tracks.length : undefined,
+                        year: tagOn('tagYear') ? rel.year : 0,
+                        lyrics: tagOn('tagLyrics') ? t.lyrics : '',
+                        art: coverInTags ? (art || undefined) : undefined,
+                    });
+                    fs.writeFileSync(file, Buffer.concat([tag, buf]));
+                } else {
+                    fs.writeFileSync(file, buf);
+                }
+
+                prog('completed', 100, t.title);
+            } catch (err: any) {
+                if (devMode) console.log('[bcrpc] track download FAILED ' + (err && (err.message || err)));
+                prog('interrupted', 0, t.title);
+            } finally {
+                streamDownloads.delete(entryId);
+                streamDlActive = false;
+                entry.speed = 0;
+            }
+        })();
+        return { ok: true };
+    });
+
     // ownership check for the on-page download button: owned collection items
     // carry their bandcamp redownload page url
     ipcMain.handle('release:download-info', (_e, req: { tralbumId?: string; tralbumType?: string }) => {
