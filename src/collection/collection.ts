@@ -44,6 +44,41 @@ function sortArrowSvg(asc: boolean): string {
     return asc ? ICONS.arrowDown.replace('<svg', '<svg class="asc"') : ICONS.arrowDown;
 }
 
+// per-track context menu (right-click a track row): add to queue / download.
+// one menu at a time; closes on outside click, right-click elsewhere or Escape.
+const MENU_ICON = 'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"';
+let ctxMenu: HTMLElement | null = null;
+function openTrackMenu(x: number, y: number, actions: { queue: () => void; download: () => void }): void {
+    closeTrackMenu();
+    const m = document.createElement('div');
+    m.className = 'cmenu';
+    m.innerHTML =
+        `<button class="cmi" data-a="queue"><svg viewBox="0 0 24 24" fill="none" ${MENU_ICON}><path d="M5 12h14"/><path d="M12 5v14"/></svg>Add song to queue</button>` +
+        `<button class="cmi" data-a="dl"><svg viewBox="0 0 24 24" fill="none" ${MENU_ICON}><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>Download track</button>`;
+    document.body.appendChild(m);
+    const r = m.getBoundingClientRect();
+    m.style.left = Math.max(8, Math.min(x, window.innerWidth - r.width - 8)) + 'px';
+    m.style.top = Math.max(8, Math.min(y, window.innerHeight - r.height - 8)) + 'px';
+    m.addEventListener('click', (e) => {
+        const b = (e.target as HTMLElement).closest('.cmi') as HTMLElement | null;
+        if (!b) return;
+        closeTrackMenu();
+        if (b.dataset.a === 'queue') actions.queue(); else actions.download();
+    });
+    m.classList.add('show');
+    ctxMenu = m;
+}
+function closeTrackMenu(): void {
+    if (!ctxMenu) return;
+    ctxMenu.remove();
+    ctxMenu = null;
+}
+document.addEventListener('click', closeTrackMenu);
+document.addEventListener('contextmenu', (e) => {
+    if (ctxMenu && !ctxMenu.contains(e.target as Node)) closeTrackMenu();
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeTrackMenu(); });
+
 async function load(): Promise<void> {
     if (loading || items.length) return;
     loading = true;
@@ -427,24 +462,15 @@ async function toggleSearchTracklist(it: SearchResultItem, card: HTMLElement): P
             `<span class="tltrk">${escapeHtml(t.title)}</span>` +
             `<span class="tldur">${fmtDur(t.duration)}</span>`;
         row.addEventListener('click', () => { void ipcRenderer.invoke('collection:play', { ...q, activeIndex: i }); });
-        row.addEventListener('contextmenu', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            openPlaylistPicker({ ...q, trackId: t.id }, e.clientX, e.clientY);
-        });
         if (t.id) {
-            const btn = document.createElement('button');
-            btn.className = 'tlq';
-            btn.title = 'add this song to queue';
-            btn.innerHTML = ICONS.plus;
-            btn.addEventListener('click', async (ev) => {
-                ev.stopPropagation();
-                btn.textContent = '…';
-                const r = await ipcRenderer.invoke('collection:enqueue', { ...q, trackId: t.id });
-                btn.textContent = r && r.ok ? '✓' : '×';
-                setTimeout(() => { btn.innerHTML = ICONS.plus; }, 900);
+            row.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                openTrackMenu(e.clientX, e.clientY, {
+                    queue: () => { void ipcRenderer.invoke('collection:enqueue', { ...q, trackId: t.id }); },
+                    download: () => { void ipcRenderer.invoke('download:track', { tralbumId: q.tralbumId, tralbumType: q.tralbumType, bandId: q.bandId, trackId: t.id }); },
+                });
             });
-            row.appendChild(btn);
         }
         right.appendChild(row);
     });
@@ -1144,29 +1170,18 @@ async function toggleTracklist(it: CollectionItem, card: HTMLElement): Promise<v
             `<span class="tltrk">${escapeHtml(t.title)}</span>` +
             `<span class="tldur">${fmtDur(t.duration)}</span>`;
         row.addEventListener('click', () => play(it, i, true));
-        // right-click a song: add just that track to a playlist
-        row.addEventListener('contextmenu', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            openPlaylistPicker({ tralbumId: it.tralbumId, tralbumType: it.tralbumType, bandId: it.bandId, trackId: t.id }, e.clientX, e.clientY);
-        });
-        // per-song add-to-queue (revealed on row hover); click plays as before.
-// cached (offline) rows carry no track id, so the button is omitted -
-        // it would queue the whole release instead of the song
+        // right-click a song: add to queue or download just that track
         if (t.id) {
-            const q = document.createElement('button');
-            q.className = 'tlq';
-            q.title = 'add this song to queue';
-            q.innerHTML = ICONS.plus;
-            q.addEventListener('click', async (e) => {
+            row.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
                 e.stopPropagation();
-                q.textContent = '…';
-                const r = await ipcRenderer.invoke('collection:enqueue',
-                    { tralbumId: it.tralbumId, tralbumType: it.tralbumType, bandId: it.bandId, trackId: t.id });
-                q.textContent = r && r.ok ? '✓' : '×';
-                setTimeout(() => { q.innerHTML = ICONS.plus; }, 900);
+                openTrackMenu(e.clientX, e.clientY, {
+                    queue: () => { void ipcRenderer.invoke('collection:enqueue',
+                        { tralbumId: it.tralbumId, tralbumType: it.tralbumType, bandId: it.bandId, trackId: t.id }); },
+                    download: () => { void ipcRenderer.invoke('download:track',
+                        { tralbumId: it.tralbumId, tralbumType: it.tralbumType, bandId: it.bandId, trackId: t.id }); },
+                });
             });
-            row.appendChild(q);
         }
         right.appendChild(row);
     });

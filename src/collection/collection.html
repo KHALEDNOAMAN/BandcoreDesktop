@@ -47,9 +47,9 @@
         .tbtn.dirbtn svg, .tbtn.iconbtn svg { width: 15px; height: 15px; display: block; transition: transform .12s ease; }
         .tbtn.dirbtn.asc svg { transform: scaleY(-1); }
         /* svg icons inside the round overlay buttons + badges */
-        .enq, .dl, .tlq, .pl-x { display: inline-flex; align-items: center; justify-content: center; }
+        .enq, .dl, .pl-x { display: inline-flex; align-items: center; justify-content: center; }
         .enq svg, .dl svg { width: 15px; height: 15px; }
-        .tlq svg, .pl-x svg { width: 12px; height: 12px; }
+        .pl-x svg { width: 12px; height: 12px; }
         .wishb svg { width: 13px; height: 13px; display: block; }
         .pl-new .big svg { width: 26px; height: 26px; display: block; }
         /* same arrow, smaller, as the list view's column sort indicator */
@@ -331,14 +331,19 @@
         }
         .modal textarea:focus { border-color: var(--accent); }
 
-        /* per-song add-to-queue, revealed on row hover */
-        .tlq {
-            width: 22px; height: 22px; flex-shrink: 0; border: none; border-radius: 50%;
-            background: rgba(255,255,255,.08); color: var(--text); font-size: 14px; line-height: 1;
-            cursor: pointer; opacity: 0; transition: opacity .1s ease; font-family: inherit;
+        /* per-track context menu (right-click a track row) */
+        .cmenu {
+            position: fixed; z-index: 999; min-width: 190px; padding: 4px;
+            background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+            box-shadow: 0 10px 28px rgba(0,0,0,.4);
         }
-        .tlrow:hover .tlq { opacity: 1; }
-        .tlq:hover { background: var(--accent); }
+        .cmi {
+            display: flex; align-items: center; gap: 9px; width: 100%; padding: 7px 10px;
+            font-size: 12px; color: var(--text); background: none; border: none;
+            border-radius: 6px; cursor: pointer; font-family: inherit; text-align: left;
+        }
+        .cmi:hover { background: var(--hover-bg); color: var(--hover-text); }
+        .cmi svg { width: 15px; height: 15px; flex-shrink: 0; }
 
         /* search-results mode: replaces the toolbar while results are shown */
         .sbar {
