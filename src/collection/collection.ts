@@ -65,13 +65,17 @@ function openTrackMenu(x: number, y: number, actions: { queue: () => void; downl
         closeTrackMenu();
         if (b.dataset.a === 'queue') actions.queue(); else actions.download();
     });
-    m.classList.add('show');
+    // enter: added hidden, shown on the next frames so the transition runs
+    requestAnimationFrame(() => requestAnimationFrame(() => m.classList.add('show')));
     ctxMenu = m;
 }
 function closeTrackMenu(): void {
     if (!ctxMenu) return;
-    ctxMenu.remove();
+    const m = ctxMenu;
     ctxMenu = null;
+    // exit: fade/scale out, then drop the node
+    m.classList.remove('show');
+    setTimeout(() => m.remove(), 140);
 }
 document.addEventListener('click', closeTrackMenu);
 document.addEventListener('contextmenu', (e) => {

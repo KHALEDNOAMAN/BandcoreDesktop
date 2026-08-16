@@ -158,7 +158,11 @@ opacity: 0; transition: transform .12s ease, opacity .4s ease, box-shadow .12s e
             position: fixed; z-index: 999; min-width: 190px; padding: 4px;
             background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
             box-shadow: 0 10px 28px rgba(0,0,0,.4);
+            opacity: 0; transform: scale(.96) translateY(-3px);
+            transition: opacity .12s ease, transform .12s ease;
+            pointer-events: none;
         }
+        .cmenu.show { opacity: 1; transform: none; pointer-events: auto; }
         .cmi {
             display: flex; align-items: center; gap: 9px; width: 100%; padding: 7px 10px;
             font-size: 12px; color: var(--text); background: none; border: none;
@@ -226,13 +230,17 @@ opacity: 0; transition: transform .12s ease, opacity .4s ease, box-shadow .12s e
                 closeTrackMenu();
                 if (b.dataset.a === 'queue') actions.queue(); else actions.download();
             });
-            m.classList.add('show');
+            // enter: added hidden, shown on the next frames so the transition runs
+            requestAnimationFrame(() => requestAnimationFrame(() => m.classList.add('show')));
             ctxMenu = m;
         }
         function closeTrackMenu() {
             if (!ctxMenu) return;
-            ctxMenu.remove();
+            const m = ctxMenu;
             ctxMenu = null;
+            // exit: fade/scale out, then drop the node
+            m.classList.remove('show');
+            setTimeout(() => m.remove(), 140);
         }
         document.addEventListener('click', closeTrackMenu);
         document.addEventListener('contextmenu', (e) => {
