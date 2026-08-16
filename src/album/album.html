@@ -21,24 +21,19 @@
         }
         .scroll { flex: 1; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--scroll) transparent; }
         .hero {
-            position: relative; padding: 34px 26px 22px; overflow: hidden;
+            position: relative; padding: 34px 26px 22px;
             display: flex; gap: 24px; align-items: center;
-        }
-        .hero::after {
-            content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 36px;
-            background: linear-gradient(to bottom, transparent, var(--bg));
-            pointer-events: none;
         }
         .hero-inner { position: relative; z-index: 1; display: flex; gap: 24px; align-items: center; min-width: 0; flex: 1; }
         .hero-bg {
-            position: absolute; left: -40px; top: -60px; right: -40px; bottom: -40px;
+            position: absolute; left: -40px; top: -60px; right: -40px; bottom: -80px;
             background-size: cover; background-position: center;
             filter: blur(26px) brightness(.55) saturate(1.15);
             transform: scale(1.25); pointer-events: none;
         }
         .hero-bg.fade {
-            -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 90%, transparent 100%);
-            mask-image: linear-gradient(to bottom, #000 0%, #000 90%, transparent 100%);
+            -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 88%, transparent 100%);
+            mask-image: linear-gradient(to bottom, #000 0%, #000 88%, transparent 100%);
         }
         .hero-art {
             width: 190px; height: 190px; border-radius: 10px; object-fit: cover;
@@ -73,7 +68,7 @@
         .hbtn:active { transform: scale(.96); transition: transform .08s ease; }
         .hbtn svg { width: 16px; height: 16px; display: block; }
         .hbtn.primary svg { width: 22px; height: 22px; }
-        .section { padding: 20px 26px 6px; }
+        .section { position: relative; z-index: 1; padding: 20px 26px 6px; }
         .section h2 { font-size: 14px; font-weight: 700; letter-spacing: .02em; margin-bottom: 12px; }
         .tlrows { display: grid; grid-template-columns: 1fr; gap: 2px; align-content: start; }
         .tlrow {
