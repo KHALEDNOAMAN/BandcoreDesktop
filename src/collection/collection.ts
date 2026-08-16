@@ -59,7 +59,7 @@ function openTrackMenu(x: number, y: number, info: { title?: string; artist?: st
           `<div class="cmtitle">${escapeHtml(info.title || '')}</div>` +
           (info.artist ? `<div class="cmsub">${escapeHtml(info.artist)}</div>` : '') +
           (info.year ? `<div class="cmsub">${escapeHtml(String(info.year))}</div>` : '') +
-          `</div></div><div class="cmsep"></div>`
+          `</div></div>`
         : '';
     m.innerHTML = head +
         `<button class="cmi" data-a="queue"><svg viewBox="0 0 24 24" fill="none" ${MENU_ICON}><path d="M5 12h14"/><path d="M12 5v14"/></svg>Add song to queue</button>` +

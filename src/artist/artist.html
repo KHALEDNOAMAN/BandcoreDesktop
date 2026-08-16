@@ -176,7 +176,6 @@ opacity: 0; transition: transform .12s ease, opacity .4s ease, box-shadow .12s e
         .cmmeta { min-width: 0; flex: 1; }
         .cmtitle { font-size: 12px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .cmsub { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .cmsep { height: 1px; background: var(--line); margin: 2px 4px; }
         .err { padding: 40px 26px; color: var(--muted); font-size: 13px; }
     </style>
 </head>
@@ -231,7 +230,7 @@ opacity: 0; transition: transform .12s ease, opacity .4s ease, box-shadow .12s e
                   `<div class="cmtitle">${escapeHtml(info.title || '')}</div>` +
                   (info.artist ? `<div class="cmsub">${escapeHtml(info.artist)}</div>` : '') +
                   (info.year ? `<div class="cmsub">${escapeHtml(String(info.year))}</div>` : '') +
-                  `</div></div><div class="cmsep"></div>`
+                  `</div></div>`
                 : '';
             m.innerHTML = head +
                 `<button class="cmi" data-a="queue"><svg viewBox="0 0 24 24" fill="none" ${MENU_ICON}><path d="M5 12h14"/><path d="M12 5v14"/></svg>Add song to queue</button>` +
