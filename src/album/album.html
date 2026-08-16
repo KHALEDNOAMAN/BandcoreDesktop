@@ -22,14 +22,14 @@
         .scroll { flex: 1; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--scroll) transparent; }
         .hero {
             position: relative; padding: 34px 26px 22px; overflow: hidden;
-            display: flex; gap: 24px; align-items: flex-end; border-bottom: 1px solid var(--line);
+            display: flex; gap: 24px; align-items: center;
         }
         .hero::after {
             content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 90px;
             background: linear-gradient(to bottom, transparent, var(--bg));
             pointer-events: none;
         }
-        .hero-inner { position: relative; z-index: 1; display: flex; gap: 24px; align-items: flex-end; min-width: 0; flex: 1; }
+        .hero-inner { position: relative; z-index: 1; display: flex; gap: 24px; align-items: center; min-width: 0; flex: 1; }
         .hero-bg {
             position: absolute; left: -40px; top: -60px; right: -40px; bottom: -40px;
             background-size: cover; background-position: center;
@@ -62,15 +62,17 @@
         }
         .hero-btns { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
         .hbtn {
-            display: inline-flex; align-items: center; gap: 8px; border-radius: 999px;
-            border: 1px solid var(--line); background: var(--hover-bg); color: var(--text);
-            padding: 9px 20px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 44px; height: 44px; padding: 0; border-radius: 50%;
+            border: 1px solid transparent; background: var(--hover-bg); color: var(--text);
+            cursor: pointer; font-family: inherit;
         }
         .hbtn:hover { border-color: var(--accent); }
-        .hbtn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-        .hbtn.primary:hover { filter: brightness(1.12); }
-        .hbtn:active { transform: scale(.98); transition: transform .08s ease; }
-        .hbtn svg { width: 15px; height: 15px; display: block; }
+        .hbtn.primary { background: #fff; color: #000; width: 48px; height: 48px; }
+        .hbtn.primary:hover { border-color: var(--accent); filter: brightness(.94); }
+        .hbtn:active { transform: scale(.96); transition: transform .08s ease; }
+        .hbtn svg { width: 16px; height: 16px; display: block; }
+        .hbtn.primary svg { width: 18px; height: 18px; }
         .section { padding: 20px 26px 6px; }
         .section h2 { font-size: 14px; font-weight: 700; letter-spacing: .02em; margin-bottom: 12px; }
         .tlrows { display: grid; grid-template-columns: 1fr; gap: 2px; align-content: start; }
@@ -127,14 +129,14 @@
                     <div class="hero-meta" id="hero-meta"></div>
                     <div class="genre" id="genre" style="display:none"></div>
                     <div class="hero-btns">
-                        <button class="hbtn primary" id="playall">
-                            Play
+                        <button class="hbtn primary" id="playall" title="Play album">
+                            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.14v13.72a1 1 0 0 0 1.5.86l11-6.86a1 1 0 0 0 0-1.72l-11-6.86A1 1 0 0 0 8 5.14z"/></svg>
                         </button>
-                        <button class="hbtn" id="queuebtn">
-                            Add to queue
+                        <button class="hbtn" id="queuebtn" title="Add to queue">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 12H3"/><path d="M16 6H3"/><path d="M16 18H3"/><path d="M18 9v6"/><path d="M21 12h-6"/></svg>
                         </button>
-                        <button class="hbtn" id="dlbtn">
-                            Download album
+                        <button class="hbtn" id="dlbtn" title="Download album">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
                         </button>
                     </div>
                 </div>
