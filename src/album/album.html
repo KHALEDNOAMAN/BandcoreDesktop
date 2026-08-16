@@ -224,11 +224,18 @@
         let lastNP = null;
         function setPlayingRow(row) {
             if (pauseRaf) { cancelAnimationFrame(pauseRaf); pauseRaf = null; }
-            if (playingAnim) { try { playingAnim.destroy(); } catch (e) { /* already gone */ } playingAnim = null; }
             if (playingRow) {
                 playingRow.classList.remove('playing');
                 const s = playingRow.querySelector('.tlplaying');
                 if (s) s.classList.remove('show');
+            }
+            if (playingAnim) {
+                const old = playingAnim;
+                try { old.pause(); } catch (e) { /* already gone */ }
+                // keep the svg around for the fade-out (opacity transition on
+                // .tlplaying) before destroying the animation
+                setTimeout(() => { try { old.destroy(); } catch (e) { /* already gone */ } }, 400);
+                playingAnim = null;
             }
             playingRow = row;
             if (!row) return;
