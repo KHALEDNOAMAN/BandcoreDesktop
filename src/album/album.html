@@ -199,7 +199,8 @@
                 : '';
             m.innerHTML = head +
                 `<button class="cmi" data-a="queue"><svg viewBox="0 0 24 24" fill="none" ${MENU_ICON}><path d="M5 12h14"/><path d="M12 5v14"/></svg>Add song to queue</button>` +
-                `<button class="cmi" data-a="dl"><svg viewBox="0 0 24 24" fill="none" ${MENU_ICON}><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>Download track</button>`;
+                `<button class="cmi" data-a="dl"><svg viewBox="0 0 24 24" fill="none" ${MENU_ICON}><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>Download track</button>` +
+                `<button class="cmi" data-a="search"><svg viewBox="0 0 24 24" fill="none" ${MENU_ICON}><circle cx="10" cy="8" r="5"/><path d="M2 21a8 8 0 0 1 10.434-7.62"/><circle cx="18" cy="18" r="3"/><path d="m22 22-1.9-1.9"/></svg>Search (${escapeHtml(info.artist || '')})</button>`;
             document.body.appendChild(m);
             const r = m.getBoundingClientRect();
             m.style.left = Math.max(8, Math.min(x, window.innerWidth - r.width - 8)) + 'px';
@@ -208,7 +209,12 @@
                 const b = e.target.closest('.cmi');
                 if (!b) return;
                 closeTrackMenu();
-                if (b.dataset.a === 'queue') info.queue(); else info.download();
+                if (b.dataset.a === 'queue') info.queue();
+                else if (b.dataset.a === 'dl') info.download();
+                else {
+                    const artist = (info.artist || '').trim();
+                    if (artist) ipcRenderer.send('search:run', { text: artist, mode: 'all' });
+                }
             });
             // enter: added hidden, shown on the next frames so the transition runs
             requestAnimationFrame(() => requestAnimationFrame(() => m.classList.add('show')));
