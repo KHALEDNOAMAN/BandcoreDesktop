@@ -389,10 +389,21 @@ export class BandcampApi {
             .map((t: any) => {
                 const src = pickStream(t.file || t.streaming_url || t.mp3_url);
                 const id = toId(t.track_id ?? t.id);
+                const trkArtist = (t.artist || t.band_name || artist).toString().trim();
+                let title = (t.title || current.title || 'Unknown Track').toString().trim();
+                // VA compilations ship titles already composed as "artist - title"
+                // while also carrying the artist separately (the player and the
+                // tracklists render both lines) - drop the duplicated prefix here
+                // so every surface gets the clean title.
+                if (trkArtist) {
+                    const esc = trkArtist.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    const m = title.match(new RegExp('^' + esc + '\\s*[-–—]\\s+'));
+                    if (m) title = title.slice(m[0].length).trim() || title;
+                }
                 return {
                     id,
-                    title: (t.title || current.title || 'Unknown Track').toString().trim(),
-                    artist: (t.artist || t.band_name || artist).toString().trim(),
+                    title,
+                    artist: trkArtist,
                     album,
                     art,
                     src,
