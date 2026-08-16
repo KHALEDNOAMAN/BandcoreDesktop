@@ -76,10 +76,21 @@
         .card .art.nophoto { opacity: 1; }
         .card:hover .art { transform: scale(1.03); box-shadow: 0 0 0 2px var(--accent); }
         .card:active .art { transform: scale(.98); transition: transform .08s ease; }
-        /* album page loading: the clicked card's cover blurs and darkens with a
-           centered spinner until the release data lands */
+        /* album page loading: the clicked card's cover content blurs and darkens
+           while its edges stay crisp - a blurred copy of the art sits on top,
+           fading out toward the rim via a radial mask, with the dimmed sharp
+           original underneath; spinner centered on the art */
         .card.loading { pointer-events: none; }
-        .card.loading .art { transform: none; filter: blur(7px) brightness(.5); box-shadow: none; }
+        .card.loading .art { filter: brightness(.6); box-shadow: none; }
+        .card-blur {
+            position: absolute; inset: 0; z-index: 2;
+            background-size: cover; background-position: center;
+            filter: blur(14px) brightness(.6) saturate(1.15);
+            -webkit-mask-image: radial-gradient(closest-side, #000 58%, transparent 97%);
+            mask-image: radial-gradient(closest-side, #000 58%, transparent 97%);
+            opacity: 0; transition: opacity .3s ease; pointer-events: none;
+        }
+        .card.loading .card-blur { opacity: 1; }
         .card-spin { position: absolute; left: 50%; top: 50%; width: 42px; height: 42px; transform: translate(-50%, -50%); z-index: 3; pointer-events: none; }
         .card .t { font-size: 12px; margin-top: 7px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .card .a { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }

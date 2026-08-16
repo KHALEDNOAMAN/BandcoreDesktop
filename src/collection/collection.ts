@@ -207,7 +207,10 @@ function startCardLoading(card: HTMLElement): void {
     card.classList.add('loading');
     const sp = document.createElement('div');
     sp.className = 'card-spin';
-    card.appendChild(sp);
+    // center on the ART, not the card (the card also holds the title/artist
+    // text, which would pull the spinner below the cover's middle)
+    const host = card.querySelector('.artwrap') || card;
+    host.appendChild(sp);
     try {
         const fs = require('fs');
         const path = require('path');
@@ -444,6 +447,10 @@ function createSearchCard(it: SearchResultItem, index: number): HTMLElement {
         wrap.innerHTML = `<img class="art" loading="lazy" src="${it.art.replace(/"/g, '&quot;')}">`;
         const img = wrap.querySelector('img.art') as HTMLImageElement;
         fadeInArt(img);
+        const blurEl = document.createElement('div');
+        blurEl.className = 'card-blur';
+        blurEl.style.backgroundImage = `url("${it.art.replace(/"/g, '&quot;')}")`;
+        wrap.appendChild(blurEl);
     } else {
         const np = document.createElement('div');
         np.className = 'art nophoto';
@@ -621,6 +628,10 @@ function createCard(it: CollectionItem): HTMLElement {
     wrap.innerHTML = `<img class="art" loading="lazy" src="${it.art}">`;
     const img = wrap.querySelector('img.art') as HTMLImageElement;
     fadeInArt(img);
+    const blurEl = document.createElement('div');
+    blurEl.className = 'card-blur';
+    blurEl.style.backgroundImage = `url("${it.art.replace(/"/g, '&quot;')}")`;
+    wrap.appendChild(blurEl);
     // dragging a cover exports the full-size art as a real file. hover prefetches
     // the full-size jpg; dragstart checks (sync) that it's ready and only then
     // hands the drag to main - startDrag must run inside the live drag gesture,
