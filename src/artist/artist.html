@@ -419,6 +419,10 @@ opacity: 0; transition: transform .12s ease, opacity .4s ease, box-shadow .12s e
         }
 
         $('back').addEventListener('click', () => ipcRenderer.send('artist:close'));
+        // mouse back/forward buttons close the overlay like the back button
+        window.addEventListener('mouseup', (e) => {
+            if (e.button === 3) ipcRenderer.send('artist:close');
+        });
         $('follow').addEventListener('click', () => {
             if (!data) return;
             ipcRenderer.send('artist:follow', { url: data.url, bandId: data.bandId, follow: !data.isFollowing });

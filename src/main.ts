@@ -1193,7 +1193,14 @@ async function init() {
         wc.loadURL(url).catch(() => {});
     };
 
-    ipcMain.on('app:back', () => navGo('back'));
+    // back closes the album/artist overlays first (mouse back button + header
+    // back button both land here) - the underlying tab never navigates while
+    // an overlay is on top of it
+    ipcMain.on('app:back', () => {
+        if (albumVisible) { closeAlbumView(); return; }
+        if (artistVisible) { closeArtistView(); return; }
+        navGo('back');
+    });
     ipcMain.on('app:forward', () => navGo('forward'));
     ipcMain.on('app:reload', () => {
         const wc = contentView.webContents;
@@ -1264,6 +1271,10 @@ async function init() {
         }
         if (devMode) console.log('[bcrpc:search] mode=' + mode + ' ok=' + res.ok + ' n=' + res.items.length + ' more=' + !!res.hasMore + (res.error ? ' err=' + res.error : ''));
         if (res.ok && collectionView && !collectionView.webContents.isDestroyed()) {
+            // a search from the header bar must land visibly: close the
+            // album/artist overlays that would hide the results grid
+            closeAlbumView();
+            closeArtistView();
             openCollection();
             collectionView.webContents.send('collection:search-results', { query: input, mode, items: res.items, page: 1, cursor: res.nextCursor || '', hasMore: !!res.hasMore });
         }

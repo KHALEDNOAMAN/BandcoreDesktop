@@ -236,6 +236,10 @@
         document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeTrackMenu(); });
 
         $('back').addEventListener('click', () => ipcRenderer.send('album:close'));
+        // mouse back/forward buttons close the overlay like the back button
+        window.addEventListener('mouseup', (e) => {
+            if (e.button === 3) ipcRenderer.send('album:close');
+        });
 
         const fmtDate = (iso) => {
             if (!iso) return '';
