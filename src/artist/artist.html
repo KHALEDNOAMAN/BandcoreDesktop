@@ -155,7 +155,7 @@ opacity: 0; transition: transform .12s ease, opacity .4s ease, box-shadow .12s e
         .tldur { color: var(--sub); font-size: 12px; flex-shrink: 0; }
         /* per-track context menu (right-click a track row) */
         .cmenu {
-            position: fixed; z-index: 999; min-width: 190px; padding: 4px;
+            position: fixed; z-index: 999; min-width: 210px; padding: 4px;
             background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
             box-shadow: 0 10px 28px rgba(0,0,0,.4);
             opacity: 0; transform: scale(.96) translateY(-3px);
@@ -170,6 +170,13 @@ opacity: 0; transition: transform .12s ease, opacity .4s ease, box-shadow .12s e
         }
         .cmi:hover { background: var(--hover-bg); color: var(--hover-text); }
         .cmi svg { width: 15px; height: 15px; flex-shrink: 0; }
+        /* compact track info above the menu items */
+        .cmhead { display: flex; align-items: center; gap: 9px; padding: 6px 8px 7px; }
+        .cmart { width: 38px; height: 38px; border-radius: 5px; object-fit: cover; flex-shrink: 0; }
+        .cmmeta { min-width: 0; flex: 1; }
+        .cmtitle { font-size: 12px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .cmsub { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .cmsep { height: 1px; background: var(--line); margin: 2px 4px; }
         .err { padding: 40px 26px; color: var(--muted); font-size: 13px; }
     </style>
 </head>
@@ -213,11 +220,20 @@ opacity: 0; transition: transform .12s ease, opacity .4s ease, box-shadow .12s e
         const MENU_ICON = 'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"';
         let ctxMenu = null;
         // per-track context menu (right-click a track row): add to queue / download
-        function openTrackMenu(x, y, actions) {
+        function openTrackMenu(x, y, info, actions) {
             closeTrackMenu();
             const m = document.createElement('div');
             m.className = 'cmenu';
-            m.innerHTML =
+            const head = (info.art || info.title)
+                ? `<div class="cmhead">` +
+                  (info.art ? `<img class="cmart" src="${info.art.replace(/"/g, '&quot;')}" alt="">` : '') +
+                  `<div class="cmmeta">` +
+                  `<div class="cmtitle">${escapeHtml(info.title || '')}</div>` +
+                  (info.artist ? `<div class="cmsub">${escapeHtml(info.artist)}</div>` : '') +
+                  (info.year ? `<div class="cmsub">${escapeHtml(String(info.year))}</div>` : '') +
+                  `</div></div><div class="cmsep"></div>`
+                : '';
+            m.innerHTML = head +
                 `<button class="cmi" data-a="queue"><svg viewBox="0 0 24 24" fill="none" ${MENU_ICON}><path d="M5 12h14"/><path d="M12 5v14"/></svg>Add song to queue</button>` +
                 `<button class="cmi" data-a="dl"><svg viewBox="0 0 24 24" fill="none" ${MENU_ICON}><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>Download track</button>`;
             document.body.appendChild(m);
@@ -342,6 +358,7 @@ opacity: 0; transition: transform .12s ease, opacity .4s ease, box-shadow .12s e
                         e.preventDefault();
                         e.stopPropagation();
                         openTrackMenu(e.clientX, e.clientY, {
+                            title: t.title, artist: row.artist || data.name || '', year: res.year || 0, art: row.art || '',
                             queue: () => { void ipcRenderer.invoke('collection:enqueue', { ...q, trackId: t.id }); },
                             download: () => { void ipcRenderer.invoke('download:track', { tralbumId: q.tralbumId, tralbumType: q.tralbumType, bandId: q.bandId, trackId: t.id }); },
                         });

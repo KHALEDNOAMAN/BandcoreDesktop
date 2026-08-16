@@ -48,11 +48,20 @@ function sortArrowSvg(asc: boolean): string {
 // one menu at a time; closes on outside click, right-click elsewhere or Escape.
 const MENU_ICON = 'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"';
 let ctxMenu: HTMLElement | null = null;
-function openTrackMenu(x: number, y: number, actions: { queue: () => void; download: () => void }): void {
+function openTrackMenu(x: number, y: number, info: { title?: string; artist?: string; year?: number; art?: string; queue: () => void; download: () => void }): void {
     closeTrackMenu();
     const m = document.createElement('div');
     m.className = 'cmenu';
-    m.innerHTML =
+    const head = (info.art || info.title)
+        ? `<div class="cmhead">` +
+          (info.art ? `<img class="cmart" src="${info.art.replace(/"/g, '&quot;')}" alt="">` : '') +
+          `<div class="cmmeta">` +
+          `<div class="cmtitle">${escapeHtml(info.title || '')}</div>` +
+          (info.artist ? `<div class="cmsub">${escapeHtml(info.artist)}</div>` : '') +
+          (info.year ? `<div class="cmsub">${escapeHtml(String(info.year))}</div>` : '') +
+          `</div></div><div class="cmsep"></div>`
+        : '';
+    m.innerHTML = head +
         `<button class="cmi" data-a="queue"><svg viewBox="0 0 24 24" fill="none" ${MENU_ICON}><path d="M5 12h14"/><path d="M12 5v14"/></svg>Add song to queue</button>` +
         `<button class="cmi" data-a="dl"><svg viewBox="0 0 24 24" fill="none" ${MENU_ICON}><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>Download track</button>`;
     document.body.appendChild(m);
@@ -63,7 +72,7 @@ function openTrackMenu(x: number, y: number, actions: { queue: () => void; downl
         const b = (e.target as HTMLElement).closest('.cmi') as HTMLElement | null;
         if (!b) return;
         closeTrackMenu();
-        if (b.dataset.a === 'queue') actions.queue(); else actions.download();
+        if (b.dataset.a === 'queue') info.queue(); else info.download();
     });
     // enter: added hidden, shown on the next frames so the transition runs
     requestAnimationFrame(() => requestAnimationFrame(() => m.classList.add('show')));
@@ -472,6 +481,7 @@ async function toggleSearchTracklist(it: SearchResultItem, card: HTMLElement): P
                 e.preventDefault();
                 e.stopPropagation();
                 openTrackMenu(e.clientX, e.clientY, {
+                    title: t.title, artist: it.artist, year: it.year, art: it.art,
                     queue: () => { void ipcRenderer.invoke('collection:enqueue', { ...q, trackId: t.id }); },
                     download: () => { void ipcRenderer.invoke('download:track', { tralbumId: q.tralbumId, tralbumType: q.tralbumType, bandId: q.bandId, trackId: t.id }); },
                 });
@@ -1181,6 +1191,7 @@ async function toggleTracklist(it: CollectionItem, card: HTMLElement): Promise<v
                 e.preventDefault();
                 e.stopPropagation();
                 openTrackMenu(e.clientX, e.clientY, {
+                    title: t.title, artist: it.artist, year: it.year, art: it.art,
                     queue: () => { void ipcRenderer.invoke('collection:enqueue',
                         { tralbumId: it.tralbumId, tralbumType: it.tralbumType, bandId: it.bandId, trackId: t.id }); },
                     download: () => { void ipcRenderer.invoke('download:track',
