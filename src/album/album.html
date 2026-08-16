@@ -223,6 +223,7 @@
         let playingRow = null;
         let lastNP = null;
         function setPlayingRow(row) {
+            if (pauseRaf) { cancelAnimationFrame(pauseRaf); pauseRaf = null; }
             if (playingAnim) { try { playingAnim.destroy(); } catch (e) { /* already gone */ } playingAnim = null; }
             if (playingRow) {
                 playingRow.classList.remove('playing');
@@ -258,9 +259,30 @@
             setPlayingRow(row);
             if (playingRow) syncPlayingAnim(lastNP ? lastNP.isPlaying === true : true);
         }
+        let pauseRaf = null;
         function syncPlayingAnim(play) {
             if (!playingAnim) return;
-            try { if (play) playingAnim.play(); else playingAnim.pause(); } catch (e) { /* already gone */ }
+            if (play) {
+                if (pauseRaf) { cancelAnimationFrame(pauseRaf); pauseRaf = null; }
+                try { playingAnim.play(); playingAnim.setSpeed(1); } catch (e) { /* already gone */ }
+                return;
+            }
+            if (pauseRaf) return;
+            // ease the playback speed down to a crawl, then freeze the last
+            // frame - a smooth stop instead of a hard pause
+            const t0 = performance.now();
+            const dur = 450;
+            const step = () => {
+                const k = Math.min(1, (performance.now() - t0) / dur);
+                try { playingAnim.setSpeed(Math.max(0.001, 1 - k * k)); } catch (e) { pauseRaf = null; return; }
+                if (k >= 1) {
+                    try { playingAnim.pause(); playingAnim.setSpeed(1); } catch (e) { /* already gone */ }
+                    pauseRaf = null;
+                    return;
+                }
+                pauseRaf = requestAnimationFrame(step);
+            };
+            pauseRaf = requestAnimationFrame(step);
         }
         ipcRenderer.on('album:now-playing', (_e, np) => {
             const sameTrack = lastNP && np &&
