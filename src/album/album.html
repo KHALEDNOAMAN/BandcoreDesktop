@@ -77,8 +77,15 @@
         }
         .tlrow:hover { background: rgba(255,255,255,.06); }
         .tlnum { width: 22px; text-align: right; color: var(--sub); font-size: 12px; flex-shrink: 0; }
-        .tlplaying { width: 18px; height: 18px; flex-shrink: 0; display: none; align-items: center; justify-content: center; }
-        .tlplaying.show { display: inline-flex; }
+        /* the playing anim lives inside the title span, right after the text;
+           the slot is always there (opacity 0 -> 1) so rows never shift when
+           the anim appears */
+        .tlplaying {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 18px; height: 18px; margin-left: 6px; vertical-align: middle;
+            flex-shrink: 0; opacity: 0; transition: opacity .3s ease;
+        }
+        .tlplaying.show { opacity: 1; }
         .tlplaying svg { width: 18px; height: 18px; display: block; }
         .tltrk { flex: 2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: font-size .35s ease, font-weight .35s ease, color .35s ease; }
         .tlrow.playing .tltrk { font-size: 14.5px; font-weight: 700; color: var(--text); }
@@ -372,8 +379,7 @@
                 const trkArtist = t.artist || d.artist;
                 row.innerHTML =
                     `<span class="tlnum">${i + 1}</span>` +
-                    `<span class="tlplaying"></span>` +
-                    `<span class="tltrk">${escapeHtml(t.title)}</span>` +
+                    `<span class="tltrk">${escapeHtml(t.title)}<span class="tlplaying"></span></span>` +
                     `<span class="tla">${escapeHtml(trkArtist)}</span>` +
                     `<span class="tldur">${fmtDur(t.duration)}</span>`;
                 row.addEventListener('click', () => { void ipcRenderer.invoke('collection:play', { ...q, activeIndex: i }); });
