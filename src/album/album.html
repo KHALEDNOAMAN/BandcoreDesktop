@@ -19,19 +19,6 @@
             font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Roboto, sans-serif;
             display: flex; flex-direction: column; user-select: none;
         }
-        .topbar {
-            display: flex; align-items: center; gap: 12px; padding: 10px 18px;
-            border-bottom: 1px solid var(--line); background: var(--bar); flex-shrink: 0;
-        }
-        .back {
-            display: inline-flex; align-items: center; gap: 6px; background: var(--hover-bg);
-            border: 1px solid var(--line); color: var(--text); border-radius: 6px;
-            padding: 6px 12px; font-size: 12px; cursor: pointer; font-family: inherit;
-        }
-        .back:hover { border-color: var(--accent); }
-        .back svg { width: 14px; height: 14px; display: block; }
-        .crumb { font-size: 12px; color: var(--sub); }
-        .crumb b { color: var(--text); font-weight: 600; }
         .scroll { flex: 1; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--scroll) transparent; }
         .hero {
             position: relative; padding: 34px 26px 22px; overflow: hidden;
@@ -129,13 +116,6 @@
     </style>
 </head>
 <body>
-    <div class="topbar">
-        <button class="back" id="back">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
-            Back
-        </button>
-        <div class="crumb" id="crumb"></div>
-    </div>
     <div class="scroll" id="scroll">
         <div class="hero" id="hero">
             <div class="hero-bg fade" id="hero-bg"></div>
@@ -235,8 +215,7 @@
         });
         document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeTrackMenu(); });
 
-        $('back').addEventListener('click', () => ipcRenderer.send('album:close'));
-        // mouse back/forward buttons close the overlay like the back button
+        // mouse back/forward buttons close the overlay like the header's Back
         window.addEventListener('mouseup', (e) => {
             if (e.button === 3) ipcRenderer.send('album:close');
         });
@@ -252,7 +231,6 @@
             const d = p && p.data;
             if (!d || !d.ok) return;
             data = d;
-            $('crumb').innerHTML = `album · <b>${escapeHtml(d.title)}</b>`;
             $('hero-bg').style.backgroundImage = d.artUrl ? `url("${d.artUrl}")` : '';
             const art = $('hero-art');
             art.src = d.artUrl || '';
