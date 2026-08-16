@@ -1227,34 +1227,14 @@ async function init() {
         }
     });
 
-    // address bar nav: accept full url, bare domain/path, or free text search (routed to bandcamp search)
-    ipcMain.on('app:navigate-url', (_e, raw: unknown) => {
-        const input = (typeof raw === 'string' ? raw : '').trim();
-        if (!input) return;
-        let url: string;
-        if (/^https?:\/\//i.test(input)) url = input;
-        else if (/^[\w-]+(\.[\w-]+)+(:\d+)?(\/|$|\?)/.test(input)) url = 'https://' + input;
-        else url = 'https://bandcamp.com/search?q=' + encodeURIComponent(input);
-        hardLoad(url);
-    });
-
-    // run a search from the header bar. URL-looking input still navigates
-    // (the bar is the old address bar); anything else is searched and the
-    // results are rendered as a grid in the collection overlay.
+    // run a search from the header bar. everything typed goes through the
+    // site search - the bar is search-only and never navigates.
     // NOTE: an `on` listener, not `handle` - every caller (header bar, results
     // chips) fires and forgets via ipcRenderer.send, which in this electron
     // version never reaches ipcMain.handle handlers.
     ipcMain.on('search:run', async (_e, req: { text?: string; mode?: string }) => {
         const input = String(req?.text || '').trim();
         if (!input) return { ok: false, items: [], reason: 'empty' };
-        let url: string | null = null;
-        if (/^https?:\/\//i.test(input)) url = input;
-        else if (/^[\w-]+(\.[\w-]+)+(:\d+)?(\/|$|\?)/.test(input)) url = 'https://' + input;
-        if (url) {
-            closeCollection();
-            hardLoad(url);
-            return { ok: false, items: [], reason: 'url' };
-        }
         const mode = (req?.mode === 'album' || req?.mode === 'artist' || req?.mode === 'track' || req?.mode === 'genre') ? req.mode : 'all';
         let res: { ok: boolean; items: any[]; error?: string; hasMore?: boolean; nextCursor?: string };
         try {

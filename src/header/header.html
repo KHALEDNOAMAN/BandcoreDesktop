@@ -302,9 +302,9 @@
     document.getElementById('btn-max').onclick = () => ipcRenderer.send('window:maximize');
     document.getElementById('btn-close').onclick = () => ipcRenderer.send('window:close');
 
-    // address bar / search bar: shows current page URL & navigates on enter;
-    // free text runs a site search whose results render in the collection
-    // overlay (mode switching happens on the overlay's filter strip).
+    // search bar (search-only, never an address bar): mirrors the current page
+    // URL, and free text runs a site search whose results render in the
+    // collection overlay (mode switching happens on the overlay's filter strip).
     const urlBar = document.getElementById('url-bar');
     let urlFocused = false;
     function runSearch() {
