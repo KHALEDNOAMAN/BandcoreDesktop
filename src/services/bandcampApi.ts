@@ -1043,7 +1043,7 @@ export class BandcampApi {
      * data-tralbum blob (title/artist/art/release date/about/credits/tracks)
      * plus the band name from data-band for the header. */
     async getAlbumPage(url: string): Promise<AlbumPageData> {
-        const fail = (error: string): AlbumPageData => ({ ok: false, error, url, bandId: '', bandUrl: '', bandName: '', title: '', artist: '', artUrl: '', year: 0, releaseDate: '', genre: '', about: '', credits: [], tracks: [] });
+        const fail = (error: string): AlbumPageData => ({ ok: false, error, url, bandId: '', bandUrl: '', bandName: '', title: '', artist: '', artUrl: '', year: 0, releaseDate: '', genre: '', about: '', credits: [], tracks: [], tralbumId: '', tralbumType: 'a' });
         const session = this.getSession();
         if (!session || !url) return fail('no query');
         this.noteInteractive(); // user-driven: the index crawler yields
@@ -1095,7 +1095,7 @@ export class BandcampApi {
                 artist: String((t && (t.artist || t.band_name)) || '').trim() || bandName,
                 duration: Math.max(0, Math.floor(Number(t && t.duration) || 0)),
             }));
-            return { ok: true, url, bandId, bandUrl, bandName, title, artist, artUrl, year, releaseDate, genre, about, credits, tracks };
+            return { ok: true, url, bandId, bandUrl, bandName, title, artist, artUrl, year, releaseDate, genre, about, credits, tracks, tralbumId: toId(data.id), tralbumType: data.type === 'track' ? 't' : 'a' };
         } catch (e: any) {
             return fail(e?.message || 'release fetch failed');
         }
@@ -1380,6 +1380,8 @@ export interface AlbumPageData {
     about: string;
     credits: { name: string; role: string }[];
     tracks: { id: string; title: string; artist: string; duration: number }[];
+    tralbumId: string;
+    tralbumType: 'a' | 't';
 }
 
 export function playlistPageError(error: string): BandcampPlaylistPage {

@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Album</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; scrollbar-width: none; -ms-overflow-style: none; }
+        ::-webkit-scrollbar { width: 0; height: 0; display: none; }
+        :root {
+            --bg: #181a1b; --titlebar: #121415; --input: #121415; --bar: #1b1e1f;
+            --panel: #161819; --card: #202325; --hover-bg: #24282a;
+            --line: #2a2e30; --line-2: #1e2224; --scroll: #3a3f42;
+            --text: #e8e6e3; --text-2: #cfcac2; --muted: #9a968e; --sub: #848079;
+            --accent: #1da0c3; --hover-text: #ffffff;
+        }
+        html, body { height: 100%; }
+        body {
+            background: var(--bg); color: var(--text); overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Roboto, sans-serif;
+            display: flex; flex-direction: column; user-select: none;
+        }
+        .topbar {
+            display: flex; align-items: center; gap: 12px; padding: 10px 18px;
+            border-bottom: 1px solid var(--line); background: var(--bar); flex-shrink: 0;
+        }
+        .back {
+            display: inline-flex; align-items: center; gap: 6px; background: var(--hover-bg);
+            border: 1px solid var(--line); color: var(--text); border-radius: 6px;
+            padding: 6px 12px; font-size: 12px; cursor: pointer; font-family: inherit;
+        }
+        .back:hover { border-color: var(--accent); }
+        .back svg { width: 14px; height: 14px; display: block; }
+        .crumb { font-size: 12px; color: var(--sub); }
+        .crumb b { color: var(--text); font-weight: 600; }
+        .scroll { flex: 1; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--scroll) transparent; }
+        .hero {
+            position: relative; padding: 34px 26px 22px; overflow: hidden;
+            display: flex; gap: 24px; align-items: flex-end; border-bottom: 1px solid var(--line);
+        }
+        .hero::after {
+            content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 90px;
+            background: linear-gradient(to bottom, transparent, var(--bg));
+            pointer-events: none;
+        }
+        .hero-inner { position: relative; z-index: 1; display: flex; gap: 24px; align-items: flex-end; min-width: 0; flex: 1; }
+        .hero-bg {
+            position: absolute; left: -40px; top: -60px; right: -40px; bottom: -40px;
+            background-size: cover; background-position: center;
+            filter: blur(26px) brightness(.34) saturate(1.15);
+            transform: scale(1.25); pointer-events: none;
+        }
+        .hero-bg.fade {
+            -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 55%, transparent 100%);
+            mask-image: linear-gradient(to bottom, #000 0%, #000 55%, transparent 100%);
+        }
+        .hero-art {
+            width: 190px; height: 190px; border-radius: 10px; object-fit: cover;
+            border: 1px solid rgba(255,255,255,.12); flex-shrink: 0;
+            box-shadow: 0 12px 34px rgba(0,0,0,.5); background: var(--line);
+            opacity: 0; transition: opacity .4s ease;
+        }
+        .hero-art.in { opacity: 1; }
+        .hero-info { min-width: 0; padding-bottom: 2px; }
+        .hero-title { font-size: 32px; font-weight: 800; letter-spacing: -.02em; line-height: 1.15; text-shadow: 0 2px 12px rgba(0,0,0,.5); }
+        .hero-artist { font-size: 14px; color: var(--text-2); margin-top: 8px; text-shadow: 0 1px 8px rgba(0,0,0,.4); }
+        .hero-artist a { color: var(--text-2); text-decoration: none; }
+        .hero-artist a:hover { color: var(--accent); text-decoration: underline; }
+        .hero-meta { font-size: 12px; color: var(--muted); margin-top: 8px; display: flex; gap: 7px; flex-wrap: wrap; align-items: center; }
+        .hero-meta .dot { color: var(--sub); }
+        .genre {
+            display: inline-block; margin-top: 10px; font-size: 10.5px; letter-spacing: .04em;
+            color: var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+            background: color-mix(in srgb, var(--accent) 12%, transparent);
+            border-radius: 999px; padding: 3px 10px;
+        }
+        .hero-btns { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+        .hbtn {
+            display: inline-flex; align-items: center; gap: 8px; border-radius: 999px;
+            border: 1px solid var(--line); background: var(--hover-bg); color: var(--text);
+            padding: 9px 20px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;
+        }
+        .hbtn:hover { border-color: var(--accent); }
+        .hbtn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+        .hbtn.primary:hover { filter: brightness(1.12); }
+        .hbtn:active { transform: scale(.98); transition: transform .08s ease; }
+        .hbtn svg { width: 15px; height: 15px; display: block; }
+        .section { padding: 20px 26px 6px; }
+        .section h2 { font-size: 14px; font-weight: 700; letter-spacing: .02em; margin-bottom: 12px; }
+        .tlrows { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 2px 26px; align-content: start; }
+        .tlrow {
+            display: flex; align-items: center; gap: 10px; padding: 6px 8px; cursor: pointer;
+            font-size: 13px; border-radius: 5px; height: 34px;
+        }
+        .tlrow:hover { background: rgba(255,255,255,.06); }
+        .tlnum { width: 22px; text-align: right; color: var(--sub); font-size: 12px; flex-shrink: 0; }
+        .tltrk { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .tla { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; flex-shrink: 1; }
+        .tldur { color: var(--sub); font-size: 12px; flex-shrink: 0; }
+        .about { font-size: 13px; color: var(--muted); line-height: 1.6; max-width: 860px; padding-bottom: 16px; }
+        .about .date { color: var(--sub); font-size: 12px; margin-bottom: 8px; }
+        .credits { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px 24px; padding-bottom: 18px; }
+        .cre { font-size: 12px; display: flex; justify-content: space-between; gap: 12px; }
+        .cre .role { color: var(--sub); flex-shrink: 0; }
+        .cre .who { color: var(--text-2); text-align: right; }
+        .empty { padding: 26px; color: var(--muted); font-size: 13px; }
+
+        /* per-track context menu (right-click a track row) */
+        .cmenu {
+            position: fixed; z-index: 999; min-width: 210px; padding: 4px;
+            background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+            box-shadow: 0 10px 28px rgba(0,0,0,.4);
+            opacity: 0; transform: scale(.96) translateY(-3px);
+            transition: opacity .12s ease, transform .12s ease;
+            pointer-events: none;
+        }
+        .cmenu.show { opacity: 1; transform: none; pointer-events: auto; }
+        .cmi {
+            display: flex; align-items: center; gap: 9px; width: 100%; padding: 7px 10px;
+            font-size: 12px; color: var(--text); background: none; border: none;
+            border-radius: 6px; cursor: pointer; font-family: inherit; text-align: left;
+        }
+        .cmi:hover { background: var(--hover-bg); color: var(--hover-text); }
+        .cmi svg { width: 15px; height: 15px; flex-shrink: 0; }
+        .cmhead { display: flex; align-items: center; gap: 9px; padding: 6px 8px 7px; }
+        .cmart { width: 38px; height: 38px; border-radius: 5px; object-fit: cover; flex-shrink: 0; }
+        .cmmeta { min-width: 0; flex: 1; }
+        .cmtitle { font-size: 12px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .cmsub { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    </style>
+</head>
+<body>
+    <div class="topbar">
+        <button class="back" id="back">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+            Back
+        </button>
+        <div class="crumb" id="crumb"></div>
+    </div>
+    <div class="scroll" id="scroll">
+        <div class="hero" id="hero">
+            <div class="hero-bg fade" id="hero-bg"></div>
+            <div class="hero-inner">
+                <img class="hero-art" id="hero-art" alt="">
+                <div class="hero-info">
+                    <div class="hero-title" id="hero-title"></div>
+                    <div class="hero-artist" id="hero-artist"></div>
+                    <div class="hero-meta" id="hero-meta"></div>
+                    <div class="genre" id="genre" style="display:none"></div>
+                    <div class="hero-btns">
+                        <button class="hbtn primary" id="playall">
+                            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.14v14l11-7-11-7z"/></svg>
+                            Play
+                        </button>
+                        <button class="hbtn" id="queuebtn">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                            Add to queue
+                        </button>
+                        <button class="hbtn" id="dlbtn">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>
+                            Download album
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="section">
+            <h2>Tracklist</h2>
+            <div class="tlrows" id="tracks"></div>
+        </div>
+        <div class="section" id="aboutsec" style="display:none">
+            <h2>About</h2>
+            <div class="about" id="about"></div>
+        </div>
+        <div class="section" id="credsec" style="display:none">
+            <h2>Credits</h2>
+            <div class="credits" id="credits"></div>
+        </div>
+    </div>
+    <script>
+        const { ipcRenderer } = require('electron');
+        const MENU_ICON = 'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"';
+        let data = null;
+        let ctxMenu = null;
+
+        const $ = (id) => document.getElementById(id);
+        const escapeHtml = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        const fmtDur = (s) => (!s || s < 0 ? '' : Math.floor(s / 60) + ':' + Math.floor(s % 60).toString().padStart(2, '0'));
+
+        // per-track context menu (right-click a track row): add to queue / download
+        function openTrackMenu(x, y, info, actions) {
+            closeTrackMenu();
+            const m = document.createElement('div');
+            m.className = 'cmenu';
+            const head = (info.art || info.title)
+                ? `<div class="cmhead">` +
+                  (info.art ? `<img class="cmart" src="${info.art.replace(/"/g, '&quot;')}" alt="">` : '') +
+                  `<div class="cmmeta">` +
+                  `<div class="cmtitle">${escapeHtml(info.title || '')}</div>` +
+                  (info.artist ? `<div class="cmsub">${escapeHtml(info.artist)}</div>` : '') +
+                  (info.year ? `<div class="cmsub">${escapeHtml(String(info.year))}</div>` : '') +
+                  `</div></div>`
+                : '';
+            m.innerHTML = head +
+                `<button class="cmi" data-a="queue"><svg viewBox="0 0 24 24" fill="none" ${MENU_ICON}><path d="M5 12h14"/><path d="M12 5v14"/></svg>Add song to queue</button>` +
+                `<button class="cmi" data-a="dl"><svg viewBox="0 0 24 24" fill="none" ${MENU_ICON}><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>Download track</button>`;
+            document.body.appendChild(m);
+            const r = m.getBoundingClientRect();
+            m.style.left = Math.max(8, Math.min(x, window.innerWidth - r.width - 8)) + 'px';
+            m.style.top = Math.max(8, Math.min(y, window.innerHeight - r.height - 8)) + 'px';
+            m.addEventListener('click', (e) => {
+                const b = e.target.closest('.cmi');
+                if (!b) return;
+                closeTrackMenu();
+                if (b.dataset.a === 'queue') info.queue(); else info.download();
+            });
+            // enter: added hidden, shown on the next frames so the transition runs
+            requestAnimationFrame(() => requestAnimationFrame(() => m.classList.add('show')));
+            ctxMenu = m;
+        }
+        function closeTrackMenu() {
+            if (!ctxMenu) return;
+            const m = ctxMenu;
+            ctxMenu = null;
+            // exit: fade/scale out, then drop the node
+            m.classList.remove('show');
+            setTimeout(() => m.remove(), 140);
+        }
+        document.addEventListener('click', closeTrackMenu);
+        document.addEventListener('wheel', closeTrackMenu, { passive: true });
+        document.addEventListener('contextmenu', (e) => {
+            if (ctxMenu && !ctxMenu.contains(e.target)) closeTrackMenu();
+        });
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeTrackMenu(); });
+
+        $('back').addEventListener('click', () => ipcRenderer.send('album:close'));
+
+        const fmtDate = (iso) => {
+            if (!iso) return '';
+            const d = new Date(iso + 'T00:00:00');
+            if (isNaN(d.getTime())) return iso;
+            return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+        };
+
+        ipcRenderer.on('album:data', (_e, p) => {
+            const d = p && p.data;
+            if (!d || !d.ok) return;
+            data = d;
+            $('crumb').innerHTML = `album · <b>${escapeHtml(d.title)}</b>`;
+            $('hero-bg').style.backgroundImage = d.artUrl ? `url("${d.artUrl}")` : '';
+            const art = $('hero-art');
+            art.src = d.artUrl || '';
+            if (d.artUrl) {
+                if (art.complete && art.naturalWidth) art.classList.add('in');
+                else art.onload = () => art.classList.add('in');
+            }
+            $('hero-title').textContent = d.title;
+            $('hero-artist').innerHTML = d.bandName
+                ? `by <a href="#" id="bandlink">${escapeHtml(d.bandName)}</a>`
+                : `by ${escapeHtml(d.artist)}`;
+            const bl = $('bandlink');
+            if (bl) bl.addEventListener('click', (e) => {
+                e.preventDefault();
+                ipcRenderer.send('artist:open', { url: d.bandUrl });
+            });
+            const parts = [];
+            if (d.year) parts.push(escapeHtml(String(d.year)));
+            parts.push(`${d.tracks.length} song${d.tracks.length === 1 ? '' : 's'}`);
+            const total = d.tracks.reduce((s, t) => s + (t.duration || 0), 0);
+            if (total) parts.push(`${Math.max(1, Math.round(total / 60))} min`);
+            $('hero-meta').innerHTML = parts.map((p, i) => (i ? `<span class="dot">·</span>${p}` : p)).join(' ');
+            const g = $('genre');
+            if (d.genre) { g.textContent = d.genre; g.style.display = ''; } else { g.style.display = 'none'; }
+
+            const q = { tralbumId: d.tralbumId, tralbumType: d.tralbumType, bandId: d.bandId };
+            $('playall').addEventListener('click', () => { void ipcRenderer.invoke('collection:play', { ...q, activeIndex: 0 }); });
+            $('queuebtn').addEventListener('click', async (e) => {
+                const b = e.target.closest('button'); b.textContent = 'adding…';
+                const r = await ipcRenderer.invoke('collection:enqueue', q);
+                b.textContent = r && r.ok ? 'added ✓' : 'failed';
+                setTimeout(() => { b.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>Add to queue'; }, 1200);
+            });
+            $('dlbtn').addEventListener('click', () => { void ipcRenderer.invoke('download:release', q); });
+
+            const tl = $('tracks');
+            tl.innerHTML = '';
+            d.tracks.forEach((t, i) => {
+                const row = document.createElement('div');
+                row.className = 'tlrow';
+                const showArtist = t.artist && t.artist !== d.artist && t.artist !== d.bandName;
+                row.innerHTML =
+                    `<span class="tlnum">${i + 1}</span>` +
+                    `<span class="tltrk">${escapeHtml(t.title)}</span>` +
+                    (showArtist ? `<span class="tla">${escapeHtml(t.artist)}</span>` : '') +
+                    `<span class="tldur">${fmtDur(t.duration)}</span>`;
+                row.addEventListener('click', () => { void ipcRenderer.invoke('collection:play', { ...q, activeIndex: i }); });
+                if (t.id) {
+                    row.addEventListener('contextmenu', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        openTrackMenu(e.clientX, e.clientY, {
+                            title: t.title, artist: showArtist ? t.artist : d.artist, year: d.year, art: d.artUrl,
+                            queue: () => { void ipcRenderer.invoke('collection:enqueue', { ...q, trackId: t.id }); },
+                            download: () => { void ipcRenderer.invoke('download:track', { tralbumId: q.tralbumId, tralbumType: q.tralbumType, bandId: q.bandId, trackId: t.id }); },
+                        });
+                    });
+                }
+                tl.appendChild(row);
+            });
+
+            const aboutSec = $('aboutsec');
+            if (d.about || d.releaseDate) {
+                aboutSec.style.display = '';
+                const about = $('about');
+                about.innerHTML = '';
+                if (d.releaseDate) {
+                    const date = document.createElement('div');
+                    date.className = 'date';
+                    date.textContent = 'Released ' + fmtDate(d.releaseDate);
+                    about.appendChild(date);
+                }
+                if (d.about) {
+                    const txt = document.createElement('div');
+                    txt.textContent = d.about;
+                    about.appendChild(txt);
+                }
+            } else {
+                aboutSec.style.display = 'none';
+            }
+
+            const credSec = $('credsec');
+            if (d.credits && d.credits.length) {
+                credSec.style.display = '';
+                $('credits').innerHTML = d.credits.slice(0, 24).map((c) =>
+                    `<div class="cre"><span class="role">${escapeHtml(c.role || '')}</span><span class="who">${escapeHtml(c.name)}</span></div>`).join('');
+            } else {
+                credSec.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>

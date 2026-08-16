@@ -1422,7 +1422,7 @@ async function init() {
         try {
             data = await bandcampApi.getAlbumPage(url);
         } catch (err: any) {
-            data = { ok: false, error: (err && (err.message || err)) || 'album fetch threw', url, bandId: '', bandUrl: '', bandName: '', title: '', artist: '', artUrl: '', year: 0, releaseDate: '', genre: '', about: '', credits: [], tracks: [] };
+            data = { ok: false, error: (err && (err.message || err)) || 'album fetch threw', url, bandId: '', bandUrl: '', bandName: '', title: '', artist: '', artUrl: '', year: 0, releaseDate: '', genre: '', about: '', credits: [], tracks: [], tralbumId: '', tralbumType: 'a' };
         }
         if (!data.ok) {
             if (devMode) console.log('[bcrpc:album] fetch failed: ' + (data.error || ''));
