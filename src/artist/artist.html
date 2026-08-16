@@ -320,12 +320,15 @@ opacity: 0; transition: transform .12s ease, opacity .4s ease, box-shadow .12s e
                 `<div class="tltitle">${escapeHtml(row.title)}</div>` +
                 `<div class="tlartist">${escapeHtml(row.artist || data.name || '')}</div>` +
                 `<div class="tlbtns"><button class="tlplayall">Play all</button>` +
-                `<button class="tlqueue">Queue</button><button class="tlclosebtn">Close</button></div></div>` +
+                `<button class="tlqueue">Queue</button><button class="tlopen">Open album</button><button class="tlclosebtn">Close</button></div></div>` +
                 `<div class="tlright"><div class="tlstate">loading tracklist…</div></div>`;
             endOfRow(card).after(panel);
             tlEl = panel;
             const right = panel.querySelector('.tlright');
             panel.querySelector('.tlclosebtn').addEventListener('click', closeTracklist);
+            panel.querySelector('.tlopen').addEventListener('click', () => {
+                ipcRenderer.send('album:open', { url: row.url });
+            });
             const q = { tralbumId: String(row.tralbumId), tralbumType: row.tralbumType, bandId: String(data.bandId) };
             panel.querySelector('.tlplayall').addEventListener('click', () => { void ipcRenderer.invoke('collection:play', { ...q, activeIndex: 0 }); });
             panel.querySelector('.tlqueue').addEventListener('click', async (e) => {

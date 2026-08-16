@@ -418,13 +418,16 @@ async function toggleSearchTracklist(it: SearchResultItem, card: HTMLElement): P
         `<div class="tlartist">${escapeHtml(it.artist || '')}</div>` +
         `<div class="tlyear">${it.year || ''}</div>` +
         `<div class="tlbtns"><button class="tlplayall">Play all</button>` +
-        `<button class="tlqueue">Queue</button><button class="tlclosebtn">Close</button></div></div>` +
+        `<button class="tlqueue">Queue</button><button class="tlopen">Open album</button><button class="tlclosebtn">Close</button></div></div>` +
         `<div class="tlright"><div class="tlstate">loading tracklist…</div></div>`;
     endOfRow(card).after(panel);
     tlEl = panel;
 
     const right = panel.querySelector('.tlright') as HTMLElement;
     panel.querySelector('.tlclosebtn')!.addEventListener('click', closeTracklist);
+    panel.querySelector('.tlopen')!.addEventListener('click', () => {
+        if (it.url) ipcRenderer.send('album:open', { url: it.url });
+    });
 
     // resolve play ids: autocomplete items carry them, discover (genre) and
     // search-page items only carry the release url (search rows have no band id
@@ -1120,13 +1123,16 @@ async function toggleTracklist(it: CollectionItem, card: HTMLElement): Promise<v
         `<div class="tltags"></div>` +
         `<div class="tlbtns"><button class="tlplayall">Play all</button>` +
         `<button class="tlqueue">Queue</button><button class="tlpl">Playlist</button>` +
-        `<button class="tlclosebtn">Close</button></div></div>` +
+        `<button class="tlopen">Open album</button><button class="tlclosebtn">Close</button></div></div>` +
         `<div class="tlright"><div class="tlstate">loading tracklist…</div></div>`;
 
     endOfRow(card).after(panel);
     tlEl = panel;
 
     panel.querySelector('.tlclosebtn')!.addEventListener('click', closeTracklist);
+    panel.querySelector('.tlopen')!.addEventListener('click', () => {
+        if (it.url) ipcRenderer.send('album:open', { url: it.url });
+    });
     panel.querySelector('.tlpl')!.addEventListener('click', (e) => {
         const r = (e.target as HTMLElement).getBoundingClientRect();
         openPlaylistPicker({ tralbumId: it.tralbumId, tralbumType: it.tralbumType, bandId: it.bandId }, r.left, r.bottom + 4);
