@@ -107,21 +107,7 @@
         }
         .wb-item:hover { border-color: var(--accent); background: var(--hover-bg); color: var(--hover-text); }
         .wb-item svg { width: 16px; height: 16px; fill: currentColor; }
-        .side-actions { margin-top: auto; padding: 12px 2px 4px; }
-        .side-actions button { margin-top: 0; width: 100%; }
-        /* save button: swaps its label for a looping lottie while saving, then
-        flashes green 'Saved!' for 2s before returning - disabled the whole
-        time so it can't be interrupted or spammed */
-        #btnSave { position: relative; display: flex; align-items: center; justify-content: center; min-height: 33px; transition: filter .18s ease, transform .18s ease, background-color .3s ease; }
-        #btnSave .save-label, #btnSave .save-lottie { display: flex; align-items: center; }
-        #btnSave .save-lottie { width: 18px; height: 18px; display: none; pointer-events: none; }
-        #btnSave.saving .save-lottie { display: block; }
-        #btnSave.saving .save-label { display: none; }
-        #btnSave.saved { background: #3d9b5f; }
-        #btnSave.save-fail { background: #c9443f; }
-        #btnSave.saved .save-label, #btnSave.save-fail .save-label { color: #fff; display: flex; }
-        #btnSave:disabled { pointer-events: none; }
-    </style>
+        </style>
 </head>
 <body>
     <div class="titlebar">
@@ -138,9 +124,6 @@
             <button class="nav-item" data-pane="keybinds" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><path d="M10 8h.01"/><path d="M12 12h.01"/><path d="M14 8h.01"/><path d="M16 12h.01"/><path d="M18 8h.01"/><path d="M6 8h.01"/><path d="M7 16h10"/><path d="M8 12h.01"/><rect width="20" height="16" x="2" y="4" rx="2"/></svg>Keybinds</button>
             <button class="nav-item" data-pane="storage" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><path d="M10 16h.01"/><path d="M2.212 11.577a2 2 0 0 0-.212.896V18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5.527a2 2 0 0 0-.212-.896L18.55 5.11A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/><path d="M21.946 12.013H2.054"/><path d="M6 16h.01"/></svg>Storage</button>
             <button class="nav-item" data-pane="about" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>About</button>
-            <div class="side-actions">
-                <button id="btnSave"><span class="save-label" id="saveLabel">Save</span><span class="save-lottie" id="saveLottie"></span></button>
-            </div>
         </nav>
         <div class="pane-wrap">
             <div class="status err hidden" id="fatal" style="padding:0 22px;margin-top:14px;"></div>
@@ -402,6 +385,7 @@ ipcRenderer.invoke('settings:get').then((s) => {
                 kbState[kbRecording] = '';
                 kbRecording = null;
                 kbRender();
+                persist(); // no save button anymore - bindings store instantly
                 return;
             }
             if (['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) return; // wait for the real key
@@ -415,6 +399,7 @@ ipcRenderer.invoke('settings:get').then((s) => {
             kbState[kbRecording] = parts.join('+');
             kbRecording = null;
             kbRender();
+            persist(); // no save button anymore - bindings store instantly
         }, true);
 
         // custom titlebar close (frameless window)
@@ -658,61 +643,20 @@ ipcRenderer.invoke('settings:get').then((s) => {
         }
 
         if (ipcRenderer) {
-            // save button state machine: lottie loading anim while saving,
-            // green 'Saved!' flash for 2s, then back to normal. busy the whole
-            // time so saving can't be interrupted or re-triggered
-            const btnSave = $('btnSave');
-            const saveLabel = $('saveLabel');
-            let saveAnim = null, saveBusy = false;
-            try {
-                const fs = require('fs');
-                const path = require('path');
-                const lottieData = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'assets', 'lottie', 'loading.json'), 'utf8'));
-                saveAnim = require('../../assets/lottie/lottie.min.js').loadAnimation({
-                    container: $('saveLottie'), renderer: 'svg',
-                    loop: true, autoplay: false, animationData: lottieData,
-                });
-            } catch (e) { saveAnim = null; }
-
-            btnSave.onclick = async () => {
-                if (saveBusy) return;
-                saveBusy = true;
-                btnSave.disabled = true;
-                btnSave.classList.add('saving');
-                const t0 = Date.now();
-                if (saveAnim) saveAnim.play(); else saveLabel.textContent = 'Saving…';
-                const res = await persist();
-                // keep the loading anim on screen for at least 1s total, so the
-                // save flash reads even when persisting is near-instant
-                const left = 1000 - (Date.now() - t0);
-                if (left > 0) await new Promise((r) => setTimeout(r, left));
-                if (saveAnim) saveAnim.stop();
-                btnSave.classList.remove('saving');
-                const ok = !(res && res.ok === false);
-                btnSave.classList.add(ok ? 'saved' : 'save-fail');
-                saveLabel.textContent = ok ? 'Saved!' : 'Failed!';
-                setTimeout(() => {
-                    btnSave.classList.remove('saved', 'save-fail');
-                    saveLabel.textContent = 'Save';
-                    btnSave.disabled = false;
-                    saveBusy = false;
-                }, 2000);
-            };
-
             $('btnDownloadDir').onclick = async () => {
                 const res = await ipcRenderer.invoke('settings:choose-download-dir');
-                if (res && res.dir) $('downloadDir').value = res.dir;
+                if (res && res.dir) { $('downloadDir').value = res.dir; await persist(); }
             };
 
             $('btnCacheDir').onclick = async () => {
                 const res = await ipcRenderer.invoke('settings:choose-cache-dir');
-                if (res && res.dir) $('cacheDir').value = res.dir;
+                if (res && res.dir) { $('cacheDir').value = res.dir; await persist(); }
                 refreshCacheInfo();
             };
 
             $('btnMusicFolder').onclick = async () => {
                 const res = await ipcRenderer.invoke('settings:choose-music-folder');
-                if (res && res.dir) $('musicFolder').value = res.dir;
+                if (res && res.dir) { $('musicFolder').value = res.dir; await persist(); }
             };
 
             // about / updates: version display + live update status
@@ -777,6 +721,14 @@ ipcRenderer.invoke('settings:get').then((s) => {
             });
 
             load();
+
+            // no save button - every control persists on change ('change' fires
+            // on blur for text fields, on toggle for checkboxes/selects)
+            const PERSIST_ON_CHANGE = ['apiKey', 'apiSecret', 'lfmEnabled', 'minScrobbleLen', 'discordEnabled', 'dOptPaused', 'discordClientId', 'closeToTray', 'autoLoadCollection', 'gridHeaders', 'openAlbumPage', 'fileNameFmt', 'folderNameFmt', 'modifyTags', 'tagTitle', 'tagArtist', 'tagAlbumArtist', 'tagAlbum', 'tagYear', 'tagTrackNum', 'tagLyrics', 'coverInTags', 'coverInFolder', 'coverNameFmt', 'playlistNameFmt', 'cacheReleases', 'musicFolderScan', 'dlPlaylistFormat'];
+            for (const id of PERSIST_ON_CHANGE) {
+                const el = $(id);
+                if (el) el.addEventListener('change', () => { persist(); });
+            }
 
             // global tooltips setting: strip/restore title attributes live
             // (covers this window too - close button, readonly path inputs)
