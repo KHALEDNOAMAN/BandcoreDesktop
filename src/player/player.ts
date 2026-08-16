@@ -580,8 +580,9 @@ function setPanel(open: boolean): void {
 btnQueue.addEventListener('click', () => setPanel(!panelOpen));
 $('btn-queue-close').addEventListener('click', () => setPanel(false));
 
-// title -> album page, artist -> artist page/discog, in content view.
-// resolve a missing page url on demand (playlist tracks), caching it on the track
+// title/art -> album page view, artist -> artist page view (overlays, like
+// clicking album/artist cards). both fall back to navigating the content tab
+// when their fetch fails. missing page urls (playlist tracks) resolve first.
 async function ensurePageUrl(track: PlayerTrack | null): Promise<string> {
     if (!track) return '';
     const have = albumUrlOf(track);
@@ -594,10 +595,18 @@ async function ensurePageUrl(track: PlayerTrack | null): Promise<string> {
     } catch { /* leave unlinked */ }
     return '';
 }
-const navigate = (url: string) => { if (url.startsWith('https://')) ipcRenderer.send('app:navigate', url); };
-elTitle.addEventListener('click', async () => navigate(await ensurePageUrl(queue.current())));
-elArt.addEventListener('click', async () => navigate(await ensurePageUrl(queue.current())));
-elArtist.addEventListener('click', async () => { await ensurePageUrl(queue.current()); navigate(artistUrlOf(queue.current())); });
+const openAlbumPage = async () => {
+    const u = await ensurePageUrl(queue.current());
+    if (u.startsWith('https://')) ipcRenderer.send('album:open', { url: u });
+};
+const openArtistPage = async () => {
+    await ensurePageUrl(queue.current());
+    const u = artistUrlOf(queue.current());
+    if (u.startsWith('https://')) ipcRenderer.send('artist:open', { url: u });
+};
+elTitle.addEventListener('click', openAlbumPage);
+elArt.addEventListener('click', openAlbumPage);
+elArtist.addEventListener('click', openArtistPage);
 
 // right click anything in now playing area to copy link.
 const copyLink = (url: string) => { if (url.startsWith('https://')) { clipboard.writeText(url); flashCopied(); } };
