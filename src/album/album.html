@@ -77,7 +77,11 @@
         }
         .tlrow:hover { background: rgba(255,255,255,.06); }
         .tlnum { width: 22px; text-align: right; color: var(--sub); font-size: 12px; flex-shrink: 0; }
-        .tltrk { flex: 2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .tlplaying { width: 18px; height: 18px; flex-shrink: 0; display: none; align-items: center; justify-content: center; }
+        .tlplaying.show { display: inline-flex; }
+        .tlplaying svg { width: 18px; height: 18px; display: block; }
+        .tltrk { flex: 2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: font-size .35s ease, font-weight .35s ease, color .35s ease; }
+        .tlrow.playing .tltrk { font-size: 14.5px; font-weight: 700; color: var(--text); }
         .tla { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 0 0 240px; max-width: 240px; text-align: left; }
         .tldur { color: var(--sub); font-size: 12px; flex: 1; text-align: right; }
         .about { font-size: 13px; color: var(--muted); line-height: 1.6; max-width: 860px; padding-bottom: 16px; }
@@ -159,6 +163,94 @@
         const $ = (id) => document.getElementById(id);
         const escapeHtml = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
         const fmtDur = (s) => (!s || s < 0 ? '' : Math.floor(s / 60) + ':' + Math.floor(s % 60).toString().padStart(2, '0'));
+
+        // playing-track indicator: a lottie (playing.lottie, a zip: EOCD ->
+        // central directory -> local headers, deflate via zlib) shown beside
+        // the current track, whose row is also raised & bolded.
+        function dotLottieToJson(buf) {
+            try {
+                const findSig = (from, to, sig) => {
+                    for (let i = from; i >= to; i--) {
+                        if (buf.readUInt32LE(i) === sig) return i;
+                    }
+                    return -1;
+                };
+                const eocd = findSig(buf.length - 22, Math.max(0, buf.length - 65557), 0x06054b50);
+                if (eocd < 0) return null;
+                const count = buf.readUInt16LE(eocd + 10);
+                const cdOff = buf.readUInt32LE(eocd + 16);
+                const entries = [];
+                let p = cdOff;
+                for (let i = 0; i < count; i++) {
+                    if (buf.readUInt32LE(p) !== 0x02014b50) return null;
+                    const method = buf.readUInt16LE(p + 10);
+                    const csize = buf.readUInt32LE(p + 20);
+                    const lho = buf.readUInt32LE(p + 42);
+                    const nlen = buf.readUInt16LE(p + 28);
+                    const elen = buf.readUInt16LE(p + 30);
+                    const clen = buf.readUInt16LE(p + 32);
+                    entries.push({ name: buf.toString('utf8', p + 46, p + 46 + nlen), method, csize, lho });
+                    p += 46 + nlen + elen + clen;
+                }
+                const readFile = (name) => {
+                    const f = entries.find((x) => x.name === name);
+                    if (!f) return null;
+                    if (buf.readUInt32LE(f.lho) !== 0x04034b50) return null;
+                    const nlen = buf.readUInt16LE(f.lho + 26);
+                    const elen = buf.readUInt16LE(f.lho + 28);
+                    const data = buf.subarray(f.lho + 30 + nlen + elen, f.lho + 30 + nlen + elen + f.csize);
+                    if (f.method === 0) return data;
+                    if (f.method === 8) return require('zlib').inflateRawSync(data);
+                    return null;
+                };
+                const manifest = readFile('manifest.json');
+                if (!manifest) return null;
+                const m = JSON.parse(manifest.toString('utf8'));
+                const id = m && m.animations && m.animations[0] && m.animations[0].id;
+                if (!id) return null;
+                const anim = readFile('animations/' + id + '.json');
+                return anim ? JSON.parse(anim.toString('utf8')) : null;
+            } catch (e) { return null; }
+        }
+        let playingAnim = null;
+        let playingRow = null;
+        let lastNP = null;
+        function setPlayingRow(row) {
+            if (playingAnim) { try { playingAnim.destroy(); } catch (e) { /* already gone */ } playingAnim = null; }
+            if (playingRow) {
+                playingRow.classList.remove('playing');
+                const s = playingRow.querySelector('.tlplaying');
+                if (s) s.classList.remove('show');
+            }
+            playingRow = row;
+            if (!row) return;
+            row.classList.add('playing');
+            const host = row.querySelector('.tlplaying');
+            if (!host) return;
+            host.classList.add('show');
+            host.innerHTML = '';
+            try {
+                const fs = require('fs');
+                const path = require('path');
+                const lottiePath = path.join(__dirname, '..', '..', 'assets', 'lottie', 'playing.lottie');
+                const animData = fs.existsSync(lottiePath) ? dotLottieToJson(fs.readFileSync(lottiePath)) : null;
+                if (animData) {
+                    playingAnim = require('../../assets/lottie/lottie.min.js').loadAnimation({
+                        container: host, renderer: 'svg', loop: true, autoplay: true,
+                        animationData: animData,
+                    });
+                }
+            } catch (e) { playingAnim = null; }
+        }
+        function applyPlaying() {
+            let row = null;
+            if (data && lastNP && String(lastNP.tralbumId) === String(data.tralbumId)) {
+                const idx = data.tracks.findIndex((t) => String(t.id) === String(lastNP.id));
+                if (idx >= 0) row = document.querySelectorAll('.tlrow')[idx] || null;
+            }
+            setPlayingRow(row);
+        }
+        ipcRenderer.on('album:now-playing', (_e, np) => { lastNP = np || null; applyPlaying(); });
 
         // per-track context menu (right-click a track row): add to queue / download
         function openTrackMenu(x, y, info, actions) {
@@ -280,6 +372,7 @@
                 const trkArtist = t.artist || d.artist;
                 row.innerHTML =
                     `<span class="tlnum">${i + 1}</span>` +
+                    `<span class="tlplaying"></span>` +
                     `<span class="tltrk">${escapeHtml(t.title)}</span>` +
                     `<span class="tla">${escapeHtml(trkArtist)}</span>` +
                     `<span class="tldur">${fmtDur(t.duration)}</span>`;
@@ -297,6 +390,7 @@
                 }
                 tl.appendChild(row);
             });
+            applyPlaying();
 
             const aboutSec = $('aboutsec');
             if (d.about || d.releaseDate) {

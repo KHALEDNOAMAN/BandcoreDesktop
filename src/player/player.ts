@@ -243,6 +243,9 @@ function emitNowPlaying(force = false): void {
         duration: Math.floor(audio.duration || track.duration || 0),
         position: pos,
         isPlaying: !audio.paused,
+        tralbumId: track.tralbumId,
+        tralbumType: track.tralbumType,
+        bandId: track.bandId,
     };
     ipcRenderer.send('player:now-playing', payload);
 }

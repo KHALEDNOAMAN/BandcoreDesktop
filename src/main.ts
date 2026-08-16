@@ -3231,6 +3231,13 @@ const entry: DlEntry = { id: entryId, name: `${rel.albumArtist} - ${rel.album}`,
                 });
             }
         }
+        // album/artist overlays highlight their own playing row from this
+        if (albumView && albumVisible && !albumView.webContents.isDestroyed()) {
+            albumView.webContents.send('album:now-playing', track);
+        }
+        if (artistView && artistVisible && !artistView.webContents.isDestroyed()) {
+            artistView.webContents.send('artist:now-playing', track);
+        }
         presenceService.update(track);
         lastfmService.updateNowPlaying(track);
         lastfmService.maybeScrobble(track);

@@ -72,6 +72,10 @@ export interface NowPlaying {
     duration: number;
     position: number;
     isPlaying: boolean;
+    /** release ids so overlay views (album/artist) can match the playing row. */
+    tralbumId?: string;
+    tralbumType?: TralbumType;
+    bandId?: string;
 }
 
 /** 1 release in fan collection for custom sortable collection view. */
