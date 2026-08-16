@@ -1089,12 +1089,24 @@ export class BandcampApi {
                 .map((c: any) => ({ name: String(c?.name || '').trim(), role: String(c?.role || '').trim() }))
                 .filter((c: any) => c.name);
             const rows: any[] = Array.isArray(data.trackinfo) ? data.trackinfo : [];
-            const tracks = rows.map((t: any, i: number) => ({
-                id: String((t && (t.id || t.track_id)) || ''),
-                title: String((t && t.title) || '').trim() || `Track ${i + 1}`,
-                artist: String((t && (t.artist || t.band_name)) || '').trim() || bandName,
-                duration: Math.max(0, Math.floor(Number(t && t.duration) || 0)),
-            }));
+            const tracks = rows.map((t: any, i: number) => {
+                const trkArtist = String((t && (t.artist || t.band_name)) || '').trim() || bandName;
+                let title = String((t && t.title) || '').trim() || `Track ${i + 1}`;
+                // some releases (notably VA compilations) ship titles already
+                // composed as "artist - title" while also carrying the artist
+                // separately; the row shows both columns, so drop the prefix.
+                if (trkArtist) {
+                    const esc = trkArtist.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    const m = title.match(new RegExp('^' + esc + '\\s*[-–—]\\s+'));
+                    if (m) title = title.slice(m[0].length).trim() || title;
+                }
+                return {
+                    id: String((t && (t.id || t.track_id)) || ''),
+                    title,
+                    artist: trkArtist,
+                    duration: Math.max(0, Math.floor(Number(t && t.duration) || 0)),
+                };
+            });
             return { ok: true, url, bandId, bandUrl, bandName, title, artist, artUrl, year, releaseDate, genre, about, credits, tracks, tralbumId: toId(data.id), tralbumType: data.type === 'track' ? 't' : 'a' };
         } catch (e: any) {
             return fail(e?.message || 'release fetch failed');
