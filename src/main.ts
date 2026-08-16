@@ -1348,15 +1348,21 @@ async function init() {
         // release years come from the tralbum endpoint - one call per release.
         // stream them in one-by-one (cached years instantly, network paced) so
         // the view fills up gradually and a 40-release artist never fires a
-        // parallel burst that trips the rate limiter.
+        // parallel burst that trips the rate limiter. catalogs above the cap
+        // only get direct fetches for the newest ones (the ones on screen);
+        // the rest show their year once the background crawler has visited the
+        // release (shared cache), never as a multi-hundred-call fan-out.
         if (data.discography.length) {
             const token = ++artistYearToken;
+            const directCap = data.discography.length > 90 ? 60 : data.discography.length;
             for (let i = 0; i < data.discography.length && token === artistYearToken; i++) {
                 const r = data.discography[i];
                 let year = 0;
                 try {
-                    year = bandcampApi.getReleaseYear(r.tralbumType, r.tralbumId) ||
-                        await bandcampApi.fetchReleaseYear({ tralbumType: r.tralbumType, tralbumId: r.tralbumId, bandId: r.bandId });
+                    year = bandcampApi.getReleaseYear(r.tralbumType, r.tralbumId);
+                    if (!year && i < directCap) {
+                        year = await bandcampApi.fetchReleaseYear({ tralbumType: r.tralbumType, tralbumId: r.tralbumId, bandId: r.bandId });
+                    }
                 } catch { /* keep 0 */ }
                 if (year && artistView && !artistView.webContents.isDestroyed()) {
                     artistView.webContents.send('artist:year', { bandId: data.bandId, index: i, year });
