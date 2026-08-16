@@ -76,28 +76,24 @@
         .card .art.nophoto { opacity: 1; }
         .card:hover .art { transform: scale(1.03); box-shadow: 0 0 0 2px var(--accent); }
         .card:active .art { transform: scale(.98); transition: transform .08s ease; }
-        /* album page loading: the clicked card's cover content blurs and darkens
-           while its edges stay crisp - a blurred copy of the art sits on top,
-           fading out toward the rim via a radial mask, with the dimmed sharp
-           original underneath; spinner centered on the art */
+        /* album page loading: the clicked card's cover blurs entirely (the blur
+           spill is clipped by the artwrap's rounded-square boundary, so the
+           frame itself stays crisp) with a centered spinner until the data
+           lands */
         .card.loading { pointer-events: none; }
-        .card.loading .art { filter: brightness(.6); box-shadow: none; }
-        .card-blur {
-            position: absolute; inset: 0; z-index: 2;
-            background-size: cover; background-position: center;
-            filter: blur(14px) brightness(.6) saturate(1.15);
-            -webkit-mask-image: radial-gradient(closest-side, #000 58%, transparent 97%);
-            mask-image: radial-gradient(closest-side, #000 58%, transparent 97%);
-            opacity: 0; transition: opacity .3s ease; pointer-events: none;
-        }
-        .card.loading .card-blur { opacity: 1; }
+        .card.loading .art { transform: none; filter: blur(14px) brightness(.6); box-shadow: none; }
         .card-spin { position: absolute; left: 50%; top: 50%; width: 42px; height: 42px; transform: translate(-50%, -50%); z-index: 3; pointer-events: none; }
         .card .t { font-size: 12px; margin-top: 7px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .card .a { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
         .card .y { font-size: 10px; color: var(--sub); margin-top: 1px; }
         .state { padding: 40px 18px; color: var(--muted); font-size: 13px; }
 
-        .artwrap { position: relative; }
+        .artwrap {
+            position: relative;
+            /* clips the art's blur spill (and the hover zoom) to the rounded
+               square, so the cover's frame stays crisp while its content blurs */
+            border-radius: 6px; overflow: hidden;
+        }
         .dl {
             position: absolute; right: 6px; bottom: 6px; width: 28px; height: 28px;
             border: none; border-radius: 50%; background: rgba(24,26,27,.82); color: #fff;
