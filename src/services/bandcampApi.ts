@@ -1039,6 +1039,68 @@ export class BandcampApi {
         }
     }
 
+    /** everything the album view needs about one release: the tralbum page's
+     * data-tralbum blob (title/artist/art/release date/about/credits/tracks)
+     * plus the band name from data-band for the header. */
+    async getAlbumPage(url: string): Promise<AlbumPageData> {
+        const fail = (error: string): AlbumPageData => ({ ok: false, error, url, bandId: '', bandUrl: '', bandName: '', title: '', artist: '', artUrl: '', year: 0, releaseDate: '', genre: '', about: '', credits: [], tracks: [] });
+        const session = this.getSession();
+        if (!session || !url) return fail('no query');
+        this.noteInteractive(); // user-driven: the index crawler yields
+        try {
+            const r = await session.fetch(url, { credentials: 'include' } as any);
+            if (!r.ok) { this.notify429(r.status); return fail('page fetch failed (' + r.status + ')'); }
+            const html = await r.text();
+            const decode = (s: string): string => String(s || '')
+                .replace(/&quot;/g, '"').replace(/&#0*39;/g, "'")
+                .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+                .replace(/&amp;/g, '&');
+            const jsonAttr = (name: string): any | null => {
+                const m = html.match(new RegExp(name + '="([^"]+)"'));
+                if (!m) return null;
+                try { return JSON.parse(decode(m[1])); } catch { return null; }
+            };
+            const data = jsonAttr('data-tralbum');
+            if (!data) return fail('not a release page');
+            const band = jsonAttr('data-band');
+            const cur = data.current || {};
+            const bandId = toId(band?.id || cur.band_id || '');
+            let bandUrl = String(band?.url || band?.https_url || '').trim();
+            if (!bandUrl) { try { bandUrl = new URL(url).origin; } catch { bandUrl = ''; } }
+            const bandName = String(band?.name || data.band?.name || cur.artist || '').trim();
+            const title = String(data.album_title || cur.title || data.title || '').trim();
+            const artist = String(cur.artist || data.artist || data.tralbum_artist || bandName || '').trim();
+            const artId = toId(data.art_id ?? cur.art_id);
+            const artUrl = artId ? `https://f4.bcbits.com/img/a${artId}_10.jpg` : '';
+            const year = this.extractYear(data);
+            let releaseDate = '';
+            if (Number(data.release_date) > 0) {
+                try { releaseDate = new Date(Number(data.release_date) * 1000).toISOString().slice(0, 10); } catch { /* keep '' */ }
+            }
+            // the page lists the release's tags as meta keywords (first = genre)
+            let genre = '';
+            const kw = html.match(/<meta name="keywords" content="([^"]*)"/);
+            if (kw) {
+                const parts = String(kw[1]).split(',').map((s) => s.trim()).filter(Boolean);
+                if (parts.length) genre = parts[0];
+            }
+            const about = this.htmlToText(String(data.about || ''));
+            const credits = (Array.isArray(data.credits) ? data.credits : [])
+                .map((c: any) => ({ name: String(c?.name || '').trim(), role: String(c?.role || '').trim() }))
+                .filter((c: any) => c.name);
+            const rows: any[] = Array.isArray(data.trackinfo) ? data.trackinfo : [];
+            const tracks = rows.map((t: any, i: number) => ({
+                id: String((t && (t.id || t.track_id)) || ''),
+                title: String((t && t.title) || '').trim() || `Track ${i + 1}`,
+                artist: String((t && (t.artist || t.band_name)) || '').trim() || bandName,
+                duration: Math.max(0, Math.floor(Number(t && t.duration) || 0)),
+            }));
+            return { ok: true, url, bandId, bandUrl, bandName, title, artist, artUrl, year, releaseDate, genre, about, credits, tracks };
+        } catch (e: any) {
+            return fail(e?.message || 'release fetch failed');
+        }
+    }
+
     /** follow/unfollow a band through the fan's session. the page's data-crumbs
      * carry the signed crumb and follow-info the fan id; POST goes to the same
      * /fan_follow_band_cb endpoint the site uses (multipart form). */
@@ -1299,6 +1361,25 @@ export interface ArtistPageData {
         bandId: string;
         year: number;
     }[];
+}
+
+/** everything the album view needs about one release. */
+export interface AlbumPageData {
+    ok: boolean;
+    error?: string;
+    url: string;
+    bandId: string;
+    bandUrl: string;
+    bandName: string;
+    title: string;
+    artist: string;
+    artUrl: string;
+    year: number;
+    releaseDate: string;
+    genre: string;
+    about: string;
+    credits: { name: string; role: string }[];
+    tracks: { id: string; title: string; artist: string; duration: number }[];
 }
 
 export function playlistPageError(error: string): BandcampPlaylistPage {

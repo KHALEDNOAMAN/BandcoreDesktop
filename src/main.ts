@@ -10,7 +10,7 @@ import { autoUpdater } from 'electron-updater';
 import { PresenceService } from './services/presenceService';
 import { LastfmService } from './services/lastfmService';
 import { BandcampApi, parseBandcampPlaylistBlob } from './services/bandcampApi';
-import type { ArtistPageData } from './services/bandcampApi';
+import type { ArtistPageData, AlbumPageData } from './services/bandcampApi';
 import { buildExtractorScript } from './services/queueExtractor';
 import { buildId3v23 } from './services/id3';
 import { readLocalTags, AUDIO_EXTENSIONS } from './services/localTags';
@@ -251,6 +251,8 @@ let feedVisible = false;
 let artistView: BrowserView;
 let artistVisible = false;
 let artistYearToken = 0; // bumps on each artist open; stale year streams abort
+let albumView: BrowserView;
+let albumVisible = false;
 let spotlightWin: BrowserWindow | null = null; // macOS-spotlight-style search popup
 
 interface Tab { id: number; view: BrowserView; title: string; }
@@ -321,6 +323,7 @@ function adjustContentViews() {
     if (collectionView && collectionVisible) collectionView.setBounds(contentRect);
     if (feedView && feedVisible) feedView.setBounds(contentRect);
     if (artistView && artistVisible) artistView.setBounds(contentRect);
+    if (albumView && albumVisible) albumView.setBounds(contentRect);
 }
 
 function setupTray() {
@@ -419,6 +422,30 @@ function openArtistView() {
         artistView.webContents.once('did-finish-load', () => res());
     });
     return artistViewReady;
+}
+
+// close the album view (its own back button / any overlay toggle)
+function closeAlbumView() {
+    if (albumVisible && albumView) mainWindow.removeBrowserView(albumView);
+    albumVisible = false;
+}
+
+// open the album view above whatever's showing, same pattern as the artist
+// view: header/player stay on top, the page file reloads per open and
+// album:data is handed over once the reload has finished.
+let albumViewReady: Promise<void> = Promise.resolve();
+function openAlbumView() {
+    if (albumVisible) return albumViewReady;
+    albumVisible = true;
+    mainWindow.addBrowserView(albumView);
+    mainWindow.setTopBrowserView(headerView);
+    mainWindow.setTopBrowserView(playerView);
+    adjustContentViews();
+    albumViewReady = new Promise<void>((res) => {
+        albumView.webContents.reload();
+        albumView.webContents.once('did-finish-load', () => res());
+    });
+    return albumViewReady;
 }
 
 // close the spotlight search popup (results are wiped on close by the popup itself)
@@ -836,6 +863,13 @@ async function init() {
     });
     artistView.setBackgroundColor(chromeBg());
     artistView.webContents.on('dom-ready', () => applyChromeTheme(artistView.webContents));
+
+    albumView = new BrowserView({
+        webPreferences: { nodeIntegration: true, contextIsolation: false, devTools: devMode }
+    });
+    albumView.setBackgroundColor(chromeBg());
+    albumView.webContents.on('dom-ready', () => applyChromeTheme(albumView.webContents));
+    albumView.webContents.loadFile(path.join(__dirname, 'album', 'album.html'));
 
     if (devMode) {
         feedView.webContents.on('did-fail-load', (_e, code, desc, url) =>
@@ -1377,6 +1411,33 @@ async function init() {
 
     // the view's back button returns to whatever was underneath
     ipcMain.on('artist:close', () => closeArtistView());
+
+    // the album view: fetch the release's page and hand everything to the
+    // view. on failure fall back to navigating the active tab to the release.
+    ipcMain.on('album:open', async (_e, req: { url?: string }) => {
+        const url = typeof req?.url === 'string' ? req.url : '';
+        if (!/^https:\/\//.test(url)) return;
+        if (devMode) console.log('[bcrpc:album] open ' + url);
+        let data: AlbumPageData;
+        try {
+            data = await bandcampApi.getAlbumPage(url);
+        } catch (err: any) {
+            data = { ok: false, error: (err && (err.message || err)) || 'album fetch threw', url, bandId: '', bandUrl: '', bandName: '', title: '', artist: '', artUrl: '', year: 0, releaseDate: '', genre: '', about: '', credits: [], tracks: [] };
+        }
+        if (!data.ok) {
+            if (devMode) console.log('[bcrpc:album] fetch failed: ' + (data.error || ''));
+            closeAlbumView();
+            hardLoad(url);
+            return;
+        }
+        if (devMode) console.log('[bcrpc:album] ' + data.title + ' by ' + data.artist + ' tracks=' + data.tracks.length);
+        await openAlbumView();
+        if (albumView && !albumView.webContents.isDestroyed()) {
+            albumView.webContents.send('album:data', { data });
+        }
+    });
+
+    ipcMain.on('album:close', () => closeAlbumView());
 
     // follow/unfollow through the fan's session; the view flips its button from
     // the {isFollowing} in the response.
