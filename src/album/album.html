@@ -256,20 +256,8 @@
                 if (idx >= 0) row = document.querySelectorAll('.tlrow')[idx] || null;
             }
             setPlayingRow(row);
-            if (playingRow) syncPlayingAnim(lastNP ? lastNP.isPlaying === true : true);
         }
-        function syncPlayingAnim(play) {
-            if (!playingAnim) return;
-            try { if (play) playingAnim.play(); else playingAnim.pause(); } catch (e) { /* already gone */ }
-        }
-        ipcRenderer.on('album:now-playing', (_e, np) => {
-            const sameTrack = lastNP && np &&
-                String(lastNP.id) === String(np.id) &&
-                String(lastNP.tralbumId) === String(np.tralbumId);
-            lastNP = np || null;
-            if (sameTrack) { syncPlayingAnim(np.isPlaying === true); return; }
-            applyPlaying();
-        });
+        ipcRenderer.on('album:now-playing', (_e, np) => { lastNP = np || null; applyPlaying(); });
 
         // per-track context menu (right-click a track row): add to queue / download
         function openTrackMenu(x, y, info, actions) {
