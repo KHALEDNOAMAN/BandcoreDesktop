@@ -597,7 +597,10 @@ async function ensurePageUrl(track: PlayerTrack | null): Promise<string> {
 }
 const openAlbumPage = async () => {
     const u = await ensurePageUrl(queue.current());
-    if (u.startsWith('https://')) ipcRenderer.send('album:open', { url: u });
+    if (u.startsWith('https://')) {
+        const cur = queue.current();
+        ipcRenderer.send('album:open', { url: u, artUrl: cur?.art, title: cur?.title });
+    }
 };
 const openArtistPage = async () => {
     await ensurePageUrl(queue.current());

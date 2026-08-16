@@ -389,7 +389,7 @@ function createSearchCard(it: SearchResultItem, index: number): HTMLElement {
     if (it.type === 'album') {
         card.id = 'card-s' + index;
         card.addEventListener('click', () => {
-            if (openAlbumPageOn && it.url) { ipcRenderer.send('album:open', { url: it.url }); return; }
+            if (openAlbumPageOn && it.url) { ipcRenderer.send('album:open', { url: it.url, artUrl: it.art, title: it.name }); return; }
             void toggleSearchTracklist(it, card);
         });
     } else {
@@ -430,7 +430,7 @@ async function toggleSearchTracklist(it: SearchResultItem, card: HTMLElement): P
     const right = panel.querySelector('.tlright') as HTMLElement;
     panel.querySelector('.tlclosebtn')!.addEventListener('click', closeTracklist);
     panel.querySelector('.tlopen')!.addEventListener('click', () => {
-        if (it.url) ipcRenderer.send('album:open', { url: it.url });
+        if (it.url) ipcRenderer.send('album:open', { url: it.url, artUrl: it.art, title: it.name });
     });
 
     // resolve play ids: autocomplete items carry them, discover (genre) and
@@ -605,7 +605,7 @@ function createCard(it: CollectionItem): HTMLElement {
     card.appendChild(meta);
     
     card.addEventListener('click', () => {
-        if (openAlbumPageOn && it.url && it.tralbumType === 'a') { ipcRenderer.send('album:open', { url: it.url }); return; }
+        if (openAlbumPageOn && it.url && it.tralbumType === 'a') { ipcRenderer.send('album:open', { url: it.url, artUrl: it.art, title: it.title }); return; }
         toggleTracklist(it, card);
     });
     // right-click a cover: add the whole release to a playlist (local cards get
@@ -1140,7 +1140,7 @@ async function toggleTracklist(it: CollectionItem, card: HTMLElement): Promise<v
 
     panel.querySelector('.tlclosebtn')!.addEventListener('click', closeTracklist);
     panel.querySelector('.tlopen')!.addEventListener('click', () => {
-        if (it.url) ipcRenderer.send('album:open', { url: it.url });
+        if (it.url) ipcRenderer.send('album:open', { url: it.url, artUrl: it.art, title: it.title });
     });
     panel.querySelector('.tlpl')!.addEventListener('click', (e) => {
         const r = (e.target as HTMLElement).getBoundingClientRect();

@@ -1412,28 +1412,47 @@ async function init() {
     // the view's back button returns to whatever was underneath
     ipcMain.on('artist:close', () => closeArtistView());
 
-    // the album view: fetch the release's page and hand everything to the
-    // view. on failure fall back to navigating the active tab to the release.
-    ipcMain.on('album:open', async (_e, req: { url?: string }) => {
+    // the album view: the view is shown right away with a blurred-cover loading
+    // state, then the release page is fetched and handed over. on failure fall
+    // back to navigating the active tab to the release. a new album:open while
+    // one is loading is ignored - the spinner is up, so no album is clickable.
+    let albumLoading = false;
+    ipcMain.on('album:open', async (_e, req: { url?: string; artUrl?: string; title?: string }) => {
         const url = typeof req?.url === 'string' ? req.url : '';
         if (!/^https:\/\//.test(url)) return;
-        if (devMode) console.log('[bcrpc:album] open ' + url);
-        let data: AlbumPageData;
-        try {
-            data = await bandcampApi.getAlbumPage(url);
-        } catch (err: any) {
-            data = { ok: false, error: (err && (err.message || err)) || 'album fetch threw', url, bandId: '', bandUrl: '', bandName: '', title: '', artist: '', artUrl: '', year: 0, releaseDate: '', genre: '', about: '', credits: [], tracks: [], tralbumId: '', tralbumType: 'a' };
-        }
-        if (!data.ok) {
-            if (devMode) console.log('[bcrpc:album] fetch failed: ' + (data.error || ''));
-            closeAlbumView();
-            hardLoad(url);
+        if (albumLoading) {
+            if (devMode) console.log('[bcrpc:album] busy, ignoring ' + url);
             return;
         }
-        if (devMode) console.log('[bcrpc:album] ' + data.title + ' by ' + data.artist + ' tracks=' + data.tracks.length);
-        await openAlbumView();
-        if (albumView && !albumView.webContents.isDestroyed()) {
-            albumView.webContents.send('album:data', { data });
+        albumLoading = true;
+        try {
+            if (devMode) console.log('[bcrpc:album] open ' + url);
+            await openAlbumView();
+            if (albumView && !albumView.webContents.isDestroyed()) {
+                albumView.webContents.send('album:loading', {
+                    url,
+                    artUrl: typeof req.artUrl === 'string' ? req.artUrl : '',
+                    title: typeof req.title === 'string' ? req.title : '',
+                });
+            }
+            let data: AlbumPageData;
+            try {
+                data = await bandcampApi.getAlbumPage(url);
+            } catch (err: any) {
+                data = { ok: false, error: (err && (err.message || err)) || 'album fetch threw', url, bandId: '', bandUrl: '', bandName: '', title: '', artist: '', artUrl: '', year: 0, releaseDate: '', genre: '', about: '', credits: [], tracks: [], tralbumId: '', tralbumType: 'a' };
+            }
+            if (!data.ok) {
+                if (devMode) console.log('[bcrpc:album] fetch failed: ' + (data.error || ''));
+                closeAlbumView();
+                hardLoad(url);
+                return;
+            }
+            if (devMode) console.log('[bcrpc:album] ' + data.title + ' by ' + data.artist + ' tracks=' + data.tracks.length);
+            if (albumView && !albumView.webContents.isDestroyed()) {
+                albumView.webContents.send('album:data', { data });
+            }
+        } finally {
+            albumLoading = false;
         }
     });
 

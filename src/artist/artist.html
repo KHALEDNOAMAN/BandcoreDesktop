@@ -327,7 +327,7 @@ opacity: 0; transition: transform .12s ease, opacity .4s ease, box-shadow .12s e
             const right = panel.querySelector('.tlright');
             panel.querySelector('.tlclosebtn').addEventListener('click', closeTracklist);
             panel.querySelector('.tlopen').addEventListener('click', () => {
-                ipcRenderer.send('album:open', { url: row.url });
+                ipcRenderer.send('album:open', { url: row.url, artUrl: row.art, title: row.title });
             });
             const q = { tralbumId: String(row.tralbumId), tralbumType: row.tralbumType, bandId: String(data.bandId) };
             panel.querySelector('.tlplayall').addEventListener('click', () => { void ipcRenderer.invoke('collection:play', { ...q, activeIndex: 0 }); });
