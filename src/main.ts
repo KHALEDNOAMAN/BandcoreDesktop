@@ -3308,6 +3308,7 @@ const entry: DlEntry = { id: entryId, name: `${rel.albumArtist} - ${rel.album}`,
             seekbarWidth: store.get('seekbarWidth', 560),
             marqueeSpeed: store.get('marqueeSpeed', 50),
             tooltips: store.get('tooltips', true) !== false,
+            openAlbumPage: store.get('openAlbumPage', false) === true,
             font: chromeFontKey(),
             fontOptions: Object.entries(CHROME_FONTS).map(([k, v]) => ({ key: k, label: v.label, family: v.family })),
         };
