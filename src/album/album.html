@@ -104,25 +104,6 @@
         .cre .who { color: var(--text-2); text-align: right; }
         .empty { padding: 26px; color: var(--muted); font-size: 13px; }
 
-        /* loading overlay: blurred/darkened cover fills the screen with a
-        centered spinner until the release data arrives */
-        .loading {
-            position: fixed; inset: 0; z-index: 1000; overflow: hidden;
-            background: rgba(10, 11, 12, .62);
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            gap: 16px; opacity: 0; pointer-events: none;
-            transition: opacity .3s ease;
-        }
-        .loading.show { opacity: 1; pointer-events: all; }
-        .loading .lbg {
-            position: absolute; inset: -40px;
-            background-size: cover; background-position: center;
-            filter: blur(28px) brightness(.32) saturate(1.2);
-            transform: scale(1.15);
-        }
-        .loading .spin { width: 52px; height: 52px; position: relative; z-index: 1; }
-        .loading .loadtxt { color: var(--muted); font-size: 12px; letter-spacing: .06em; position: relative; z-index: 1; }
-
         /* per-track context menu (right-click a track row) */
         .cmenu {
             position: fixed; z-index: 999; min-width: 210px; padding: 4px;
@@ -192,11 +173,6 @@
             <div class="credits" id="credits"></div>
         </div>
     </div>
-    <div class="loading" id="loading">
-        <div class="lbg" id="loading-bg"></div>
-        <div class="spin" id="loading-spin"></div>
-        <div class="loadtxt">Loading album…</div>
-    </div>
     <script>
         const { ipcRenderer } = require('electron');
         const MENU_ICON = 'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"';
@@ -255,35 +231,6 @@
 
         $('back').addEventListener('click', () => ipcRenderer.send('album:close'));
 
-        // centered loading lottie (the overlay + dim layer show regardless; the
-        // animation is a nice-to-have if the asset ever goes missing)
-        let lottieAnim = null;
-        try {
-            const fs = require('fs');
-            const path = require('path');
-            lottieAnim = require('../../assets/lottie/lottie.min.js').loadAnimation({
-                container: $('loading-spin'), renderer: 'svg',
-                loop: true, autoplay: false,
-                animationData: JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'assets', 'lottie', 'loading.json'), 'utf8')),
-            });
-        } catch (e) { lottieAnim = null; }
-
-        // opening: the view shows the blurred cover + spinner immediately and
-        // blocks all interaction until album:data lands (or the fetch fails and
-        // main falls back to navigating the tab).
-        ipcRenderer.on('album:loading', (_e, p) => {
-            data = null;
-            const artUrl = (p && p.artUrl) || '';
-            $('hero-bg').style.backgroundImage = artUrl ? `url("${artUrl}")` : '';
-            $('loading-bg').style.backgroundImage = artUrl ? `url("${artUrl}")` : '';
-            const art = $('hero-art');
-            art.src = artUrl || '';
-            art.classList.remove('in');
-            $('hero-title').textContent = (p && p.title) || '…';
-            if (lottieAnim) { lottieAnim.play(); }
-            $('loading').classList.add('show');
-        });
-
         const fmtDate = (iso) => {
             if (!iso) return '';
             const d = new Date(iso + 'T00:00:00');
@@ -295,8 +242,6 @@
             const d = p && p.data;
             if (!d || !d.ok) return;
             data = d;
-            if (lottieAnim) lottieAnim.stop();
-            $('loading').classList.remove('show');
             $('crumb').innerHTML = `album · <b>${escapeHtml(d.title)}</b>`;
             $('hero-bg').style.backgroundImage = d.artUrl ? `url("${d.artUrl}")` : '';
             const art = $('hero-art');

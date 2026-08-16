@@ -146,6 +146,37 @@ async function load(): Promise<void> {
 // one-time advice for big collections: recommend the permanent release cache.
 let cacheSettingOn = false; // filled from settings:get below
 let openAlbumPageOn = false; // settings: open the album page view instead of the inline tracklist
+
+// album page loading: the clicked card's cover blurs and darkens (with a
+// centered lottie) while main fetches the release; album:loading-done clears
+// it on success and on failure alike.
+let loadingCard: HTMLElement | null = null;
+let cardSpinAnim: any = null;
+function startCardLoading(card: HTMLElement): void {
+    clearCardLoading();
+    loadingCard = card;
+    card.classList.add('loading');
+    const sp = document.createElement('div');
+    sp.className = 'card-spin';
+    card.appendChild(sp);
+    try {
+        const fs = require('fs');
+        const path = require('path');
+        cardSpinAnim = require('../../assets/lottie/lottie.min.js').loadAnimation({
+            container: sp, renderer: 'svg', loop: true, autoplay: true,
+            animationData: JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'assets', 'lottie', 'loading.json'), 'utf8')),
+        });
+    } catch (e) { cardSpinAnim = null; }
+}
+function clearCardLoading(): void {
+    if (cardSpinAnim) { try { cardSpinAnim.destroy(); } catch (e) { /* already gone */ } cardSpinAnim = null; }
+    if (!loadingCard) return;
+    loadingCard.classList.remove('loading');
+    const sp = loadingCard.querySelector('.card-spin');
+    if (sp) sp.remove();
+    loadingCard = null;
+}
+ipcRenderer.on('album:loading-done', () => clearCardLoading());
 function maybeShowBigCollectionNotice(): void {
     if (items.length <= 1000 || cacheSettingOn) return;
     if (localStorage.getItem('bigCollNoticeDismissed') === '1') return;
@@ -389,7 +420,7 @@ function createSearchCard(it: SearchResultItem, index: number): HTMLElement {
     if (it.type === 'album') {
         card.id = 'card-s' + index;
         card.addEventListener('click', () => {
-            if (openAlbumPageOn && it.url) { ipcRenderer.send('album:open', { url: it.url, artUrl: it.art, title: it.name }); return; }
+            if (openAlbumPageOn && it.url) { startCardLoading(card); ipcRenderer.send('album:open', { url: it.url, artUrl: it.art, title: it.name }); return; }
             void toggleSearchTracklist(it, card);
         });
     } else {
@@ -430,7 +461,9 @@ async function toggleSearchTracklist(it: SearchResultItem, card: HTMLElement): P
     const right = panel.querySelector('.tlright') as HTMLElement;
     panel.querySelector('.tlclosebtn')!.addEventListener('click', closeTracklist);
     panel.querySelector('.tlopen')!.addEventListener('click', () => {
-        if (it.url) ipcRenderer.send('album:open', { url: it.url, artUrl: it.art, title: it.name });
+        if (!it.url) return;
+        startCardLoading(document.getElementById('card-' + openId) as HTMLElement);
+        ipcRenderer.send('album:open', { url: it.url, artUrl: it.art, title: it.name });
     });
 
     // resolve play ids: autocomplete items carry them, discover (genre) and
@@ -605,7 +638,7 @@ function createCard(it: CollectionItem): HTMLElement {
     card.appendChild(meta);
     
     card.addEventListener('click', () => {
-        if (openAlbumPageOn && it.url && it.tralbumType === 'a') { ipcRenderer.send('album:open', { url: it.url, artUrl: it.art, title: it.title }); return; }
+        if (openAlbumPageOn && it.url && it.tralbumType === 'a') { startCardLoading(card); ipcRenderer.send('album:open', { url: it.url, artUrl: it.art, title: it.title }); return; }
         toggleTracklist(it, card);
     });
     // right-click a cover: add the whole release to a playlist (local cards get
@@ -1140,7 +1173,9 @@ async function toggleTracklist(it: CollectionItem, card: HTMLElement): Promise<v
 
     panel.querySelector('.tlclosebtn')!.addEventListener('click', closeTracklist);
     panel.querySelector('.tlopen')!.addEventListener('click', () => {
-        if (it.url) ipcRenderer.send('album:open', { url: it.url, artUrl: it.art, title: it.title });
+        if (!it.url) return;
+        startCardLoading(document.getElementById('card-' + openId) as HTMLElement);
+        ipcRenderer.send('album:open', { url: it.url, artUrl: it.art, title: it.title });
     });
     panel.querySelector('.tlpl')!.addEventListener('click', (e) => {
         const r = (e.target as HTMLElement).getBoundingClientRect();
