@@ -243,6 +243,7 @@ opacity: 0; transition: transform .12s ease, opacity .4s ease, box-shadow .12s e
             setTimeout(() => m.remove(), 140);
         }
         document.addEventListener('click', closeTrackMenu);
+        document.addEventListener('wheel', closeTrackMenu, { passive: true });
         document.addEventListener('contextmenu', (e) => {
             if (ctxMenu && !ctxMenu.contains(e.target)) closeTrackMenu();
         });

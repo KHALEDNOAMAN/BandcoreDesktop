@@ -78,6 +78,7 @@ function closeTrackMenu(): void {
     setTimeout(() => m.remove(), 140);
 }
 document.addEventListener('click', closeTrackMenu);
+document.addEventListener('wheel', closeTrackMenu, { passive: true });
 document.addEventListener('contextmenu', (e) => {
     if (ctxMenu && !ctxMenu.contains(e.target as Node)) closeTrackMenu();
 });
