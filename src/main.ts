@@ -3425,6 +3425,12 @@ const entry: DlEntry = { id: entryId, name: `${rel.albumArtist} - ${rel.album}`,
                     if (w && !w.webContents.isDestroyed()) applyChromeTheme(w.webContents);
                 }
             }
+            if (typeof data.openAlbumPage === 'boolean') {
+                store.set('openAlbumPage', data.openAlbumPage);
+                if (collectionView && !collectionView.webContents.isDestroyed()) {
+                    collectionView.webContents.send('collection:open-album-mode', data.openAlbumPage);
+                }
+            }
             if (typeof data.seekbarAbove === 'boolean') {
                 store.set('seekbarAbove', data.seekbarAbove);
                 if (playerView && !playerView.webContents.isDestroyed()) {

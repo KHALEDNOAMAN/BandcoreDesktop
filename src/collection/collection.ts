@@ -145,6 +145,7 @@ async function load(): Promise<void> {
 
 // one-time advice for big collections: recommend the permanent release cache.
 let cacheSettingOn = false; // filled from settings:get below
+let openAlbumPageOn = false; // settings: open the album page view instead of the inline tracklist
 function maybeShowBigCollectionNotice(): void {
     if (items.length <= 1000 || cacheSettingOn) return;
     if (localStorage.getItem('bigCollNoticeDismissed') === '1') return;
@@ -387,7 +388,10 @@ function createSearchCard(it: SearchResultItem, index: number): HTMLElement {
     // artists navigate, tracks play straight from the overlay.
     if (it.type === 'album') {
         card.id = 'card-s' + index;
-        card.addEventListener('click', () => { void toggleSearchTracklist(it, card); });
+        card.addEventListener('click', () => {
+            if (openAlbumPageOn && it.url) { ipcRenderer.send('album:open', { url: it.url }); return; }
+            void toggleSearchTracklist(it, card);
+        });
     } else {
         card.addEventListener('click', () => ipcRenderer.send('search:open-result', {
             type: it.type, url: it.url, bandId: it.bandId, albumId: it.albumId, trackId: it.trackId,
@@ -600,7 +604,10 @@ function createCard(it: CollectionItem): HTMLElement {
         `<div class="y">${it.year || ''}</div>`;
     card.appendChild(meta);
     
-    card.addEventListener('click', () => toggleTracklist(it, card));
+    card.addEventListener('click', () => {
+        if (openAlbumPageOn && it.url && it.tralbumType === 'a') { ipcRenderer.send('album:open', { url: it.url }); return; }
+        toggleTracklist(it, card);
+    });
     // right-click a cover: add the whole release to a playlist (local cards get
     // a small menu with a "remove from library" entry too)
     card.addEventListener('contextmenu', (e) => {
@@ -1057,8 +1064,10 @@ ipcRenderer.on('collection:grid-headers', (_e, on: unknown) => {
 ipcRenderer.invoke('settings:get').then((s: any) => {
     gridHeadersOn = !!(s && s.gridHeaders);
     cacheSettingOn = !!(s && s.cacheReleases);
+    openAlbumPageOn = !!(s && s.openAlbumPage);
     if (gridHeadersOn && items.length && viewMode === 'grid') forceRender();
 }).catch(() => { /* keep off */ });
+ipcRenderer.on('collection:open-album-mode', (_e, on: unknown) => { openAlbumPageOn = on === true; });
 
 // global tooltips setting: strip/restore title attributes live
 let tooltipsOn = true;

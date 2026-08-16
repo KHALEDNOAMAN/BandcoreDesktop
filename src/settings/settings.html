@@ -183,6 +183,7 @@
                 <label class="toggle" style="margin-top:12px;"><input type="checkbox" id="autoLoadCollection"> load collection in the background on startup</label>
                 <label class="toggle" style="margin-top:12px;"><input type="checkbox" id="gridHeaders"> show group headers in the collection grid view</label>
                 <label class="toggle" style="margin-top:12px;"><input type="checkbox" id="showTooltips"> show tooltips on hover</label>
+                <label class="toggle" style="margin-top:12px;"><input type="checkbox" id="openAlbumPage"> open the album page view immediately when clicking an album in the collection or search results (instead of the inline tracklist)</label>
             </section>
 
             <section class="pane hidden" id="pane-appearance">
@@ -523,6 +524,7 @@ ipcRenderer.invoke('settings:get').then((s) => {
             $('noDarkArtistPages').checked = s.darkArtistPages !== true;
             $('seekbarAbove').checked = s.seekbarAbove === true;
             $('showTooltips').checked = s.tooltips !== false;
+            $('openAlbumPage').checked = s.openAlbumPage === true;
             // apply the stored tooltip state to this window right away
             tooltipsOn = s.tooltips !== false;
             applyTooltips();
@@ -631,6 +633,7 @@ ipcRenderer.invoke('settings:get').then((s) => {
                 darkArtistPages: !$('noDarkArtistPages').checked,
                 seekbarAbove: $('seekbarAbove').checked,
                 tooltips: $('showTooltips').checked,
+                openAlbumPage: $('openAlbumPage').checked,
                 miniBlur: (() => {
                     const v = Number($('miniBlur').value);
                     return Number.isFinite(v) ? Math.min(40, Math.max(0, Math.round(v))) : 18;
