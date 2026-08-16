@@ -283,11 +283,11 @@
             d.tracks.forEach((t, i) => {
                 const row = document.createElement('div');
                 row.className = 'tlrow';
-                const showArtist = t.artist && t.artist !== d.artist && t.artist !== d.bandName;
+                const trkArtist = t.artist || d.artist;
                 row.innerHTML =
                     `<span class="tlnum">${i + 1}</span>` +
                     `<span class="tltrk">${escapeHtml(t.title)}</span>` +
-                    (showArtist ? `<span class="tla">${escapeHtml(t.artist)}</span>` : '') +
+                    `<span class="tla">${escapeHtml(trkArtist)}</span>` +
                     `<span class="tldur">${fmtDur(t.duration)}</span>`;
                 row.addEventListener('click', () => { void ipcRenderer.invoke('collection:play', { ...q, activeIndex: i }); });
                 if (t.id) {
@@ -295,7 +295,7 @@
                         e.preventDefault();
                         e.stopPropagation();
                         openTrackMenu(e.clientX, e.clientY, {
-                            title: t.title, artist: showArtist ? t.artist : d.artist, year: d.year, art: d.artUrl,
+                            title: t.title, artist: trkArtist, year: d.year, art: d.artUrl,
                             queue: () => { void ipcRenderer.invoke('collection:enqueue', { ...q, trackId: t.id }); },
                             download: () => { void ipcRenderer.invoke('download:track', { tralbumId: q.tralbumId, tralbumType: q.tralbumType, bandId: q.bandId, trackId: t.id }); },
                         });
