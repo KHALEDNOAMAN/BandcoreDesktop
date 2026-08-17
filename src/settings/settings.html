@@ -373,6 +373,10 @@ const fontSel = $('fontSel');
 // native selects can't animate, so the theme/font pickers are custom
 // dropdowns: the select stays hidden as the value source (persist() still
 // reads it), the button + popup handle picking with a fade/scale ease.
+// exactly one dropdown may be open: the capture-phase closer runs before any
+// stopPropagation() on buttons, so opening one dropdown closes the other.
+let openDD = null;
+function closeDD() { if (openDD) { openDD.classList.remove('open'); openDD = null; } }
 function makeDropdown(sel, opts) {
     const host = document.createElement('div');
     host.className = 'dd';
@@ -421,14 +425,16 @@ function makeDropdown(sel, opts) {
         });
         menu.appendChild(b);
     }
-    const open = () => host.classList.add('open');
-    const close = () => host.classList.remove('open');
+    const open = () => { closeDD(); openDD = host; host.classList.add('open'); };
+    const close = () => { closeDD(); };
     btn.addEventListener('click', (e) => {
         e.stopPropagation();
-        if (host.classList.contains('open')) close(); else open();
+        if (openDD === host) closeDD(); else open();
     });
-    document.addEventListener('click', (e) => { if (host.classList.contains('open') && !host.contains(e.target)) close(); });
-    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && host.classList.contains('open')) close(); });
+    document.addEventListener('click', (e) => {
+        if (openDD && !openDD.contains(e.target)) closeDD();
+    }, true);
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && openDD) closeDD(); });
     render();
     return { host, render };
 }
