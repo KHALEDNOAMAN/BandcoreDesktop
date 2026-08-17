@@ -351,9 +351,10 @@
         });
         document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeTrackMenu(); });
 
-        // mouse back/forward buttons close the overlay like the header's Back
+        // mouse back/forward buttons close/reopen the overlay like the header's < >
         window.addEventListener('mouseup', (e) => {
             if (e.button === 3) ipcRenderer.send('album:close');
+            if (e.button === 4) ipcRenderer.send('app:forward');
         });
 
         const fmtDate = (iso) => {

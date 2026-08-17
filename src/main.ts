@@ -250,6 +250,11 @@ let feedView: BrowserView;
 let feedVisible = false;
 let artistView: BrowserView;
 let artistVisible = false;
+// forward button reopens the overlay the user backed out of (the mirror of
+// app:back). holds the last user-closed overlay until the next navigation.
+let closedOverlay: { type: 'album' | 'artist'; url: string } | null = null;
+let openOverlayUrl = '';
+let openOverlayType: 'album' | 'artist' | '' = '';
 let artistYearToken = 0; // bumps on each artist open; stale year streams abort
 let albumView: BrowserView;
 let albumVisible = false;
@@ -400,6 +405,8 @@ function closeFeed() {
 function closeArtistView() {
     if (artistVisible && artistView) mainWindow.removeBrowserView(artistView);
     artistVisible = false;
+    openOverlayUrl = '';
+    openOverlayType = '';
 }
 
 // open the artist view above whatever's showing (usually the collection's
@@ -428,6 +435,8 @@ function openArtistView() {
 function closeAlbumView() {
     if (albumVisible && albumView) mainWindow.removeBrowserView(albumView);
     albumVisible = false;
+    openOverlayUrl = '';
+    openOverlayType = '';
 }
 
 // open the album view above whatever's showing, same pattern as the artist
@@ -1195,13 +1204,24 @@ async function init() {
 
     // back closes the album/artist overlays first (mouse back button + header
     // back button both land here) - the underlying tab never navigates while
-    // an overlay is on top of it
+    // an overlay is on top of it, and forward can re-open what was closed.
     ipcMain.on('app:back', () => {
-        if (albumVisible) { closeAlbumView(); return; }
-        if (artistVisible) { closeArtistView(); return; }
+        if (albumVisible) { closedOverlay = { type: 'album', url: openOverlayUrl }; closeAlbumView(); return; }
+        if (artistVisible) { closedOverlay = { type: 'artist', url: openOverlayUrl }; closeArtistView(); return; }
+        closedOverlay = null;
         navGo('back');
     });
-    ipcMain.on('app:forward', () => navGo('forward'));
+    ipcMain.on('app:forward', () => {
+        if (albumVisible || artistVisible) return; // nothing to go forward to under an overlay
+        if (closedOverlay && closedOverlay.url) {
+            const c = closedOverlay;
+            closedOverlay = null;
+            if (c.type === 'album') ipcMain.emit('album:open', null, { url: c.url });
+            else ipcMain.emit('artist:open', null, { url: c.url });
+            return;
+        }
+        navGo('forward');
+    });
     ipcMain.on('app:reload', () => {
         const wc = contentView.webContents;
         if ((wc as any).__hung || wc.isCrashed()) hardLoad(wc.getURL() || 'https://bandcamp.com');
@@ -1213,6 +1233,7 @@ async function init() {
         closeCollection();
         closeFeed();
         closeSearch();
+        closedOverlay = null;
         hardLoad('https://bandcamp.com');
     });
 
@@ -1223,6 +1244,7 @@ async function init() {
             closeCollection();
             closeFeed();
             closeSearch();
+            closedOverlay = null;
             hardLoad(url);
         }
     });
@@ -1235,6 +1257,7 @@ async function init() {
     ipcMain.on('search:run', async (_e, req: { text?: string; mode?: string }) => {
         const input = String(req?.text || '').trim();
         if (!input) return { ok: false, items: [], reason: 'empty' };
+        closedOverlay = null;
         const mode = (req?.mode === 'album' || req?.mode === 'artist' || req?.mode === 'track' || req?.mode === 'genre') ? req.mode : 'all';
         let res: { ok: boolean; items: any[]; error?: string; hasMore?: boolean; nextCursor?: string };
         try {
@@ -1352,6 +1375,7 @@ async function init() {
     ipcMain.on('artist:open', async (_e, req: { url?: string }) => {
         const url = typeof req?.url === 'string' ? req.url : '';
         if (!/^https:\/\//.test(url)) return;
+        closedOverlay = null;
         if (devMode) console.log('[bcrpc:artist] open ' + url);
         let data: ArtistPageData;
         try {
@@ -1365,6 +1389,8 @@ async function init() {
             hardLoad(url);
             return;
         }
+        openOverlayUrl = url;
+        openOverlayType = 'artist';
         if (devMode) console.log('[bcrpc:artist] ' + data.name + ' n=' + data.discography.length + ' following=' + data.isFollowing);
         await openArtistView();
         if (artistView && !artistView.webContents.isDestroyed()) {
@@ -1401,7 +1427,10 @@ async function init() {
     });
 
     // the view's back button returns to whatever was underneath
-    ipcMain.on('artist:close', () => closeArtistView());
+    ipcMain.on('artist:close', () => {
+        if (artistVisible) closedOverlay = { type: 'artist', url: openOverlayUrl };
+        closeArtistView();
+    });
 
     // the album view: the clicked card in the collection shows a blurred-cover
     // spinner (the collection adds it itself) while the release page is
@@ -1417,6 +1446,7 @@ async function init() {
             if (devMode) console.log('[bcrpc:album] busy, ignoring ' + url);
             return;
         }
+        closedOverlay = null;
         albumLoading = true;
         try {
             if (devMode) console.log('[bcrpc:album] open ' + url);
@@ -1438,6 +1468,8 @@ async function init() {
                 hardLoad(url);
                 return;
             }
+            openOverlayUrl = url;
+            openOverlayType = 'album';
             if (devMode) console.log('[bcrpc:album] ' + data.title + ' by ' + data.artist + ' tracks=' + data.tracks.length);
             await openAlbumView();
             if (albumView && !albumView.webContents.isDestroyed()) {
@@ -1449,7 +1481,10 @@ async function init() {
         }
     });
 
-    ipcMain.on('album:close', () => closeAlbumView());
+    ipcMain.on('album:close', () => {
+        if (albumVisible) closedOverlay = { type: 'album', url: openOverlayUrl };
+        closeAlbumView();
+    });
 
     // follow/unfollow through the fan's session; the view flips its button from
     // the {isFollowing} in the response.
