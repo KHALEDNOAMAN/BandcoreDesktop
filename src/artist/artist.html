@@ -76,16 +76,16 @@
             align-content: start; padding-bottom: 10px;
         }
         .card { cursor: pointer; }
-.card .art {
+        .card .art {
             width: 100%; aspect-ratio: 1 / 1; border-radius: 6px; background: var(--line);
             object-fit: cover; display: block;
-opacity: 0; transition: transform .12s ease, opacity .4s ease, box-shadow .12s ease;
+opacity: 0; transition: opacity .4s ease, filter .25s ease;
             box-shadow: 0 0 0 0 transparent;
         }
         .card .art.in { opacity: 1; }
         .card .art.nophoto { opacity: 1; }
         .card:hover .artwrap { transform: scale(1.03); box-shadow: 0 0 0 2px var(--accent); }
-        .card:active .artwrap { transform: scale(.98); transition: transform .08s ease; }
+        .card:active .artwrap { transform: scale(.98); }
         /* album page loading: the clicked card's cover blurs (spill clipped by
            the artwrap) with a centered spinner, same as the collection/search view */
         .card.loading { pointer-events: none; }
