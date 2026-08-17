@@ -482,9 +482,29 @@ function openAlbumView() {
 }
 
 // close the spotlight search popup (results are wiped on close by the popup itself)
+let searchClosing = false;
 function closeSearch() {
-    if (spotlightWin && !spotlightWin.isDestroyed()) spotlightWin.close();
-    spotlightWin = null;
+    if (searchClosing) return;
+    if (spotlightWin && !spotlightWin.isDestroyed()) {
+        // fade the whole window out before closing it
+        searchClosing = true;
+        let o = 1;
+        const step = () => {
+            o -= 0.16;
+            if (spotlightWin && !spotlightWin.isDestroyed()) {
+                if (o > 0) {
+                    spotlightWin.setOpacity(Math.max(0, o));
+                    setTimeout(step, 12);
+                } else {
+                    spotlightWin.close();
+                }
+            } else {
+                searchClosing = false;
+            }
+        };
+        step();
+        return;
+    }
     if (headerView && !headerView.webContents.isDestroyed()) headerView.webContents.send('gsearch:state', false);
 }
 
@@ -1685,13 +1705,28 @@ async function init() {
             spotlightWin = new BrowserWindow({
                 width: 620, height: 460, frame: false, resizable: false, parent: mainWindow,
                 x: Math.max(0, b.x + Math.round((b.width - 620) / 2)), y: b.y + 110,
-                backgroundColor: chromeBg(),
+                backgroundColor: chromeBg(), show: false, // fade in once ready
                 webPreferences: { nodeIntegration: true, contextIsolation: false, devTools: devMode },
             });
             spotlightWin.webContents.on('dom-ready', () => applyChromeTheme(spotlightWin!.webContents));
             spotlightWin.loadFile(path.join(__dirname, 'search', 'search.html'));
             spotlightWin.webContents.on('did-finish-load', () => {
                 if (spotlightWin && !spotlightWin.isDestroyed()) spotlightWin.webContents.send('gsearch:shown');
+            });
+            // the popup fades in (whole window), like a spotlight
+            spotlightWin.once('ready-to-show', () => {
+                if (!spotlightWin || spotlightWin.isDestroyed()) return;
+                spotlightWin.setOpacity(0);
+                spotlightWin.show();
+                let o = 0;
+                const step = () => {
+                    o += 0.1;
+                    if (spotlightWin && !spotlightWin.isDestroyed()) {
+                        spotlightWin.setOpacity(Math.min(1, o));
+                        if (o < 1) setTimeout(step, 12);
+                    }
+                };
+                step();
             });
             // esc dismisses - handled in MAIN so it works no matter what the
             // page is doing (the renderer listener alone proved unreliable).
@@ -1706,6 +1741,7 @@ async function init() {
             spotlightWin.on('blur', () => closeSearch());
             spotlightWin.on('closed', () => {
                 spotlightWin = null;
+                searchClosing = false;
                 if (headerView && !headerView.webContents.isDestroyed()) headerView.webContents.send('gsearch:state', false);
             });
             if (headerView && !headerView.webContents.isDestroyed()) headerView.webContents.send('gsearch:state', true);

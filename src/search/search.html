@@ -18,7 +18,10 @@
             background: var(--bg); color: var(--text); overflow: hidden;
             font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Roboto, sans-serif;
             display: flex; flex-direction: column; user-select: none;
+            /* spotlight pop: the window fades in and the page eases in scaled */
+            animation: pop-in .18s ease-out;
         }
+        @keyframes pop-in { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: none; } }
         .toolbar {
             display: flex; align-items: center; gap: 10px; padding: 12px 18px;
             border-bottom: 1px solid var(--line); background: var(--bar); flex-shrink: 0;
