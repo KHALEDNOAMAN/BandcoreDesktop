@@ -256,6 +256,10 @@ opacity: 0; transition: transform .12s ease, opacity .4s ease, box-shadow .12s e
         let data = null;
         let tlEl = null;
         let openId = '';
+        let openAlbumPageOn = false;
+        // the view reloads on every open, so a fresh settings:get is enough -
+        // no broadcast needed (the collection view gets it from main directly)
+        void ipcRenderer.invoke('settings:get').then((s) => { openAlbumPageOn = !!(s && s.openAlbumPage); });
         const closeTracklist = () => { if (tlEl) { tlEl.remove(); tlEl = null; } openId = ''; };
 
         function endOfRow(card) {
@@ -379,7 +383,13 @@ opacity: 0; transition: transform .12s ease, opacity .4s ease, box-shadow .12s e
             const sg = $('singles');
             ag.innerHTML = '';
             sg.innerHTML = '';
-            albums.forEach((r, i) => buildCard(r, 'a' + i, ag, toggleTracklist));
+            albums.forEach((r, i) => buildCard(r, 'a' + i, ag, (row, card) => {
+                if (openAlbumPageOn && row.url) {
+                    ipcRenderer.send('album:open', { url: row.url, artUrl: row.art, title: row.title });
+                    return;
+                }
+                toggleTracklist(row, card);
+            }));
             singles.forEach((r, i) => {
                 buildCard(r, 't' + i, sg, (row) => {
                     void ipcRenderer.invoke('collection:play', { tralbumId: String(row.tralbumId), tralbumType: 't', bandId: String(data.bandId), activeIndex: 0 });
