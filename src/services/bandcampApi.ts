@@ -995,7 +995,10 @@ export class BandcampApi {
                     const body = m[4];
                     const href = /<a[^>]*href="([^"]+)"/.exec(body)?.[1] || '';
                     if (!id || !href) continue;
-                    const art = /<img[^>]*src="([^"]+)"/.exec(body)?.[1] || '';
+                    // lazy-loaded items show a 0.gif placeholder in src; the
+                    // real cover only lives in data-original
+                    const imgTag = /<img[^>]*>/.exec(body)?.[0] || '';
+                    const art = /data-original="([^"]+)"/.exec(imgTag)?.[1] || /<img[^>]*src="([^"]+)"/.exec(body)?.[1] || '';
                     const override = /<span class="artist-override">([\s\S]*?)<\/span>/.exec(body)?.[1];
                     const titleHtml = /<p class="title">([\s\S]*?)<\/p>/.exec(body)?.[1] || '';
                     const title = strip(override ? titleHtml.replace(/<span class="artist-override">[\s\S]*?<\/span>/, '') : titleHtml);
