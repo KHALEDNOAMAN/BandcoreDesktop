@@ -84,14 +84,14 @@ opacity: 0; transition: transform .12s ease, opacity .4s ease, box-shadow .12s e
         }
         .card .art.in { opacity: 1; }
         .card .art.nophoto { opacity: 1; }
-        .card:hover .art { transform: scale(1.03); box-shadow: 0 0 0 2px var(--accent); }
-        .card:active .art { transform: scale(.98); transition: transform .08s ease; }
+        .card:hover .artwrap { transform: scale(1.03); box-shadow: 0 0 0 2px var(--accent); }
+        .card:active .artwrap { transform: scale(.98); transition: transform .08s ease; }
         /* album page loading: the clicked card's cover blurs (spill clipped by
            the artwrap) with a centered spinner, same as the collection/search view */
         .card.loading { pointer-events: none; }
         .card.loading .art { transform: none; filter: blur(14px) brightness(.6); box-shadow: none; }
         .card-spin { position: absolute; left: 50%; top: 50%; width: 42px; height: 42px; transform: translate(-50%, -50%); z-index: 3; pointer-events: none; }
-        .artwrap { position: relative; border-radius: 6px; overflow: hidden; }
+        .artwrap { position: relative; border-radius: 6px; overflow: hidden; transition: transform .12s ease, box-shadow .12s ease; }
         .card .t { font-size: 12px; margin-top: 7px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .card .a { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
         .card .y { font-size: 10px; color: var(--sub); margin-top: 1px; }
