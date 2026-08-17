@@ -1001,7 +1001,7 @@ export class BandcampApi {
                     const art = /data-original="([^"]+)"/.exec(imgTag)?.[1] || /<img[^>]*src="([^"]+)"/.exec(body)?.[1] || '';
                     const override = /<span class="artist-override">([\s\S]*?)<\/span>/.exec(body)?.[1];
                     const titleHtml = /<p class="title">([\s\S]*?)<\/p>/.exec(body)?.[1] || '';
-                    const title = strip(override ? titleHtml.replace(/<span class="artist-override">[\s\S]*?<\/span>/, '') : titleHtml);
+                    const title = decode(strip(override ? titleHtml.replace(/<span class="artist-override">[\s\S]*?<\/span>/, '') : titleHtml));
                     if (!title) continue;
                     out.push({
                         tralbumId: id,
@@ -1009,7 +1009,7 @@ export class BandcampApi {
                         title,
                         art: art.replace(/&amp;/g, '&'),
                         url: bandUrl + String(href || '').replace(/&amp;/g, '&'),
-                        artist: strip(override || '') || name,
+                        artist: decode(strip(override || '')) || name,
                         bandId: liBand,
                         year: 0,
                     });
@@ -1036,7 +1036,7 @@ export class BandcampApi {
                             const ogUrl = /<meta property="og:url"\s+content="([^"]*)"/.exec(html)?.[1] || '';
                             const ogTitle = /<meta property="og:title"\s+content="([^"]*)"/.exec(html)?.[1] || '';
                             const ogImage = /<meta property="og:image"\s+content="([^"]*)"/.exec(html)?.[1] || '';
-                            const title = ogTitle.replace(/,\s*by\s+[\s\S]*$/i, '').trim();
+                            const title = decode(ogTitle.replace(/,\s*by\s+[\s\S]*$/i, '').trim());
                             const by = /,\s*by\s+([\s\S]*)$/i.exec(ogTitle);
                             if (title && ogUrl) {
                                 discography.push({
@@ -1045,7 +1045,7 @@ export class BandcampApi {
                                     title,
                                     art: ogImage.replace(/&amp;/g, '&'),
                                     url: ogUrl.replace(/&amp;/g, '&'),
-                                    artist: (by ? by[1].trim() : '') || name,
+                                    artist: decode(by ? by[1].trim() : '') || name,
                                     bandId,
                                     year: 0,
                                 });
