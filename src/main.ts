@@ -3480,10 +3480,11 @@ const entry: DlEntry = { id: entryId, name: `${rel.albumArtist} - ${rel.album}`,
                 // live palette swap for our own chrome (settings window included)
                 const chrome = [
                     headerView, playerView, collectionView, feedView,
+                    artistView, albumView,
                     settingsWindow, spotlightWin, downloadsWin, notice429Win,
                 ].map((w) => (w && !w.webContents.isDestroyed() ? w.webContents : null)).filter(Boolean) as Electron.WebContents[];
                 chrome.forEach((wc) => applyChromeTheme(wc));
-                for (const w of [headerView, playerView, collectionView, feedView]) {
+                for (const w of [headerView, playerView, collectionView, feedView, artistView, albumView]) {
                     if (w && !w.webContents.isDestroyed()) w.setBackgroundColor(chromeBg());
                 }
                 for (const w of [mainWindow, settingsWindow, spotlightWin, downloadsWin, notice429Win]) {
