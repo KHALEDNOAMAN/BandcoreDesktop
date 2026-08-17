@@ -6,6 +6,10 @@
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         ::-webkit-scrollbar { width: 0; height: 0; display: none; }
+        /* the dropdowns are scrollable - give them a slim rounded scrollbar */
+        .ddmenu::-webkit-scrollbar { width: 6px; display: block; }
+        .ddmenu::-webkit-scrollbar-thumb { background: var(--scroll); border-radius: 3px; }
+        .ddmenu::-webkit-scrollbar-track { background: transparent; }
         /* canonical theme palette (dark defaults; main injects the live palette
            as a user-origin :root override) */
         :root {
@@ -90,8 +94,8 @@
             padding: 8px 14px; font-size: 12px; cursor: pointer; margin-top: 14px;
             transition: filter .18s ease, transform .18s ease;
         }
-        button:not(.nav-item):not(.winclose):hover { filter: brightness(1.1); transform: scale(1.03); }
-        button:not(.nav-item):not(.winclose):active { transform: scale(.98); transition: transform .08s ease; }
+        button:not(.nav-item):not(.winclose):hover { filter: brightness(1.05); transform: scale(1.01); }
+        button:not(.nav-item):not(.winclose):active { transform: scale(.99); }
         button.ghost { background: var(--hover-bg); }
         .toggle { display: flex; align-items: center; gap: 8px; cursor: pointer; }
         .status { font-size: 11px; margin-top: 8px; min-height: 14px; }
@@ -429,7 +433,7 @@ function makeDropdown(sel, opts) {
     return { host, render };
 }
 const themeDD = makeDropdown(themeSel, {
-    swatch: (key) => { const t = THEMES.find((x) => x.key === key); return t ? t.vars.accent : 'transparent'; },
+    swatch: (key) => { const t = THEMES.find((x) => x.key === key); return t ? t.vars.bg : 'transparent'; },
 });
 let fontDD = null;
 ipcRenderer.invoke('settings:get').then((s) => {
