@@ -868,13 +868,17 @@ async function init() {
     // confirm-before-download prompt (artist page "download discography"): same
     // small dialog window as the 429 notice; the confirm handler below drains
     // the stored release list into the stream downloader, one album at a time.
+    // every release gets a "pending" row in the downloads panel up front, so
+    // the whole batch is visible before the first download starts.
     let dlPromptWin: BrowserWindow | null = null;
-    let dlPromptReleases: string[] = [];
+    let dlPromptReleases: { url: string; title: string; art: string }[] = [];
     ipcMain.on('artist:download-ask', (_e, req: unknown) => {
         const r = (req || {}) as { count?: unknown; releases?: unknown };
-        const releases = Array.isArray(r.releases) ? r.releases.filter((x): x is string => typeof x === 'string') : [];
+        const releases = Array.isArray(r.releases)
+            ? r.releases.filter((x): x is { url?: unknown; title?: unknown; art?: unknown } => !!x && typeof x === 'object' && typeof (x as any).url === 'string')
+            : [];
         if (!mainWindow || mainWindow.isDestroyed() || !releases.length) return;
-        dlPromptReleases = releases;
+        dlPromptReleases = releases.map((x) => ({ url: x.url as string, title: String(x.title || x.url), art: String(x.art || '') }));
         if (dlPromptWin && !dlPromptWin.isDestroyed()) { dlPromptWin.focus(); return; }
         dlPromptWin = new BrowserWindow({
             width: 470, height: 230, parent: mainWindow, frame: false, resizable: false,
@@ -892,16 +896,38 @@ async function init() {
         dlPromptReleases = [];
         void downloadDiscography(releases);
     });
-    const downloadDiscography = async (releases: string[]): Promise<void> => {
+    const downloadDiscography = async (releases: { url: string; title: string; art: string }[]): Promise<void> => {
+        // list the whole batch as pending rows before anything starts
+        const pendingIds: number[] = [];
+        for (const rel of releases) {
+            const entry: DlEntry = {
+                id: ++dlSeq, name: rel.title, album: '', artist: '', state: 'pending', percent: 0, file: '',
+                at: Date.now(), receivedBytes: 0, totalBytes: 0, speed: 0, lastTime: Date.now(), lastBytes: 0, art: rel.art,
+            };
+            dlRegistry.unshift(entry);
+            pendingIds.push(entry.id);
+        }
+        openDownloadsPanel();
+        broadcastDownloads();
         const waitIdle = async () => { while (streamDlActive) await new Promise((res) => setTimeout(res, 400)); };
-        for (const url of releases) {
-            let res = await startStreamDownload({ url });
+        for (let i = 0; i < releases.length; i++) {
+            const rel = releases[i];
+            const pendingId = pendingIds[i];
+            let res = await startStreamDownload({ url: rel.url });
             if (!res.ok && streamDlActive) { // user's own download ran first - wait, then retry
                 await waitIdle();
-                res = await startStreamDownload({ url });
+                res = await startStreamDownload({ url: rel.url });
             }
             await waitIdle();
-            if (devMode) console.log('[bcrpc] discography download ' + (res.ok ? 'ok' : 'FAILED') + ' ' + url.slice(0, 70));
+            // the stream downloader unshifted its own entry; drop the pending row
+            // (or leave it as failed when the release itself wouldn't download)
+            const idx = dlRegistry.findIndex((d) => d.id === pendingId);
+            if (idx !== -1) {
+                if (res.ok) dlRegistry.splice(idx, 1);
+                else dlRegistry[idx].state = 'failed';
+            }
+            broadcastDownloads();
+            if (devMode) console.log('[bcrpc] discography download ' + (res.ok ? 'ok' : 'FAILED') + ' ' + rel.url.slice(0, 70));
         }
     };
     setupTray();

@@ -674,7 +674,7 @@ opacity: 0; transition: opacity .4s ease, filter .25s ease;
             if (!data || !data.discography.length) return;
             ipcRenderer.send('artist:download-ask', {
                 count: data.discography.length,
-                releases: data.discography.map((r) => r.url),
+                releases: data.discography.map((r) => ({ url: r.url, title: (data.name || '') + ' - ' + r.title, art: r.art })),
             });
         });
 
