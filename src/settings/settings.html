@@ -87,8 +87,9 @@
         }
         input[type="range"]::-webkit-slider-thumb {
             -webkit-appearance: none; width: 12px; height: 12px; border-radius: 50%; background: var(--text);
+            transition: transform .18s ease;
         }
-        /* the thumb grows while the slider is held down */
+        /* the thumb grows while the slider is held down, and eases back on release */
         input[type="range"]:active::-webkit-slider-thumb { transform: scale(1.45); }
         .row { display: flex; align-items: center; justify-content: space-between; }
         button {
