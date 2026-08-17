@@ -120,7 +120,10 @@
             border: 1px solid var(--line); border-radius: 8px; padding: 6px; font-size: 12px;
             color: var(--muted); box-shadow: 0 8px 24px rgba(0,0,0,.4);
             max-height: 320px; overflow-y: auto;
+            opacity: 0; transform: scale(.96) translateY(-4px);
+            transition: opacity .14s ease, transform .14s ease;
         }
+        .dlmenu.show { opacity: 1; transform: none; }
         .dlfmt {
             display: block; width: 100%; text-align: left; background: none; border: none;
             color: var(--text); padding: 7px 9px; border-radius: 5px; font-size: 12px; cursor: pointer;

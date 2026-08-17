@@ -739,6 +739,7 @@ function openLocalCardMenu(e: MouseEvent, it: CollectionItem): void {
     menuEl = menu;
     menu.style.left = Math.max(6, Math.min(e.clientX, window.innerWidth - 196)) + 'px';
     menu.style.top = Math.max(6, Math.min(e.clientY, window.innerHeight - (menu.offsetHeight || 90) - 6)) + 'px';
+    showMenu(menu);
 }
 
 // CRITICAL FIX: Only appends new items during load so the open tracklist isn't destroyed
@@ -1137,6 +1138,7 @@ function openRowMenu(e: MouseEvent, r: ListRow): void {
     menuEl = menu;
     menu.style.left = Math.max(6, Math.min(e.clientX, window.innerWidth - 196)) + 'px';
     menu.style.top = Math.max(6, Math.min(e.clientY, window.innerHeight - (menu.offsetHeight || 110) - 6)) + 'px';
+    showMenu(menu);
 }
 
 // optional group headers in the GRID view (settings toggle; off by default).
@@ -1339,7 +1341,19 @@ window.addEventListener('resize', () => {
 
 let menuEl: HTMLElement | null = null;
 let menuClosedAt = 0; // lets opener buttons act as toggles despite the capture-closer
-function closeMenu(): void { if (menuEl) { menuEl.remove(); menuEl = null; menuClosedAt = Date.now(); } }
+function showMenu(menu: HTMLElement): void {
+    requestAnimationFrame(() => requestAnimationFrame(() => menu.classList.add('show')));
+}
+function closeMenu(): void {
+    if (!menuEl) return;
+    const m = menuEl;
+    menuEl = null;
+    menuClosedAt = Date.now();
+    // animate out: fade/scale back, then remove; a replacement menu opens on top
+    m.classList.remove('show');
+    m.style.pointerEvents = 'none';
+    setTimeout(() => m.remove(), 150);
+}
 
 function positionMenu(menu: HTMLElement, anchor: HTMLElement): void {
     const r = anchor.getBoundingClientRect();
@@ -1358,6 +1372,7 @@ async function openDownloadMenu(it: CollectionItem, anchor: HTMLElement): Promis
     document.body.appendChild(menu);
     menuEl = menu;
     positionMenu(menu, anchor);
+    showMenu(menu);
 
     const res: { ok: boolean; formats: { encoding: string; label: string; url: string }[]; error?: string } =
         await ipcRenderer.invoke('download:formats', it.downloadUrl);
@@ -1531,6 +1546,7 @@ $('more').addEventListener('click', (e) => {
     const r = $('more').getBoundingClientRect();
     menu.style.left = Math.max(6, Math.min(r.right - 190, window.innerWidth - 196)) + 'px';
     menu.style.top = Math.min(r.bottom + 6, window.innerHeight - 160) + 'px';
+    showMenu(menu);
 });
 
 // drop items whose keys vanished (library removals, bandcamp-side hides)
@@ -1873,6 +1889,7 @@ async function openPlaylistPicker(req: PlAddReq, x: number, y: number): Promise<
         menu.style.top = Math.max(6, Math.min(y, window.innerHeight - (menu.offsetHeight || 120) - 6)) + 'px';
     };
     place();
+    showMenu(menu);
     const addRow = (label: string, fn: (b: HTMLButtonElement) => void): void => {
         const b = document.createElement('button');
         b.className = 'dlfmt';
