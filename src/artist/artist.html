@@ -208,6 +208,9 @@ opacity: 0; transition: opacity .4s ease, filter .25s ease;
                     <button class="hbtn" id="follow" title="Follow">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 21a8 8 0 0 1 13.292-6"/><circle cx="10" cy="8" r="5"/><path d="m16 19 2 2 4-4"/></svg>
                     </button>
+                    <button class="hbtn" id="dlall" title="Download discography">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>
+                    </button>
                 </div>
             </div>
         </div>
@@ -633,6 +636,8 @@ opacity: 0; transition: opacity .4s ease, filter .25s ease;
             });
             $('playall').disabled = d.discography.length === 0;
             $('playall').style.opacity = d.discography.length ? '' : '.4';
+            $('dlall').disabled = d.discography.length === 0;
+            $('dlall').style.opacity = d.discography.length ? '' : '.4';
             setFollowBtn(d.isFollowing);
             $('err').style.display = 'none';
         }
@@ -658,6 +663,14 @@ opacity: 0; transition: opacity .4s ease, filter .25s ease;
             if (!data || !data.discography.length) return;
             ipcRenderer.send('artist:play', {
                 discography: data.discography.map((r) => ({ tralbumId: r.tralbumId, tralbumType: r.tralbumType, bandId: data.bandId })),
+            });
+        });
+        // download the whole discography: confirm first in a small dialog window
+        $('dlall').addEventListener('click', () => {
+            if (!data || !data.discography.length) return;
+            ipcRenderer.send('artist:download-ask', {
+                count: data.discography.length,
+                releases: data.discography.map((r) => r.url),
             });
         });
 

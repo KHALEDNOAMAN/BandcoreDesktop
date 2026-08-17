@@ -865,6 +865,45 @@ async function init() {
         if (never === true) store.set('hide429Notice', true);
         if (notice429Win && !notice429Win.isDestroyed()) notice429Win.close();
     });
+    // confirm-before-download prompt (artist page "download discography"): same
+    // small dialog window as the 429 notice; the confirm handler below drains
+    // the stored release list into the stream downloader, one album at a time.
+    let dlPromptWin: BrowserWindow | null = null;
+    let dlPromptReleases: string[] = [];
+    ipcMain.on('artist:download-ask', (_e, req: unknown) => {
+        const r = (req || {}) as { count?: unknown; releases?: unknown };
+        const releases = Array.isArray(r.releases) ? r.releases.filter((x): x is string => typeof x === 'string') : [];
+        if (!mainWindow || mainWindow.isDestroyed() || !releases.length) return;
+        dlPromptReleases = releases;
+        if (dlPromptWin && !dlPromptWin.isDestroyed()) { dlPromptWin.focus(); return; }
+        dlPromptWin = new BrowserWindow({
+            width: 470, height: 230, parent: mainWindow, frame: false, resizable: false,
+            backgroundColor: chromeBg(), // opaque: transparent windows are crash-prone on some setups
+            webPreferences: { nodeIntegration: true, contextIsolation: false },
+        });
+        dlPromptWin.webContents.on('dom-ready', () => applyChromeTheme(dlPromptWin!.webContents));
+        dlPromptWin.loadFile(path.join(__dirname, 'notice', 'dlprompt.html'), { query: { n: String(r.count || releases.length) } });
+        dlPromptWin.on('closed', () => { dlPromptWin = null; });
+    });
+    ipcMain.on('dlprompt:cancel', () => { if (dlPromptWin && !dlPromptWin.isDestroyed()) dlPromptWin.close(); });
+    ipcMain.on('dlprompt:confirm', () => {
+        if (dlPromptWin && !dlPromptWin.isDestroyed()) dlPromptWin.close();
+        const releases = dlPromptReleases;
+        dlPromptReleases = [];
+        void downloadDiscography(releases);
+    });
+    const downloadDiscography = async (releases: string[]): Promise<void> => {
+        const waitIdle = async () => { while (streamDlActive) await new Promise((res) => setTimeout(res, 400)); };
+        for (const url of releases) {
+            let res = await startStreamDownload({ url });
+            if (!res.ok && streamDlActive) { // user's own download ran first - wait, then retry
+                await waitIdle();
+                res = await startStreamDownload({ url });
+            }
+            await waitIdle();
+            if (devMode) console.log('[bcrpc] discography download ' + (res.ok ? 'ok' : 'FAILED') + ' ' + url.slice(0, 70));
+        }
+    };
     setupTray();
 
     mainWindow = new BrowserWindow({
