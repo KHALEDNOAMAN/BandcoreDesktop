@@ -23,6 +23,9 @@
         .hero {
             position: relative; padding: 72px 26px 40px;
             display: flex; gap: 24px; align-items: center;
+            /* the bg bleeds -40px on each side for the blur; clip only
+               horizontally so the vertical bleed into the tracklist stays */
+            overflow-x: clip;
         }
         .hero-inner { position: relative; z-index: 1; display: flex; gap: 24px; align-items: flex-end; min-width: 0; flex: 1; }
         .hero-bg {

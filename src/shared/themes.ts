@@ -34,6 +34,16 @@ const DARK_VARS: Record<string, string> = {
 export const THEMES: Theme[] = [
     { key: 'dark', label: 'Dark', vars: DARK_VARS },
     {
+        key: 'light', label: 'Light',
+        vars: {
+            'bg': '#f4f3f0', 'titlebar': '#e7e5e0', 'input': '#ffffff', 'bar': '#ffffff',
+            'panel': '#fcfcfa', 'card': '#ffffff', 'hover-bg': '#e9e7e2',
+            'line': '#d8d5cd', 'line-2': '#e4e2dc', 'scroll': '#c4c0b6',
+            'text': '#1c1b19', 'text-2': '#3d3b36', 'muted': '#6f6a60', 'sub': '#8a857b',
+            'accent': '#0e7fa3', 'hover-text': '#000000',
+        },
+    },
+    {
         key: 'amoled', label: 'AMOLED',
         vars: {
             'bg': '#000000', 'titlebar': '#000000', 'input': '#0c0c0c', 'bar': '#000000',
