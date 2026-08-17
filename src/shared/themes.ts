@@ -83,6 +83,66 @@ export const THEMES: Theme[] = [
             'accent': '#bd93f9', 'hover-text': '#ffffff',
         },
     },
+    {
+        key: 'nord', label: 'Nord',
+        vars: {
+            'bg': '#2e3440', 'titlebar': '#272c38', 'input': '#333a49', 'bar': '#2e3440',
+            'panel': '#272c38', 'card': '#3b4252', 'hover-bg': '#434c5e',
+            'line': '#4c566a', 'line-2': '#333a49', 'scroll': '#5e6880',
+            'text': '#eceff4', 'text-2': '#d8dee9', 'muted': '#9aa5b8', 'sub': '#7b8496',
+            'accent': '#88c0d0', 'hover-text': '#eceff4',
+        },
+    },
+    {
+        key: 'gruvbox', label: 'Gruvbox',
+        vars: {
+            'bg': '#282828', 'titlebar': '#1d2021', 'input': '#1d2021', 'bar': '#282828',
+            'panel': '#1d2021', 'card': '#32302f', 'hover-bg': '#3c3836',
+            'line': '#504945', 'line-2': '#32302f', 'scroll': '#665c54',
+            'text': '#ebdbb2', 'text-2': '#d5c4a1', 'muted': '#a89984', 'sub': '#928374',
+            'accent': '#d79921', 'hover-text': '#ebdbb2',
+        },
+    },
+    {
+        key: 'tokyonight', label: 'Tokyo Night',
+        vars: {
+            'bg': '#1a1b26', 'titlebar': '#16161e', 'input': '#1a1b26', 'bar': '#1a1b26',
+            'panel': '#16161e', 'card': '#24283b', 'hover-bg': '#292e42',
+            'line': '#3b4261', 'line-2': '#232740', 'scroll': '#4c5470',
+            'text': '#c0caf5', 'text-2': '#a9b1d6', 'muted': '#787c99', 'sub': '#565f89',
+            'accent': '#7aa2f7', 'hover-text': '#c0caf5',
+        },
+    },
+    {
+        key: 'onedark', label: 'One Dark',
+        vars: {
+            'bg': '#282c34', 'titlebar': '#21252b', 'input': '#21252b', 'bar': '#2c313a',
+            'panel': '#21252b', 'card': '#2f343d', 'hover-bg': '#353b45',
+            'line': '#3e4451', 'line-2': '#2c313a', 'scroll': '#4b5263',
+            'text': '#abb2bf', 'text-2': '#9da5b4', 'muted': '#828997', 'sub': '#5c6370',
+            'accent': '#61afef', 'hover-text': '#abb2bf',
+        },
+    },
+    {
+        key: 'solarized', label: 'Solarized Dark',
+        vars: {
+            'bg': '#002b36', 'titlebar': '#001e26', 'input': '#073642', 'bar': '#073642',
+            'panel': '#002b36', 'card': '#073642', 'hover-bg': '#0d4552',
+            'line': '#586e75', 'line-2': '#073642', 'scroll': '#657b83',
+            'text': '#eee8d5', 'text-2': '#d3cbb8', 'muted': '#839496', 'sub': '#657b83',
+            'accent': '#268bd2', 'hover-text': '#eee8d5',
+        },
+    },
+    {
+        key: 'rosepine', label: 'Rosé Pine',
+        vars: {
+            'bg': '#191724', 'titlebar': '#13111e', 'input': '#191724', 'bar': '#1f1d2e',
+            'panel': '#13111e', 'card': '#26233a', 'hover-bg': '#2a273f',
+            'line': '#393552', 'line-2': '#211f2e', 'scroll': '#403d52',
+            'text': '#e0def4', 'text-2': '#c4c1e4', 'muted': '#908caa', 'sub': '#6e6a86',
+            'accent': '#ebbcba', 'hover-text': '#e0def4',
+        },
+    },
 ];
 
 export function themeByKey(key: unknown): Theme {
