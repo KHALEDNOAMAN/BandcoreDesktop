@@ -65,6 +65,24 @@ const ICON_Q = `<svg viewBox="0 0 24 24" fill="none" ${MENU_ICON}><path d="M5 12
 const ICON_DL = `<svg viewBox="0 0 24 24" fill="none" ${MENU_ICON}><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>`;
 const ICON_SEARCH = `<svg viewBox="0 0 24 24" fill="none" ${MENU_ICON}><circle cx="10" cy="8" r="5"/><path d="M2 21a8 8 0 0 1 10.434-7.62"/><circle cx="18" cy="18" r="3"/><path d="m22 22-1.9-1.9"/></svg>`;
 let ctxMenu: HTMLElement | null = null;
+// spotlight: right-clicking a card dims every other card while the menu is
+// open; the source card stays bright. cleared by every menu closer.
+let spotCard: HTMLElement | null = null;
+function spotlightCard(card: HTMLElement): void {
+    spotDeactivate();
+    spotCard = card;
+    card.classList.add('spot');
+    const g = document.getElementById('grid');
+    if (g) g.classList.add('dim');
+}
+function spotDeactivate(): void {
+    if (spotCard) {
+        spotCard.classList.remove('spot');
+        spotCard = null;
+    }
+    const g = document.getElementById('grid');
+    if (g) g.classList.remove('dim');
+}
 interface MenuItem { a: string; icon: string; label: string; onClick: () => void; }
 function openTrackMenu(x: number, y: number, info: { title?: string; artist?: string; year?: number; art?: string; queue: () => void; download: () => void }, items?: MenuItem[]): void {
     const list: MenuItem[] = items || [
@@ -104,6 +122,7 @@ function openTrackMenu(x: number, y: number, info: { title?: string; artist?: st
     ctxMenu = m;
 }
 function closeTrackMenu(): void {
+    spotDeactivate();
     if (!ctxMenu) return;
     const m = ctxMenu;
     ctxMenu = null;
@@ -113,14 +132,14 @@ function closeTrackMenu(): void {
 }
 
 // right-click a search result card: menus per result type
-function openSearchCardMenu(e: MouseEvent, it: SearchResultItem): void {
+function openSearchCardMenu(e: MouseEvent, it: SearchResultItem, card: HTMLElement): void {
     const x = e.clientX, y = e.clientY;
     const sub = it.type === 'artist' ? (it.location || it.genre || '') : (it.artist || '');
     const info = { title: it.name, artist: sub, year: it.year || 0, art: it.art || '', queue: () => {}, download: () => {} };
     if (it.type === 'album') {
         openTrackMenu(x, y, info, [
             { a: 'open', icon: ICON_OPEN, label: 'Open album', onClick: () => ipcRenderer.send('album:open', { url: it.url, artUrl: it.art, title: it.name }) },
-            { a: 'dl', icon: ICON_DL, label: 'Download album', onClick: () => { void openSearchFormats(x, y, it); } },
+            { a: 'dl', icon: ICON_DL, label: 'Download album', onClick: () => { void openSearchFormats(x, y, it, card); } },
             { a: 'queue', icon: ICON_Q, label: 'Add album to queue', onClick: () => { void ipcRenderer.invoke('collection:enqueue', { tralbumId: it.albumId, tralbumType: 'a', bandId: it.bandId }); } },
             { a: 'fs', icon: ICON_ART, label: 'View cover art', onClick: () => showArtFullscreen(it.art) },
             { a: 'search', icon: ICON_SEARCH, label: 'Search ' + (it.artist || ''), onClick: () => { const a = (it.artist || '').trim(); if (a) ipcRenderer.send('search:run', { text: a, mode: 'all' }); } },
@@ -137,10 +156,11 @@ function openSearchCardMenu(e: MouseEvent, it: SearchResultItem): void {
             download: () => { void ipcRenderer.invoke('download:track', { tralbumId: it.albumId, tralbumType: 't', bandId: it.bandId, trackId: it.trackId }); },
         });
     }
+    spotlightCard(card);
 }
 
 // format picker for search-album downloads: same flow as the collection's
-async function openSearchFormats(x: number, y: number, it: SearchResultItem): Promise<void> {
+async function openSearchFormats(x: number, y: number, it: SearchResultItem, card: HTMLElement): Promise<void> {
     closeTrackMenu();
     const menu = document.createElement('div');
     menu.className = 'dlmenu';
@@ -151,6 +171,7 @@ async function openSearchFormats(x: number, y: number, it: SearchResultItem): Pr
     menu.style.left = Math.max(6, Math.min(x, window.innerWidth - 196)) + 'px';
     menu.style.top = Math.max(6, Math.min(y, window.innerHeight - (menu.offsetHeight || 120) - 6)) + 'px';
     showMenu(menu);
+    spotlightCard(card);
     const res: { ok: boolean; formats: { encoding: string; label: string; url: string }[]; error?: string } =
         await ipcRenderer.invoke('download:formats', it.url);
     if (menuEl !== menu) return; // superseded
@@ -597,7 +618,7 @@ function createSearchCard(it: SearchResultItem, index: number): HTMLElement {
         // stopPropagation: the document-level contextmenu closer would otherwise
         // close this menu again as the very same event keeps bubbling
         e.stopPropagation();
-        openSearchCardMenu(e, it);
+        openSearchCardMenu(e, it, card);
     });
     return card;
 }
@@ -818,6 +839,7 @@ function createCard(it: CollectionItem): HTMLElement {
         e.preventDefault();
         if (it.local) openLocalCardMenu(e, it);
         else openPlaylistPicker({ tralbumId: it.tralbumId, tralbumType: it.tralbumType, bandId: it.bandId }, e.clientX, e.clientY);
+        spotlightCard(card);
     });
     return card;
 }
@@ -1452,6 +1474,7 @@ function showMenu(menu: HTMLElement): void {
     requestAnimationFrame(() => requestAnimationFrame(() => menu.classList.add('show')));
 }
 function closeMenu(): void {
+    spotDeactivate();
     if (!menuEl) return;
     const m = menuEl;
     menuEl = null;

@@ -74,7 +74,12 @@
             display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 16px;
             align-content: start; padding-bottom: 10px;
         }
-        .card { cursor: pointer; }
+        .card { cursor: pointer; transition: filter .18s ease; }
+        /* spotlight: right-clicking a card dims every other card (art + text)
+           while the menu is open; the target card keeps full brightness */
+        .dim .card { filter: brightness(.3) saturate(.5); }
+        .dim .card.spot { filter: none; }
+        .dim .card.spot .artwrap { box-shadow: 0 0 0 2px var(--accent); }
         .card .art {
             width: 100%; aspect-ratio: 1 / 1; border-radius: 6px; background: var(--line);
             object-fit: cover; display: block;
@@ -276,18 +281,19 @@ opacity: 0; transition: opacity .4s ease, filter .25s ease;
         }
         // per-album context menu (right-click an album card): open / download /
         // queue / cover art / search the release artist
-        function openAlbumMenu(x, y, row) {
+        function openAlbumMenu(x, y, row, card) {
             const artist = (row.artist || data.name || '').trim();
             showMenu(x, y, { art: row.art, title: row.title, artist, year: row.year || '' }, [
                 { a: 'open', icon: ICON_OPEN, label: 'Open album', onClick: () => ipcRenderer.send('album:open', { url: row.url, artUrl: row.art, title: row.title }) },
-                { a: 'dl', icon: ICON_DL, label: 'Download album', onClick: () => { void openFormatsMenu(x, y, row); } },
+                { a: 'dl', icon: ICON_DL, label: 'Download album', onClick: () => { void openFormatsMenu(x, y, row, card); } },
                 { a: 'queue', icon: ICON_Q, label: 'Add album to queue', onClick: () => { void ipcRenderer.invoke('collection:enqueue', { tralbumId: row.tralbumId, tralbumType: 'a', bandId: row.bandId || data.bandId }); } },
                 { a: 'fs', icon: ICON_ART, label: 'View cover art', onClick: () => showArtFullscreen(row.art) },
                 { a: 'search', icon: ICON_SEARCH, label: 'Search ' + artist, onClick: () => { if (artist) ipcRenderer.send('search:run', { text: artist, mode: 'all' }); } },
             ]);
+            spotlightCard(card);
         }
         // format picker for "download album": same flow as the collection's
-        async function openFormatsMenu(x, y, row) {
+        async function openFormatsMenu(x, y, row, card) {
             const m = document.createElement('div');
             m.className = 'cmenu';
             m.innerHTML = `<div class="cmhead"><div class="cmmeta"><div class="cmtitle">loading formats…</div></div></div>`;
@@ -298,6 +304,7 @@ opacity: 0; transition: opacity .4s ease, filter .25s ease;
                 m.style.top = Math.max(8, Math.min(y, window.innerHeight - r.height - 8)) + 'px';
             };
             place();
+            spotlightCard(card);
             requestAnimationFrame(() => requestAnimationFrame(() => m.classList.add('show')));
             ctxMenu = m;
             const res = await ipcRenderer.invoke('download:formats', row.url);
@@ -321,6 +328,24 @@ opacity: 0; transition: opacity .4s ease, filter .25s ease;
             }
             place();
         }
+        // spotlight: dim every card while a card menu is open, keep the source
+        // card bright. cleared by the menu closers.
+        let spotCard = null;
+        function spotlightCard(card) {
+            clearSpotlight();
+            spotCard = card;
+            card.classList.add('spot');
+            const gs = [document.getElementById('albums'), document.getElementById('singles')];
+            gs.forEach((g) => { if (g) g.classList.add('dim'); });
+        }
+        function clearSpotlight() {
+            if (spotCard) {
+                spotCard.classList.remove('spot');
+                spotCard = null;
+            }
+            const gs = [document.getElementById('albums'), document.getElementById('singles')];
+            gs.forEach((g) => { if (g) g.classList.remove('dim'); });
+        }
         let fsOverlay = null;
         function showArtFullscreen(url) {
             if (!url || fsOverlay) return;
@@ -342,6 +367,7 @@ opacity: 0; transition: opacity .4s ease, filter .25s ease;
             fsOverlay = back;
         }
         function closeTrackMenu() {
+            clearSpotlight();
             if (!ctxMenu) return;
             const m = ctxMenu;
             ctxMenu = null;

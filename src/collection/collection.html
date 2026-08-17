@@ -65,7 +65,12 @@
                surface long enough to need a visible one, so restore a slim one here */
             scrollbar-width: thin; scrollbar-color: var(--scroll) transparent;
         }
-        .card { position: relative; cursor: pointer; }
+        .card { position: relative; cursor: pointer; transition: filter .18s ease; }
+        /* spotlight: right-clicking a card dims every other card (art + text)
+           while the menu is open; the target card keeps full brightness */
+        .dim .card { filter: brightness(.3) saturate(.5); }
+        .dim .card.spot { filter: none; }
+        .dim .card.spot .artwrap { box-shadow: 0 0 0 2px var(--accent); }
         .card .art {
             width: 100%; aspect-ratio: 1 / 1; border-radius: 6px; background: var(--line);
             object-fit: cover; display: block;
