@@ -51,18 +51,23 @@
         .hero-meta .dot { color: var(--sub); }
         .hero-meta a { color: var(--muted); text-decoration: none; }
         .hero-meta a:hover { color: var(--accent); text-decoration: underline; }
-        .hero-btns { display: flex; gap: 10px; margin-top: 16px; }
+        .hero-btns { display: flex; align-items: center; gap: 10px; margin-top: 22px; flex-wrap: wrap; }
+        /* round icon buttons, same as the album page */
         .hbtn {
-            display: inline-flex; align-items: center; gap: 8px; border-radius: 999px;
-            border: 1px solid var(--line); background: var(--hover-bg); color: var(--text);
-            padding: 9px 20px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 44px; height: 44px; padding: 0; border-radius: 50%;
+            border: 1px solid transparent; background: var(--hover-bg);
+            color: var(--text); cursor: pointer; font-family: inherit;
         }
         .hbtn:hover { border-color: var(--accent); }
-        .hbtn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-        .hbtn.primary:hover { filter: brightness(1.12); }
-        .hbtn svg { width: 15px; height: 15px; display: block; }
-        .hbtn.following { background: transparent; color: var(--muted); }
+        .hbtn.primary { background: #fff; color: #000; width: 56px; height: 56px; }
+        .hbtn.primary:hover { border-color: var(--accent); filter: brightness(.94); }
+        .hbtn:active { transform: scale(.96); transition: transform .08s ease; }
+        .hbtn svg { width: 16px; height: 16px; display: block; }
+        .hbtn.primary svg { width: 22px; height: 22px; }
+        .hbtn.following { background: transparent; color: var(--accent); border-color: var(--line); }
         .hbtn.following:hover { color: var(--text); border-color: var(--line); }
+        .hbtn.following svg { fill: currentColor; }
         .bio { font-size: 13px; color: var(--muted); line-height: 1.55; max-width: 860px; margin-top: 8px; text-shadow: 0 1px 8px rgba(0,0,0,.4); }
         .section { position: relative; z-index: 1; padding: 18px 26px 6px; }
         .section h2 {
@@ -198,10 +203,12 @@ opacity: 0; transition: opacity .4s ease, filter .25s ease;
                 <div class="bio" id="bio"></div>
                 <div class="hero-meta" id="hero-meta"></div>
                 <div class="hero-btns">
-                    <button class="hbtn primary" id="playall">
-                        Play discography
+                    <button class="hbtn primary" id="playall" title="Play discography">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.14v13.72a1 1 0 0 0 1.5.86l11-6.86a1 1 0 0 0 0-1.72l-11-6.86A1 1 0 0 0 8 5.14z"/></svg>
                     </button>
-                    <button class="hbtn" id="follow">Follow</button>
+                    <button class="hbtn" id="follow" title="Follow">
+                        <svg class="heart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.51 4.04 3 5.5l7 7Z"/></svg>
+                    </button>
                 </div>
             </div>
         </div>
@@ -630,7 +637,7 @@ opacity: 0; transition: opacity .4s ease, filter .25s ease;
         function setFollowBtn(following) {
             const b = $('follow');
             b.classList.toggle('following', !!following);
-            b.textContent = following ? 'Following' : 'Follow';
+            b.title = following ? 'Unfollow' : 'Follow';
         }
 
         // mouse back/forward buttons close/reopen the overlay like the header's < >
@@ -641,7 +648,7 @@ opacity: 0; transition: opacity .4s ease, filter .25s ease;
         $('follow').addEventListener('click', () => {
             if (!data) return;
             ipcRenderer.send('artist:follow', { url: data.url, bandId: data.bandId, follow: !data.isFollowing });
-            $('follow').textContent = '…';
+            $('follow').title = '…';
         });
         $('playall').addEventListener('click', () => {
             if (!data || !data.discography.length) return;
@@ -680,7 +687,7 @@ opacity: 0; transition: opacity .4s ease, filter .25s ease;
             if (p.ok && data) data.isFollowing = !!p.isFollowing;
             setFollowBtn(data ? !!data.isFollowing : false);
             if (!p.ok) {
-                $('follow').textContent = (p.error || 'failed') + ' — try again';
+                $('follow').title = (p.error || 'failed') + ' — try again';
                 setTimeout(() => { if (data) setFollowBtn(data.isFollowing); }, 1800);
             }
         });
