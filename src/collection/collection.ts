@@ -47,8 +47,34 @@ function sortArrowSvg(asc: boolean): string {
 // per-track context menu (right-click a track row): add to queue / download.
 // one menu at a time; closes on outside click, right-click elsewhere or Escape.
 const MENU_ICON = 'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"';
+// icons read from the shared set (assets/icons) so they can be edited
+// in one place; sized down + recolored for menu use
+const readIcon = (name: string): string => {
+    try {
+        const fs = require('fs');
+        const path = require('path');
+        return fs.readFileSync(path.join(__dirname, '..', '..', 'assets', 'icons', name), 'utf8')
+            .replace(/width="24"/, 'width="15"')
+            .replace(/height="24"/, 'height="15"')
+            .replace(/stroke="#ffffff"/, 'stroke="currentColor"');
+    } catch (e) { return ''; }
+};
+const ICON_OPEN = readIcon('open_album.svg');
+const ICON_ART = readIcon('cover_art_fs.svg');
+const ICON_Q = `<svg viewBox="0 0 24 24" fill="none" ${MENU_ICON}><path d="M5 12h14"/><path d="M12 5v14"/></svg>`;
+const ICON_DL = `<svg viewBox="0 0 24 24" fill="none" ${MENU_ICON}><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>`;
+const ICON_SEARCH = `<svg viewBox="0 0 24 24" fill="none" ${MENU_ICON}><circle cx="10" cy="8" r="5"/><path d="M2 21a8 8 0 0 1 10.434-7.62"/><circle cx="18" cy="18" r="3"/><path d="m22 22-1.9-1.9"/></svg>`;
 let ctxMenu: HTMLElement | null = null;
-function openTrackMenu(x: number, y: number, info: { title?: string; artist?: string; year?: number; art?: string; queue: () => void; download: () => void }): void {
+interface MenuItem { a: string; icon: string; label: string; onClick: () => void; }
+function openTrackMenu(x: number, y: number, info: { title?: string; artist?: string; year?: number; art?: string; queue: () => void; download: () => void }, items?: MenuItem[]): void {
+    const list: MenuItem[] = items || [
+        { a: 'queue', icon: ICON_Q, label: 'Add song to queue', onClick: () => info.queue() },
+        { a: 'dl', icon: ICON_DL, label: 'Download track', onClick: () => info.download() },
+        { a: 'search', icon: ICON_SEARCH, label: 'Search ' + (info.artist || ''), onClick: () => {
+            const artist = (info.artist || '').trim();
+            if (artist) ipcRenderer.send('search:run', { text: artist, mode: 'all' });
+        } },
+    ];
     closeTrackMenu();
     const m = document.createElement('div');
     m.className = 'cmenu';
@@ -61,10 +87,7 @@ function openTrackMenu(x: number, y: number, info: { title?: string; artist?: st
           (info.year ? `<div class="cmsub">${escapeHtml(String(info.year))}</div>` : '') +
           `</div></div>`
         : '';
-    m.innerHTML = head +
-        `<button class="cmi" data-a="queue"><svg viewBox="0 0 24 24" fill="none" ${MENU_ICON}><path d="M5 12h14"/><path d="M12 5v14"/></svg>Add song to queue</button>` +
-        `<button class="cmi" data-a="dl"><svg viewBox="0 0 24 24" fill="none" ${MENU_ICON}><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>Download track</button>` +
-        `<button class="cmi" data-a="search"><svg viewBox="0 0 24 24" fill="none" ${MENU_ICON}><circle cx="10" cy="8" r="5"/><path d="M2 21a8 8 0 0 1 10.434-7.62"/><circle cx="18" cy="18" r="3"/><path d="m22 22-1.9-1.9"/></svg>Search ${escapeHtml(info.artist || '')}</button>`;
+    m.innerHTML = head + list.map((it) => `<button class="cmi" data-a="${it.a}">${it.icon}${escapeHtml(it.label)}</button>`).join('');
     document.body.appendChild(m);
     const r = m.getBoundingClientRect();
     m.style.left = Math.max(8, Math.min(x, window.innerWidth - r.width - 8)) + 'px';
@@ -73,12 +96,8 @@ function openTrackMenu(x: number, y: number, info: { title?: string; artist?: st
         const b = (e.target as HTMLElement).closest('.cmi') as HTMLElement | null;
         if (!b) return;
         closeTrackMenu();
-        if (b.dataset.a === 'queue') info.queue();
-        else if (b.dataset.a === 'dl') info.download();
-        else {
-            const artist = (info.artist || '').trim();
-            if (artist) ipcRenderer.send('search:run', { text: artist, mode: 'all' });
-        }
+        const it = list.find((z) => z.a === b.dataset.a);
+        if (it) it.onClick();
     });
     // enter: added hidden, shown on the next frames so the transition runs
     requestAnimationFrame(() => requestAnimationFrame(() => m.classList.add('show')));
@@ -91,6 +110,87 @@ function closeTrackMenu(): void {
     // exit: fade/scale out, then drop the node
     m.classList.remove('show');
     setTimeout(() => m.remove(), 140);
+}
+
+// right-click a search result card: menus per result type
+function openSearchCardMenu(e: MouseEvent, it: SearchResultItem): void {
+    const x = e.clientX, y = e.clientY;
+    const sub = it.type === 'artist' ? (it.location || it.genre || '') : (it.artist || '');
+    const info = { title: it.name, artist: sub, year: it.year || 0, art: it.art || '', queue: () => {}, download: () => {} };
+    if (it.type === 'album') {
+        openTrackMenu(x, y, info, [
+            { a: 'open', icon: ICON_OPEN, label: 'Open album', onClick: () => ipcRenderer.send('album:open', { url: it.url, artUrl: it.art, title: it.name }) },
+            { a: 'dl', icon: ICON_DL, label: 'Download album', onClick: () => { void openSearchFormats(x, y, it); } },
+            { a: 'queue', icon: ICON_Q, label: 'Add album to queue', onClick: () => { void ipcRenderer.invoke('collection:enqueue', { tralbumId: it.albumId, tralbumType: 'a', bandId: it.bandId }); } },
+            { a: 'fs', icon: ICON_ART, label: 'View cover art', onClick: () => showArtFullscreen(it.art) },
+            { a: 'search', icon: ICON_SEARCH, label: 'Search ' + (it.artist || ''), onClick: () => { const a = (it.artist || '').trim(); if (a) ipcRenderer.send('search:run', { text: a, mode: 'all' }); } },
+        ]);
+    } else if (it.type === 'artist') {
+        openTrackMenu(x, y, info, [
+            { a: 'open', icon: ICON_OPEN, label: 'Open artist', onClick: () => ipcRenderer.send('artist:open', { url: it.url }) },
+            { a: 'search', icon: ICON_SEARCH, label: 'Search ' + (it.name || ''), onClick: () => { const a = (it.name || '').trim(); if (a) ipcRenderer.send('search:run', { text: a, mode: 'all' }); } },
+        ]);
+    } else {
+        openTrackMenu(x, y, {
+            title: it.name, artist: it.artist || '', year: it.year || 0, art: it.art || '',
+            queue: () => { void ipcRenderer.invoke('collection:enqueue', { tralbumId: it.albumId, tralbumType: 't', bandId: it.bandId, trackId: it.trackId }); },
+            download: () => { void ipcRenderer.invoke('download:track', { tralbumId: it.albumId, tralbumType: 't', bandId: it.bandId, trackId: it.trackId }); },
+        });
+    }
+}
+
+// format picker for search-album downloads: same flow as the collection's
+async function openSearchFormats(x: number, y: number, it: SearchResultItem): Promise<void> {
+    closeTrackMenu();
+    const menu = document.createElement('div');
+    menu.className = 'dlmenu';
+    menu.textContent = 'loading formats…';
+    menu.addEventListener('click', (ev) => ev.stopPropagation());
+    document.body.appendChild(menu);
+    menuEl = menu;
+    menu.style.left = Math.max(6, Math.min(x, window.innerWidth - 196)) + 'px';
+    menu.style.top = Math.max(6, Math.min(y, window.innerHeight - (menu.offsetHeight || 120) - 6)) + 'px';
+    showMenu(menu);
+    const res: { ok: boolean; formats: { encoding: string; label: string; url: string }[]; error?: string } =
+        await ipcRenderer.invoke('download:formats', it.url);
+    if (menuEl !== menu) return; // superseded
+    if (!res.ok || !res.formats.length) { menu.textContent = 'no downloads available'; return; }
+    menu.innerHTML = '';
+    for (const f of res.formats) {
+        const b = document.createElement('button');
+        b.className = 'dlfmt';
+        b.textContent = f.label;
+        b.addEventListener('click', (ev) => {
+            ev.stopPropagation();
+            b.textContent = f.label + ' - preparing…';
+            ipcRenderer.send('downloads:art-hint', it.art);
+            void ipcRenderer.invoke('download:start', f.url);
+            b.textContent = f.label + ' - started ✓';
+            setTimeout(closeMenu, 900);
+        });
+        menu.appendChild(b);
+    }
+}
+
+let fsOverlay: HTMLElement | null = null;
+function showArtFullscreen(url: string): void {
+    if (!url || fsOverlay) return;
+    const back = document.createElement('div');
+    back.className = 'fsback';
+    const img = document.createElement('img');
+    img.src = url;
+    img.className = 'fsimg';
+    back.appendChild(img);
+    const close = (): void => {
+        back.remove();
+        fsOverlay = null;
+        document.removeEventListener('keydown', onKey);
+    };
+    const onKey = (e: KeyboardEvent): void => { if (e.key === 'Escape') close(); };
+    back.addEventListener('click', close);
+    document.addEventListener('keydown', onKey);
+    document.body.appendChild(back);
+    fsOverlay = back;
 }
 document.addEventListener('click', closeTrackMenu);
 document.addEventListener('wheel', closeTrackMenu, { passive: true });
@@ -492,6 +592,10 @@ function createSearchCard(it: SearchResultItem, index: number): HTMLElement {
             type: it.type, url: it.url, bandId: it.bandId, albumId: it.albumId, trackId: it.trackId,
         }));
     }
+    card.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        openSearchCardMenu(e, it);
+    });
     return card;
 }
 
