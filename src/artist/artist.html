@@ -65,9 +65,8 @@
         .hbtn:active { transform: scale(.96); transition: transform .08s ease; }
         .hbtn svg { width: 16px; height: 16px; display: block; }
         .hbtn.primary svg { width: 22px; height: 22px; }
-        .hbtn.following { background: transparent; color: var(--accent); border-color: var(--line); }
+        .hbtn.following { color: var(--accent); border-color: var(--accent); }
         .hbtn.following:hover { color: var(--text); border-color: var(--line); }
-        .hbtn.following svg { fill: currentColor; }
         .bio { font-size: 13px; color: var(--muted); line-height: 1.55; max-width: 860px; margin-top: 8px; text-shadow: 0 1px 8px rgba(0,0,0,.4); }
         .section { position: relative; z-index: 1; padding: 18px 26px 6px; }
         .section h2 {
@@ -207,7 +206,7 @@ opacity: 0; transition: opacity .4s ease, filter .25s ease;
                         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.14v13.72a1 1 0 0 0 1.5.86l11-6.86a1 1 0 0 0 0-1.72l-11-6.86A1 1 0 0 0 8 5.14z"/></svg>
                     </button>
                     <button class="hbtn" id="follow" title="Follow">
-                        <svg class="heart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.51 4.04 3 5.5l7 7Z"/></svg>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 21a8 8 0 0 1 13.292-6"/><circle cx="10" cy="8" r="5"/><path d="m16 19 2 2 4-4"/></svg>
                     </button>
                 </div>
             </div>
@@ -240,6 +239,10 @@ opacity: 0; transition: opacity .4s ease, filter .25s ease;
         };
         const ICON_OPEN = readIcon('open_album.svg');
         const ICON_ART = readIcon('cover_art_fs.svg');
+        // the follow button's icons (user-supplied): check = not following,
+        // plus = following. readIcon recolors them to the button's color.
+        const ICON_FOLLOW = readIcon('follow.svg');
+        const ICON_FOLLOWED = readIcon('followed.svg');
         const ICON_Q = `<svg viewBox="0 0 24 24" fill="none" ${MENU_ICON}><path d="M5 12h14"/><path d="M12 5v14"/></svg>`;
         const ICON_DL = `<svg viewBox="0 0 24 24" fill="none" ${MENU_ICON}><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>`;
         const ICON_SEARCH = `<svg viewBox="0 0 24 24" fill="none" ${MENU_ICON}><circle cx="10" cy="8" r="5"/><path d="M2 21a8 8 0 0 1 10.434-7.62"/><circle cx="18" cy="18" r="3"/><path d="m22 22-1.9-1.9"/></svg>`;
@@ -637,6 +640,7 @@ opacity: 0; transition: opacity .4s ease, filter .25s ease;
         function setFollowBtn(following) {
             const b = $('follow');
             b.classList.toggle('following', !!following);
+            b.innerHTML = following ? ICON_FOLLOWED : ICON_FOLLOW;
             b.title = following ? 'Unfollow' : 'Follow';
         }
 
