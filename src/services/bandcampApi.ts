@@ -1025,6 +1025,35 @@ export class BandcampApi {
                     if (mu.ok) discography = parseDiscography(await mu.text());
                 } catch { /* keep the empty list */ }
             }
+            // single-release bands serve the ALBUM page at the root AND at
+            // /music - synthesize the one-item discography from its meta.
+            if (!discography.length) {
+                const props = /<meta name="bc-page-properties" content="([^"]*)"/.exec(html);
+                if (props) {
+                    try {
+                        const p = JSON.parse(decode(props[1]));
+                        if (p && p.item_type === 'a' && p.item_id) {
+                            const ogUrl = /<meta property="og:url"\s+content="([^"]*)"/.exec(html)?.[1] || '';
+                            const ogTitle = /<meta property="og:title"\s+content="([^"]*)"/.exec(html)?.[1] || '';
+                            const ogImage = /<meta property="og:image"\s+content="([^"]*)"/.exec(html)?.[1] || '';
+                            const title = ogTitle.replace(/,\s*by\s+[\s\S]*$/i, '').trim();
+                            const by = /,\s*by\s+([\s\S]*)$/i.exec(ogTitle);
+                            if (title && ogUrl) {
+                                discography.push({
+                                    tralbumId: toId(p.item_id),
+                                    tralbumType: 'a',
+                                    title,
+                                    art: ogImage.replace(/&amp;/g, '&'),
+                                    url: ogUrl.replace(/&amp;/g, '&'),
+                                    artist: (by ? by[1].trim() : '') || name,
+                                    bandId,
+                                    year: 0,
+                                });
+                            }
+                        }
+                    } catch { /* keep the empty list */ }
+                }
+            }
             // years are NOT fetched here: that would fire one tralbum call per
             // release up front (a rate-limit burst on big catalogs). the main
             // process streams them in paced, one by one, after the view renders.
