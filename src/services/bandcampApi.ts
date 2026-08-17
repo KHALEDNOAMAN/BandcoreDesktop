@@ -21,6 +21,14 @@ function toId(value: unknown): string {
     return match ? match[0] : '';
 }
 
+// bcbits thumbs come in fixed size presets (the suffix number): _7 is ~150px,
+// _9 ~210px - too small for the ~230px grid cards on hi-dpi screens. the
+// collection and album views use _10 (~1200px); search art should too.
+function hiResArt(url: string): string {
+    const u = String(url || '').trim();
+    return /\/img\/[^"'\s]*_\d+\.jpg$/i.test(u) ? u.replace(/_\d+\.jpg$/, '_10.jpg') : u;
+}
+
 function pickStream(file: any): string {
     if (typeof file === 'string') return file.trim();
     if (!file || typeof file !== 'object') return '';
@@ -750,8 +758,8 @@ export class BandcampApi {
                     const artId = toId(x.art_id);
                     const isRelease = x.type === 't' || x.type === 'a';
                     const art = isRelease
-                        ? (artId ? `https://f4.bcbits.com/img/a${artId}_9.jpg` : String(x.img || '').trim())
-                        : (String(x.img || '').trim() || (artId ? `https://f4.bcbits.com/img/a${artId}_9.jpg` : ''));
+                        ? (artId ? hiResArt(`https://f4.bcbits.com/img/a${artId}_9.jpg`) : String(x.img || '').trim())
+                        : (String(x.img || '').trim() || (artId ? hiResArt(`https://f4.bcbits.com/img/a${artId}_9.jpg`) : ''));
                     return {
                         type: String(x.type || ''),
                         id: toId(x.id),
@@ -865,7 +873,7 @@ export class BandcampApi {
                             type: 'album',
                             name: String(x.title || '').trim(),
                             url,
-                            art: artId ? `https://f4.bcbits.com/img/a${artId}_9.jpg` : '',
+art: hiResArt(artId ? `https://f4.bcbits.com/img/a${artId}_9.jpg` : ''),
                             artist: String(x.album_artist || x.band_name || '').trim(),
                             genre: tag,
                         };
@@ -1475,7 +1483,7 @@ export function parseSearchPageHtml(html: string): SearchResultItem[] {
         const href = /<a class="artcont"[^>]*href="([^"]+)"/.exec(body)?.[1] || '';
         if (!name || !href) continue;
         const url = href.replace(/&amp;/g, '&').split('?')[0];
-        const art = /<img[^>]*src="([^"]+)"/.exec(body)?.[1] || '';
+        const art = hiResArt(/<img[^>]*src="([^"]+)"/.exec(body)?.[1] || '');
         let sub = strip(/<div class="subhead">([\s\S]*?)<\/div>/.exec(body)?.[1] || '').replace(/^by\s+/i, '');
         const item: SearchResultItem = {
             type: type === 'a' ? 'album' : type === 'b' ? 'artist' : 'track',
