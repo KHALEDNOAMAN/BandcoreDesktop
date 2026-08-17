@@ -463,7 +463,7 @@ opacity: 0; transition: opacity .4s ease, filter .25s ease;
             return last;
         }
 
-        function buildCard(row, index, grid, clickHandler) {
+        function buildCard(row, index, grid, clickHandler, menuFn) {
             const card = document.createElement('div');
             card.className = 'card';
             card.title = row.url;
@@ -483,6 +483,13 @@ opacity: 0; transition: opacity .4s ease, filter .25s ease;
             }
             card.id = 'card-' + index;
             card.addEventListener('click', () => { void clickHandler(row, card); });
+            if (menuFn) {
+                card.addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    menuFn(e.clientX, e.clientY, row, card);
+                });
+            }
             grid.appendChild(card);
             return card;
         }
@@ -576,18 +583,13 @@ opacity: 0; transition: opacity .4s ease, filter .25s ease;
             ag.innerHTML = '';
             sg.innerHTML = '';
             albums.forEach((r, i) => buildCard(r, 'a' + i, ag, (row, card) => {
-                card.addEventListener('contextmenu', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    openAlbumMenu(e.clientX, e.clientY, row);
-                });
                 if (openAlbumPageOn && row.url) {
                     startCardLoading(card);
                     ipcRenderer.send('album:open', { url: row.url, artUrl: row.art, title: row.title });
                     return;
                 }
                 toggleTracklist(row, card);
-            }));
+            }, openAlbumMenu));
             singles.forEach((r, i) => {
                 buildCard(r, 't' + i, sg, (row) => {
                     void ipcRenderer.invoke('collection:play', { tralbumId: String(row.tralbumId), tralbumType: 't', bandId: String(data.bandId), activeIndex: 0 });
