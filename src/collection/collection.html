@@ -74,8 +74,8 @@
         }
         .card .art.in { opacity: 1; }
         .card .art.nophoto { opacity: 1; }
-        .card:hover .art { transform: scale(1.03); box-shadow: 0 0 0 2px var(--accent); }
-        .card:active .art { transform: scale(.98); transition: transform .08s ease; }
+        .card:hover .artwrap { transform: scale(1.03); box-shadow: 0 0 0 2px var(--accent); }
+        .card:active .artwrap { transform: scale(.98); }
         /* album page loading: the clicked card's cover blurs entirely (the blur
            spill is clipped by the artwrap's rounded-square boundary, so the
            frame itself stays crisp) with a centered spinner until the data
@@ -93,6 +93,7 @@
             /* clips the art's blur spill (and the hover zoom) to the rounded
                square, so the cover's frame stays crisp while its content blurs */
             border-radius: 6px; overflow: hidden;
+            transition: transform .12s ease, box-shadow .12s ease;
         }
         .dl {
             position: absolute; right: 6px; bottom: 6px; width: 28px; height: 28px;
