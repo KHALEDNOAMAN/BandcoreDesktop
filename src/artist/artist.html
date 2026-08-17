@@ -168,6 +168,18 @@ opacity: 0; transition: opacity .4s ease, filter .25s ease;
         .cmmeta { min-width: 0; flex: 1; }
         .cmtitle { font-size: 12px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .cmsub { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        /* fullscreen cover overlay */
+        .fsback {
+            position: fixed; inset: 0; z-index: 1000; background: rgba(0,0,0,.88);
+            display: flex; align-items: center; justify-content: center; cursor: zoom-out;
+            animation: fsback-in .15s ease;
+        }
+        @keyframes fsback-in { from { opacity: 0; } to { opacity: 1; } }
+        .fsimg {
+            max-width: 92vw; max-height: 92vh; border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,.6); animation: fsimg-in .18s ease;
+        }
+        @keyframes fsimg-in { from { opacity: 0; transform: scale(.94); } to { opacity: 1; transform: none; } }
         .err { padding: 40px 26px; color: var(--muted); font-size: 13px; }
     </style>
 </head>
@@ -202,9 +214,27 @@ opacity: 0; transition: opacity .4s ease, filter .25s ease;
         const { ipcRenderer } = require('electron');
         const ICONS = { plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>' };
         const MENU_ICON = 'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"';
+        // icons read from the shared set (assets/icons) so they can be edited
+        // in one place; sized down + recolored for menu use
+        const readIcon = (name) => {
+            try {
+                const fs = require('fs');
+                const path = require('path');
+                return fs.readFileSync(path.join(__dirname, '..', '..', 'assets', 'icons', name), 'utf8')
+                    .replace(/width="24"/, 'width="15"')
+                    .replace(/height="24"/, 'height="15"')
+                    .replace(/stroke="#ffffff"/, 'stroke="currentColor"');
+            } catch (e) { return ''; }
+        };
+        const ICON_OPEN = readIcon('open_album.svg');
+        const ICON_ART = readIcon('cover_art_fs.svg');
+        const ICON_Q = `<svg viewBox="0 0 24 24" fill="none" ${MENU_ICON}><path d="M5 12h14"/><path d="M12 5v14"/></svg>`;
+        const ICON_DL = `<svg viewBox="0 0 24 24" fill="none" ${MENU_ICON}><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>`;
+        const ICON_SEARCH = `<svg viewBox="0 0 24 24" fill="none" ${MENU_ICON}><circle cx="10" cy="8" r="5"/><path d="M2 21a8 8 0 0 1 10.434-7.62"/><circle cx="18" cy="18" r="3"/><path d="m22 22-1.9-1.9"/></svg>`;
         let ctxMenu = null;
-        // per-track context menu (right-click a track row): add to queue / download
-        function openTrackMenu(x, y, info, actions) {
+        // shared context menu: compact info header + items; used for track rows
+        // and album cards
+        function showMenu(x, y, info, items) {
             closeTrackMenu();
             const m = document.createElement('div');
             m.className = 'cmenu';
@@ -217,10 +247,7 @@ opacity: 0; transition: opacity .4s ease, filter .25s ease;
                   (info.year ? `<div class="cmsub">${escapeHtml(String(info.year))}</div>` : '') +
                   `</div></div>`
                 : '';
-            m.innerHTML = head +
-                `<button class="cmi" data-a="queue"><svg viewBox="0 0 24 24" fill="none" ${MENU_ICON}><path d="M5 12h14"/><path d="M12 5v14"/></svg>Add song to queue</button>` +
-                `<button class="cmi" data-a="dl"><svg viewBox="0 0 24 24" fill="none" ${MENU_ICON}><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>Download track</button>` +
-                `<button class="cmi" data-a="search"><svg viewBox="0 0 24 24" fill="none" ${MENU_ICON}><circle cx="10" cy="8" r="5"/><path d="M2 21a8 8 0 0 1 10.434-7.62"/><circle cx="18" cy="18" r="3"/><path d="m22 22-1.9-1.9"/></svg>Search ${escapeHtml(info.artist || '')}</button>`;
+            m.innerHTML = head + items.map((it) => `<button class="cmi" data-a="${it.a}">${it.icon}${escapeHtml(it.label)}</button>`).join('');
             document.body.appendChild(m);
             const r = m.getBoundingClientRect();
             m.style.left = Math.max(8, Math.min(x, window.innerWidth - r.width - 8)) + 'px';
@@ -229,16 +256,90 @@ opacity: 0; transition: opacity .4s ease, filter .25s ease;
                 const b = e.target.closest('.cmi');
                 if (!b) return;
                 closeTrackMenu();
-                if (b.dataset.a === 'queue') info.queue();
-                else if (b.dataset.a === 'dl') info.download();
-                else {
-                    const artist = (info.artist || '').trim();
-                    if (artist) ipcRenderer.send('search:run', { text: artist, mode: 'all' });
-                }
+                const it = items.find((z) => z.a === b.dataset.a);
+                if (it && it.onClick) it.onClick();
             });
             // enter: added hidden, shown on the next frames so the transition runs
             requestAnimationFrame(() => requestAnimationFrame(() => m.classList.add('show')));
             ctxMenu = m;
+        }
+        // per-track context menu (right-click a track row): add to queue / download
+        function openTrackMenu(x, y, info, actions) {
+            showMenu(x, y, info, [
+                { a: 'queue', icon: ICON_Q, label: 'Add song to queue', onClick: () => actions.queue() },
+                { a: 'dl', icon: ICON_DL, label: 'Download track', onClick: () => actions.download() },
+                { a: 'search', icon: ICON_SEARCH, label: 'Search ' + (info.artist || ''), onClick: () => {
+                    const artist = (info.artist || '').trim();
+                    if (artist) ipcRenderer.send('search:run', { text: artist, mode: 'all' });
+                } },
+            ]);
+        }
+        // per-album context menu (right-click an album card): open / download /
+        // queue / cover art / search the release artist
+        function openAlbumMenu(x, y, row) {
+            const artist = (row.artist || data.name || '').trim();
+            showMenu(x, y, { art: row.art, title: row.title, artist, year: row.year || '' }, [
+                { a: 'open', icon: ICON_OPEN, label: 'Open album', onClick: () => ipcRenderer.send('album:open', { url: row.url, artUrl: row.art, title: row.title }) },
+                { a: 'dl', icon: ICON_DL, label: 'Download album', onClick: () => { void openFormatsMenu(x, y, row); } },
+                { a: 'queue', icon: ICON_Q, label: 'Add album to queue', onClick: () => { void ipcRenderer.invoke('collection:enqueue', { tralbumId: row.tralbumId, tralbumType: 'a', bandId: row.bandId || data.bandId }); } },
+                { a: 'fs', icon: ICON_ART, label: 'View cover art', onClick: () => showArtFullscreen(row.art) },
+                { a: 'search', icon: ICON_SEARCH, label: 'Search ' + artist, onClick: () => { if (artist) ipcRenderer.send('search:run', { text: artist, mode: 'all' }); } },
+            ]);
+        }
+        // format picker for "download album": same flow as the collection's
+        async function openFormatsMenu(x, y, row) {
+            const m = document.createElement('div');
+            m.className = 'cmenu';
+            m.innerHTML = `<div class="cmhead"><div class="cmmeta"><div class="cmtitle">loading formats…</div></div></div>`;
+            document.body.appendChild(m);
+            const place = () => {
+                const r = m.getBoundingClientRect();
+                m.style.left = Math.max(8, Math.min(x, window.innerWidth - r.width - 8)) + 'px';
+                m.style.top = Math.max(8, Math.min(y, window.innerHeight - r.height - 8)) + 'px';
+            };
+            place();
+            requestAnimationFrame(() => requestAnimationFrame(() => m.classList.add('show')));
+            ctxMenu = m;
+            const res = await ipcRenderer.invoke('download:formats', row.url);
+            if (ctxMenu !== m) return; // superseded
+            if (!res || !res.ok || !res.formats || !res.formats.length) {
+                m.innerHTML = `<div class="cmhead"><div class="cmmeta"><div class="cmtitle">no downloads available</div></div></div>`;
+                return;
+            }
+            m.innerHTML = '';
+            for (const f of res.formats) {
+                const b = document.createElement('button');
+                b.className = 'cmi';
+                b.innerHTML = `${ICON_DL}${escapeHtml(f.label)}`;
+                b.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    closeTrackMenu();
+                    ipcRenderer.send('downloads:art-hint', row.art);
+                    void ipcRenderer.invoke('download:start', f.url);
+                });
+                m.appendChild(b);
+            }
+            place();
+        }
+        let fsOverlay = null;
+        function showArtFullscreen(url) {
+            if (!url || fsOverlay) return;
+            const back = document.createElement('div');
+            back.className = 'fsback';
+            const img = document.createElement('img');
+            img.src = url;
+            img.className = 'fsimg';
+            back.appendChild(img);
+            const close = () => {
+                back.remove();
+                fsOverlay = null;
+                document.removeEventListener('keydown', onKey);
+            };
+            const onKey = (e) => { if (e.key === 'Escape') close(); };
+            back.addEventListener('click', close);
+            document.addEventListener('keydown', onKey);
+            document.body.appendChild(back);
+            fsOverlay = back;
         }
         function closeTrackMenu() {
             if (!ctxMenu) return;
@@ -475,6 +576,11 @@ opacity: 0; transition: opacity .4s ease, filter .25s ease;
             ag.innerHTML = '';
             sg.innerHTML = '';
             albums.forEach((r, i) => buildCard(r, 'a' + i, ag, (row, card) => {
+                card.addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    openAlbumMenu(e.clientX, e.clientY, row);
+                });
                 if (openAlbumPageOn && row.url) {
                     startCardLoading(card);
                     ipcRenderer.send('album:open', { url: row.url, artUrl: row.art, title: row.title });
