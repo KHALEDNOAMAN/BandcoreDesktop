@@ -88,6 +88,8 @@
         input[type="range"]::-webkit-slider-thumb {
             -webkit-appearance: none; width: 12px; height: 12px; border-radius: 50%; background: var(--text);
         }
+        /* the thumb grows while the slider is held down */
+        input[type="range"]:active::-webkit-slider-thumb { transform: scale(1.45); }
         .row { display: flex; align-items: center; justify-content: space-between; }
         button {
             background: var(--accent); color: var(--hover-text); border: none; border-radius: 5px;
