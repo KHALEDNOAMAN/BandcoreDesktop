@@ -590,6 +590,60 @@ async function applyChromeTheme(wc: Electron.WebContents): Promise<void> {
 }
 function chromeBg(): string { return themeByKey(getTheme()).vars['bg']; }
 
+// dynamic app accent: the average color of the playing cover becomes --accent
+// across the chrome (seekbar, hovers, icons...). a near-black cover falls back
+// to a dark gray so the accent stays visible. the theme accent is the fallback
+// while nothing is playing (or while the cover is still being analyzed).
+const accentCssKeys = new WeakMap<Electron.WebContents, string>();
+let dynamicAccent = '';
+function dynamicAccentCss(): string {
+    return dynamicAccent ? `:root { --accent: ${dynamicAccent} !important; }` : '';
+}
+async function refreshDynamicAccent(wc: Electron.WebContents): Promise<void> {
+    try {
+        const prev = accentCssKeys.get(wc);
+        if (prev) await wc.removeInsertedCSS(prev).catch(() => {});
+        const css = dynamicAccentCss();
+        if (css) {
+            accentCssKeys.set(wc, await wc.insertCSS(css, { cssOrigin: 'user' }));
+        } else {
+            accentCssKeys.delete(wc);
+        }
+    } catch (err) { /* view already gone */ }
+}
+function applyDynamicAccentToChrome(): void {
+    for (const w of [headerView, playerView, collectionView, feedView, artistView, albumView,
+        settingsWindow, spotlightWin]) {
+        if (w && !w.webContents.isDestroyed()) refreshDynamicAccent(w.webContents);
+    }
+}
+async function accentFromCover(url: string): Promise<string> {
+    try {
+        const buf = await bandcampApi.fetchBinary(url);
+        if (!buf) return '';
+        const img = nativeImage.createFromBuffer(buf);
+        if (img.isEmpty()) return '';
+        const bmp = img.resize({ width: 32, height: 32 }).toBitmap(); // BGRA
+        let r = 0, g = 0, b = 0, n = 0;
+        for (let i = 0; i + 3 < bmp.length; i += 4) {
+            r += bmp[i]; g += bmp[i + 1]; b += bmp[i + 2]; n++;
+        }
+        if (!n) return '';
+        r = Math.round(r / n); g = Math.round(g / n); b = Math.round(b / n);
+        if (r + g + b < 90) return '#757575'; // black cover -> dark gray accent
+        const hex = (v: number) => Math.max(0, Math.min(255, v)).toString(16).padStart(2, '0');
+        return '#' + hex(r) + hex(g) + hex(b);
+    } catch (err) { return ''; }
+}
+let accentArt = ''; // only recompute when the cover actually changes
+function onTrackCover(url: string): void {
+    if (!url || url === accentArt) return;
+    accentArt = url;
+    void accentFromCover(url).then((c) => {
+        if (dynamicAccent !== c) { dynamicAccent = c; applyDynamicAccentToChrome(); }
+    });
+}
+
 // UI font picker: modern google-font families applied to the chrome views.
 // the webfonts are bundled locally (assets/fonts/*.css + *.woff2, latin &
 // latin-ext subsets) so the injected css needs no @import / network access;
@@ -3267,6 +3321,7 @@ const entry: DlEntry = { id: entryId, name: `${rel.albumArtist} - ${rel.album}`,
         }
     });
     ipcMain.on('player:now-playing', (_e, track: NowPlaying) => {
+        onTrackCover(track.art);
         for (const t of tabs) {
             if (!t.view.webContents.isDestroyed()) {
                 t.view.webContents.send('page:now-playing', {
@@ -3484,6 +3539,7 @@ const entry: DlEntry = { id: entryId, name: `${rel.albumArtist} - ${rel.album}`,
                     settingsWindow, spotlightWin, downloadsWin, notice429Win,
                 ].map((w) => (w && !w.webContents.isDestroyed() ? w.webContents : null)).filter(Boolean) as Electron.WebContents[];
                 chrome.forEach((wc) => applyChromeTheme(wc));
+                applyDynamicAccentToChrome(); // keep the cover accent on top of the new palette
                 for (const w of [headerView, playerView, collectionView, feedView, artistView, albumView]) {
                     if (w && !w.webContents.isDestroyed()) w.setBackgroundColor(chromeBg());
                 }
