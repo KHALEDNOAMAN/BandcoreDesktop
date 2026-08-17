@@ -472,7 +472,7 @@ for (const id of Object.keys(RANGE_DEFAULTS)) {
     el.addEventListener('dblclick', (e) => {
         const rect = el.getBoundingClientRect();
         const mn = Number(el.min) || 0, mx = Number(el.max) || 100;
-        const frac = (Number(el.value) || 0 - mn) / (mx - mn);
+        const frac = (Number(el.value) - mn) / (mx - mn);
         const thumbX = rect.left + frac * rect.width;
         if (Math.abs(e.clientX - thumbX) > 16) return; // only when hitting the thumb
         const from = Number(el.value) || 0;
