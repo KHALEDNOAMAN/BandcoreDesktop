@@ -91,6 +91,16 @@
         .tlrow.playing .tltrk { font-size: 14.5px; font-weight: 700; color: var(--text); }
         .tla { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 0 0 240px; max-width: 240px; text-align: left; }
         .tldur { color: var(--sub); font-size: 12px; flex: 1; text-align: right; }
+        .tlhead {
+            display: flex; align-items: center; gap: 10px; padding: 0 8px 6px;
+            font-size: 10.5px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase;
+            color: var(--sub);
+        }
+        .tlhead .hnum { width: 22px; flex-shrink: 0; }
+        .tlhead .htrk { flex: 2; }
+        .tlhead .hla { flex: 0 0 240px; max-width: 240px; }
+        .tlhead .hld { flex: 1; text-align: right; display: flex; justify-content: flex-end; }
+        .tlhead svg { width: 14px; height: 14px; display: block; }
         .about { font-size: 13px; color: var(--muted); line-height: 1.6; max-width: 860px; padding-bottom: 16px; }
         .about .date { color: var(--sub); font-size: 12px; margin-bottom: 8px; }
         .credits { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px 24px; padding-bottom: 18px; }
@@ -149,6 +159,12 @@
             </div>
         </div>
         <div class="section">
+            <div class="tlhead">
+                <span class="hnum"></span>
+                <span class="htrk">Track Title</span>
+                <span class="hla">Artist</span>
+                <span class="hld" id="durhead"></span>
+            </div>
             <div class="tlrows" id="tracks"></div>
         </div>
         <div class="section" id="aboutsec" style="display:none">
@@ -169,6 +185,18 @@
         const $ = (id) => document.getElementById(id);
         const escapeHtml = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
         const fmtDur = (s) => (!s || s < 0 ? '' : Math.floor(s / 60) + ':' + Math.floor(s % 60).toString().padStart(2, '0'));
+
+        // duration column header icon, read from the shared icon set
+        // (assets/icons/track_duration.svg) so it can be edited in one place
+        try {
+            const fs = require('fs');
+            const path = require('path');
+            const svg = fs.readFileSync(path.join(__dirname, '..', '..', 'assets', 'icons', 'track_duration.svg'), 'utf8')
+                .replace(/width="24"/, 'width="14"')
+                .replace(/height="24"/, 'height="14"')
+                .replace(/stroke="#ffffff"/, 'stroke="currentColor"');
+            $('durhead').innerHTML = svg;
+        } catch (e) { /* decorative icon; fine to skip */ }
 
         // playing-track indicator: a lottie (playing.lottie, a zip: EOCD ->
         // central directory -> local headers, deflate via zlib) shown beside
