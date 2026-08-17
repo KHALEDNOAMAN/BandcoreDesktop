@@ -480,10 +480,12 @@ for (const id of Object.keys(RANGE_DEFAULTS)) {
         if (from === to) return;
         cancelAnimationFrame(raf);
         const t0 = performance.now();
-        const dur = 220;
+        const dur = 320;
         const step = (t) => {
             const k = Math.min(1, (t - t0) / dur);
-            const v = from + (to - from) * (1 - Math.pow(1 - k, 3));
+            // ease-in-out cubic: eases out of the current value, into the default
+            const e = k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+            const v = from + (to - from) * e;
             el.value = String(Math.round(v));
             el.dispatchEvent(new Event('input', { bubbles: true }));
             if (k < 1) raf = requestAnimationFrame(step);
