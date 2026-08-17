@@ -21,24 +21,23 @@
         }
         .scroll { flex: 1; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--scroll) transparent; }
         .hero {
-            position: relative; padding: 34px 26px 22px; overflow: hidden;
+            position: relative; padding: 34px 26px 22px;
             display: flex; gap: 22px; align-items: flex-end;
-        }
-        .hero::after {
-            content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 90px;
-            background: linear-gradient(to bottom, transparent, var(--bg));
-            pointer-events: none;
+            /* same treatment as the album page: the bg bleeds -40px on each
+               side for the blur; clip horizontally only so the vertical bleed
+               into the discography stays */
+            overflow-x: clip;
         }
         .hero-info, .hero-photo { z-index: 1; }
         .hero-bg {
-            position: absolute; left: -40px; top: -60px; right: -40px; bottom: -40px;
+            position: absolute; left: -40px; top: -60px; right: -40px; bottom: -80px;
             background-size: cover; background-position: center;
-            filter: blur(26px) brightness(.34) saturate(1.15);
+            filter: blur(26px) brightness(.55) saturate(1.15);
             transform: scale(1.25); pointer-events: none;
         }
         .hero-bg.fade {
-            -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 55%, transparent 100%);
-            mask-image: linear-gradient(to bottom, #000 0%, #000 55%, transparent 100%);
+            -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 28%, transparent 100%);
+            mask-image: linear-gradient(to bottom, #000 0%, #000 28%, transparent 100%);
         }
         .hero-photo {
             width: 230px; height: 230px; border-radius: 12px; object-fit: cover;
@@ -65,7 +64,7 @@
         .hbtn.following { background: transparent; color: var(--muted); }
         .hbtn.following:hover { color: var(--text); border-color: var(--line); }
         .bio { font-size: 13px; color: var(--muted); line-height: 1.55; max-width: 860px; margin-top: 8px; text-shadow: 0 1px 8px rgba(0,0,0,.4); }
-        .section { padding: 18px 26px 6px; }
+        .section { position: relative; z-index: 1; padding: 18px 26px 6px; }
         .section h2 {
             font-size: 14px; font-weight: 700; letter-spacing: .02em; margin-bottom: 14px;
             display: flex; align-items: baseline; gap: 10px;
