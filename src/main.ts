@@ -3196,6 +3196,36 @@ const entry: DlEntry = { id: entryId, name: `${rel.albumArtist} - ${rel.album}`,
         return { ok: true };
     });
 
+    // cover art helpers for the album page's art context menu: save into the
+    // download folder, or copy to the system clipboard as an image.
+    ipcMain.on('download:art', async (_e, req: { url?: string; title?: string; artist?: string }) => {
+        const url = typeof req?.url === 'string' ? req.url : '';
+        if (!/^https?:\/\//.test(url)) return;
+        try {
+            const buf = await bandcampApi.fetchBinary(url);
+            if (!buf || !buf.length) return;
+            const dir = getDownloadDir();
+            fs.mkdirSync(dir, { recursive: true });
+            const base = sanitizeName(req?.artist || '') + ' - ' + sanitizeName(req?.title || '') + ' cover';
+            fs.writeFileSync(path.join(dir, base + '.jpg'), buf);
+            if (devMode) console.log('[bcrpc] cover art saved: ' + base + '.jpg');
+        } catch { /* best effort */ }
+    });
+    ipcMain.handle('art:copy', async (_e, req: { url?: string }): Promise<{ ok: boolean; error?: string }> => {
+        const url = typeof req?.url === 'string' ? req.url : '';
+        if (!/^https?:\/\//.test(url)) return { ok: false, error: 'no url' };
+        try {
+            const buf = await bandcampApi.fetchBinary(url);
+            if (!buf || !buf.length) return { ok: false, error: 'empty image' };
+            const img = nativeImage.createFromBuffer(buf);
+            if (img.isEmpty()) return { ok: false, error: 'unreadable image' };
+            clipboard.writeImage(img);
+            return { ok: true };
+        } catch (err: any) {
+            return { ok: false, error: (err && (err.message || err)) || 'copy threw' };
+        }
+    });
+
     // ownership check for the on-page download button: owned collection items
     // carry their bandcamp redownload page url
     ipcMain.handle('release:download-info', (_e, req: { tralbumId?: string; tralbumType?: string }) => {

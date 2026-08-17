@@ -126,6 +126,18 @@
         }
         .cmi:hover { background: var(--hover-bg); color: var(--hover-text); }
         .cmi svg { width: 15px; height: 15px; flex-shrink: 0; }
+        /* fullscreen cover art overlay */
+        .fsback {
+            position: fixed; inset: 0; z-index: 1000; background: rgba(0,0,0,.88);
+            display: flex; align-items: center; justify-content: center; cursor: zoom-out;
+            animation: fsback-in .15s ease;
+        }
+        @keyframes fsback-in { from { opacity: 0; } to { opacity: 1; } }
+        .fsimg {
+            max-width: 92vw; max-height: 92vh; border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,.6); animation: fsimg-in .18s ease;
+        }
+        @keyframes fsimg-in { from { opacity: 0; transform: scale(.94); } to { opacity: 1; transform: none; } }
         .cmhead { display: flex; align-items: center; gap: 9px; padding: 6px 8px 7px; }
         .cmart { width: 38px; height: 38px; border-radius: 5px; object-fit: cover; flex-shrink: 0; }
         .cmmeta { min-width: 0; flex: 1; }
@@ -179,6 +191,21 @@
     <script>
         const { ipcRenderer } = require('electron');
         const MENU_ICON = 'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"';
+        const ICON_DL = `<svg viewBox="0 0 24 24" fill="none" ${MENU_ICON}><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>`;
+        // icons read from the shared set (assets/icons) so they can be edited
+        // in one place; sized down + recolored for menu use
+        const readIcon = (name) => {
+            try {
+                const fs = require('fs');
+                const path = require('path');
+                return fs.readFileSync(path.join(__dirname, '..', '..', 'assets', 'icons', name), 'utf8')
+                    .replace(/width="24"/, 'width="15"')
+                    .replace(/height="24"/, 'height="15"')
+                    .replace(/stroke="#ffffff"/, 'stroke="currentColor"');
+            } catch (e) { return ''; }
+        };
+        const ICON_FS = readIcon('cover_art_fs.svg');
+        const ICON_CLIP = readIcon('clipboard.svg');
         let data = null;
         let ctxMenu = null;
 
@@ -378,6 +405,65 @@
             if (ctxMenu && !ctxMenu.contains(e.target)) closeTrackMenu();
         });
         document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeTrackMenu(); });
+
+        // cover art context menu (right-click the hero art): view fullscreen,
+        // download, or copy to the clipboard. same look as the track menu,
+        // head carries the compact release info.
+        function openArtMenu(x, y) {
+            closeTrackMenu();
+            if (!data || !data.artUrl) return;
+            const m = document.createElement('div');
+            m.className = 'cmenu';
+            m.innerHTML =
+                `<div class="cmhead">` +
+                `<img class="cmart" src="${data.artUrl.replace(/"/g, '&quot;')}" alt="">` +
+                `<div class="cmmeta">` +
+                `<div class="cmtitle">${escapeHtml(data.title || '')}</div>` +
+                `<div class="cmsub">${escapeHtml((data.artist || data.bandName || '').trim())}</div>` +
+                `</div></div>` +
+                `<button class="cmi" data-a="fs">${ICON_FS}View cover art</button>` +
+                `<button class="cmi" data-a="dl">${ICON_DL}Download cover art</button>` +
+                `<button class="cmi" data-a="copy">${ICON_CLIP}Copy to clipboard</button>`;
+            document.body.appendChild(m);
+            const r = m.getBoundingClientRect();
+            m.style.left = Math.max(8, Math.min(x, window.innerWidth - r.width - 8)) + 'px';
+            m.style.top = Math.max(8, Math.min(y, window.innerHeight - r.height - 8)) + 'px';
+            m.addEventListener('click', (e) => {
+                const b = e.target.closest('.cmi');
+                if (!b) return;
+                closeTrackMenu();
+                if (b.dataset.a === 'fs') showArtFullscreen();
+                else if (b.dataset.a === 'dl') ipcRenderer.send('download:art', { url: data.artUrl, title: data.title, artist: data.artist || data.bandName });
+                else void ipcRenderer.invoke('art:copy', { url: data.artUrl });
+            });
+            requestAnimationFrame(() => requestAnimationFrame(() => m.classList.add('show')));
+            ctxMenu = m;
+        }
+        let fsOverlay = null;
+        function showArtFullscreen() {
+            if (!data || !data.artUrl || fsOverlay) return;
+            const back = document.createElement('div');
+            back.className = 'fsback';
+            const img = document.createElement('img');
+            img.src = data.artUrl;
+            img.className = 'fsimg';
+            back.appendChild(img);
+            const close = () => {
+                back.remove();
+                fsOverlay = null;
+                document.removeEventListener('keydown', onKey);
+            };
+            const onKey = (e) => { if (e.key === 'Escape') close(); };
+            back.addEventListener('click', close);
+            document.addEventListener('keydown', onKey);
+            document.body.appendChild(back);
+            fsOverlay = back;
+        }
+        $('hero-art').addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            openArtMenu(e.clientX, e.clientY);
+        });
 
         // mouse back/forward buttons close/reopen the overlay like the header's < >
         window.addEventListener('mouseup', (e) => {
