@@ -96,6 +96,35 @@
         .toggle { display: flex; align-items: center; gap: 8px; cursor: pointer; }
         .status { font-size: 11px; margin-top: 8px; min-height: 14px; }
         .ok { color: #5fb878; } .err { color: #d66; }
+        /* animated dropdowns (theme/font pickers): the native select stays
+           hidden as the value source, the button + popup do the picking */
+        .dd { position: relative; }
+        .dd .dd-btn {
+            display: flex; align-items: center; justify-content: space-between; gap: 8px;
+            width: 100%; margin: 0; background: var(--input); border: 1px solid var(--line);
+            border-radius: 5px; color: var(--text); padding: 8px 10px; font-size: 12px;
+            cursor: pointer; font-family: inherit; text-align: left;
+        }
+        .dd .dd-btn:hover { border-color: var(--accent); transform: none; }
+        .dd .dd-btn .chev { transition: transform .15s ease; }
+        .dd.open .dd-btn .chev { transform: rotate(180deg); }
+        .ddmenu {
+            position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 60;
+            background: var(--card); border: 1px solid var(--line); border-radius: 8px;
+            padding: 4px; box-shadow: 0 10px 28px rgba(0,0,0,.4); max-height: 240px; overflow-y: auto;
+            opacity: 0; transform: scale(.96) translateY(-4px); transform-origin: top;
+            transition: opacity .14s ease, transform .14s ease; pointer-events: none;
+        }
+        .dd.open .ddmenu { opacity: 1; transform: none; pointer-events: auto; }
+        .dditem {
+            display: flex; align-items: center; gap: 9px; width: 100%; margin: 0;
+            padding: 7px 10px; font-size: 12px; color: var(--text); background: none;
+            border: none; border-radius: 6px; cursor: pointer; font-family: inherit; text-align: left;
+        }
+        button.dditem:hover { transform: none; background: var(--hover-bg); color: var(--hover-text); }
+        .dditem.sel { color: var(--accent); }
+        .ddsw { width: 14px; height: 14px; border-radius: 4px; border: 1px solid var(--line); flex-shrink: 0; }
+        .dditem.sel .ddsw { border-color: var(--accent); }
         .wb-lists { display: flex; gap: 16px; margin-top: 10px; }
         .wb-col { flex: 1; border: 1px solid var(--line); border-radius: 6px; padding: 8px; background: var(--input); min-height: 120px; }
         .wb-col h3 { font-size: 11px; color: var(--muted); margin-bottom: 8px; text-transform: uppercase; text-align: center; }
@@ -336,6 +365,73 @@
 // settings:get can never snap the dropdown back to a stale value
 let fontChoice = 'system';
 const fontSel = $('fontSel');
+
+// native selects can't animate, so the theme/font pickers are custom
+// dropdowns: the select stays hidden as the value source (persist() still
+// reads it), the button + popup handle picking with a fade/scale ease.
+function makeDropdown(sel, opts) {
+    const host = document.createElement('div');
+    host.className = 'dd';
+    sel.style.display = 'none';
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'dd-btn';
+    btn.innerHTML = '<span class="dd-label"></span>' +
+        '<svg class="chev" viewBox="0 0 16 16" width="12" height="12" style="flex-shrink:0;">' +
+        '<path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M4 6l4 4 4-4"/></svg>';
+    const menu = document.createElement('div');
+    menu.className = 'ddmenu';
+    host.appendChild(btn);
+    host.appendChild(menu);
+    sel.insertAdjacentElement('afterend', host);
+    const render = () => {
+        const cur = sel.value;
+        const opt = Array.from(sel.options).find((o) => o.value === cur);
+        const label = btn.querySelector('.dd-label');
+        label.textContent = opt ? opt.textContent : '';
+        if (opts.labelStyle) label.style.fontFamily = opts.labelStyle(cur);
+        menu.querySelectorAll('.dditem').forEach((d) => {
+            d.classList.toggle('sel', d.dataset.value === cur);
+            const sw = d.querySelector('.ddsw');
+            if (sw && opts.swatch) sw.style.background = opts.swatch(d.dataset.value);
+        });
+    };
+    for (const o of sel.options) {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'dditem';
+        b.dataset.value = o.value;
+        if (opts.swatch) {
+            b.innerHTML = '<span class="ddsw"></span><span></span>';
+            b.lastChild.textContent = o.textContent;
+        } else {
+            b.textContent = o.textContent;
+        }
+        if (o.style.fontFamily) b.style.fontFamily = o.style.fontFamily;
+        b.addEventListener('click', (e) => {
+            e.stopPropagation();
+            sel.value = b.dataset.value;
+            sel.dispatchEvent(new Event('change', { bubbles: true }));
+            close();
+            render();
+        });
+        menu.appendChild(b);
+    }
+    const open = () => host.classList.add('open');
+    const close = () => host.classList.remove('open');
+    btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (host.classList.contains('open')) close(); else open();
+    });
+    document.addEventListener('click', (e) => { if (host.classList.contains('open') && !host.contains(e.target)) close(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && host.classList.contains('open')) close(); });
+    render();
+    return { host, render };
+}
+const themeDD = makeDropdown(themeSel, {
+    swatch: (key) => { const t = THEMES.find((x) => x.key === key); return t ? t.vars.accent : 'transparent'; },
+});
+let fontDD = null;
 ipcRenderer.invoke('settings:get').then((s) => {
     for (const f of (s && s.fontOptions) || []) {
         const o = document.createElement('option');
@@ -345,6 +441,12 @@ ipcRenderer.invoke('settings:get').then((s) => {
         fontSel.appendChild(o);
     }
     fontSel.value = fontChoice;
+    fontDD = makeDropdown(fontSel, {
+        labelStyle: (key) => {
+            const o = Array.from(fontSel.options).find((x) => x.value === key);
+            return (o && o.style.fontFamily) || '';
+        },
+    });
 }).catch(() => {});
 
         // sidebar section switching
@@ -501,8 +603,10 @@ ipcRenderer.invoke('settings:get').then((s) => {
             $('cacheReleases').checked = s.cacheReleases === true;
             refreshCacheInfo();
             $('themeSel').value = s.theme; // unknown keys snap back to dark via main
+            themeDD.render();
             fontChoice = s.font || 'system';
             $('fontSel').value = fontChoice;
+            if (fontDD) fontDD.render();
             $('darkMode').checked = s.darkMode !== false; // dark pages by default
             // stored setting is "apply dark to artist pages" (default off); the
             // checkbox is the inverse ("disable…"), so it starts checked
