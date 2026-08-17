@@ -19,12 +19,10 @@
             font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Roboto, sans-serif;
             display: flex; flex-direction: column; user-select: none;
             /* overlay transition: the view fades in when it opens (the page
-               behind shows through until it's done) and fades out on close */
+               behind shows through until it's done) */
             animation: overlay-in .26s ease-out;
         }
         @keyframes overlay-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
-        body.leaving { animation: overlay-out .16s ease-in forwards; }
-        @keyframes overlay-out { to { opacity: 0; transform: translateY(6px); } }
         .scroll { flex: 1; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--scroll) transparent; }
         .hero {
             position: relative; padding: 34px 26px 22px;
@@ -659,11 +657,6 @@ opacity: 0; transition: opacity .4s ease, filter .25s ease;
         window.addEventListener('mouseup', (e) => {
             if (e.button === 3) ipcRenderer.send('artist:close');
             if (e.button === 4) ipcRenderer.send('app:forward');
-        });
-        // the main process asks us to fade out before it removes this view
-        ipcRenderer.on('artist:closing', () => {
-            document.body.classList.add('leaving');
-            setTimeout(() => ipcRenderer.send('artist:close-done'), 170);
         });
         $('follow').addEventListener('click', () => {
             if (!data) return;

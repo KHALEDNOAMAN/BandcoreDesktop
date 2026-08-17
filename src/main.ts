@@ -401,20 +401,8 @@ function closeFeed() {
     if (headerView && !headerView.webContents.isDestroyed()) headerView.webContents.send('feed:state', false);
 }
 
-// close the artist view: the page fades out first - it confirms via
-// artist:close-done once its exit animation finished; a safety timeout
-// removes the view anyway (mid-reload / unresponsive pages).
-let artistCloseTimer: ReturnType<typeof setTimeout> | null = null;
+// close the artist view (its own back button / any overlay toggle)
 function closeArtistView() {
-    if (!artistVisible) { openOverlayUrl = ''; openOverlayType = ''; return; }
-    if (artistCloseTimer) { clearTimeout(artistCloseTimer); artistCloseTimer = null; }
-    if (artistView && !artistView.webContents.isDestroyed()) {
-        try { artistView.webContents.send('artist:closing'); } catch { /* view gone */ }
-    }
-    artistCloseTimer = setTimeout(finishArtistClose, 320);
-}
-function finishArtistClose() {
-    if (artistCloseTimer) { clearTimeout(artistCloseTimer); artistCloseTimer = null; }
     if (artistVisible && artistView) mainWindow.removeBrowserView(artistView);
     artistVisible = false;
     openOverlayUrl = '';
@@ -428,7 +416,6 @@ function finishArtistClose() {
 // open; artist:data is handed over only after that so it can't race a reload.
 let artistViewReady: Promise<void> = Promise.resolve();
 function openArtistView() {
-    if (artistCloseTimer) { clearTimeout(artistCloseTimer); artistCloseTimer = null; } // a fresh open supersedes a pending close
     if (artistVisible) return artistViewReady;
     artistVisible = true;
     mainWindow.addBrowserView(artistView);
@@ -444,18 +431,8 @@ function openArtistView() {
     return artistViewReady;
 }
 
-// close the album view, same animated-out flow as the artist view
-let albumCloseTimer: ReturnType<typeof setTimeout> | null = null;
+// close the album view (its own back button / any overlay toggle)
 function closeAlbumView() {
-    if (!albumVisible) { openOverlayUrl = ''; openOverlayType = ''; return; }
-    if (albumCloseTimer) { clearTimeout(albumCloseTimer); albumCloseTimer = null; }
-    if (albumView && !albumView.webContents.isDestroyed()) {
-        try { albumView.webContents.send('album:closing'); } catch { /* view gone */ }
-    }
-    albumCloseTimer = setTimeout(finishAlbumClose, 320);
-}
-function finishAlbumClose() {
-    if (albumCloseTimer) { clearTimeout(albumCloseTimer); albumCloseTimer = null; }
     if (albumVisible && albumView) mainWindow.removeBrowserView(albumView);
     albumVisible = false;
     openOverlayUrl = '';
@@ -467,7 +444,6 @@ function finishAlbumClose() {
 // album:data is handed over once the reload has finished.
 let albumViewReady: Promise<void> = Promise.resolve();
 function openAlbumView() {
-    if (albumCloseTimer) { clearTimeout(albumCloseTimer); albumCloseTimer = null; } // a fresh open supersedes a pending close
     if (albumVisible) return albumViewReady;
     albumVisible = true;
     mainWindow.addBrowserView(albumView);
@@ -482,29 +458,9 @@ function openAlbumView() {
 }
 
 // close the spotlight search popup (results are wiped on close by the popup itself)
-let searchClosing = false;
 function closeSearch() {
-    if (searchClosing) return;
-    if (spotlightWin && !spotlightWin.isDestroyed()) {
-        // fade the whole window out before closing it
-        searchClosing = true;
-        let o = 1;
-        const step = () => {
-            o -= 0.16;
-            if (spotlightWin && !spotlightWin.isDestroyed()) {
-                if (o > 0) {
-                    spotlightWin.setOpacity(Math.max(0, o));
-                    setTimeout(step, 12);
-                } else {
-                    spotlightWin.close();
-                }
-            } else {
-                searchClosing = false;
-            }
-        };
-        step();
-        return;
-    }
+    if (spotlightWin && !spotlightWin.isDestroyed()) spotlightWin.close();
+    spotlightWin = null;
     if (headerView && !headerView.webContents.isDestroyed()) headerView.webContents.send('gsearch:state', false);
 }
 
@@ -1565,8 +1521,6 @@ async function init() {
         if (artistVisible) closedOverlay = { type: 'artist', url: openOverlayUrl };
         closeArtistView();
     });
-    // the page confirms once its fade-out finished (safety timeout in closeArtistView)
-    ipcMain.on('artist:close-done', () => finishArtistClose());
 
     // the album view: the clicked card in the collection shows a blurred-cover
     // spinner (the collection adds it itself) while the release page is
@@ -1623,8 +1577,6 @@ async function init() {
         if (albumVisible) closedOverlay = { type: 'album', url: openOverlayUrl };
         closeAlbumView();
     });
-    // the page confirms once its fade-out finished (safety timeout in closeAlbumView)
-    ipcMain.on('album:close-done', () => finishAlbumClose());
 
     // follow/unfollow through the fan's session; the view flips its button from
     // the {isFollowing} in the response.
@@ -1741,7 +1693,6 @@ async function init() {
             spotlightWin.on('blur', () => closeSearch());
             spotlightWin.on('closed', () => {
                 spotlightWin = null;
-                searchClosing = false;
                 if (headerView && !headerView.webContents.isDestroyed()) headerView.webContents.send('gsearch:state', false);
             });
             if (headerView && !headerView.webContents.isDestroyed()) headerView.webContents.send('gsearch:state', true);
