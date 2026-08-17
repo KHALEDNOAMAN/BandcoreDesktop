@@ -369,10 +369,11 @@ export class BandcampApi {
         if (!data || typeof data !== 'object') return [];
 
         const current = data.current || {};
-        const bandId = toId(data.band_id ?? data.selling_band_id ?? q.bandId);
+        const bandId = toId(data.band_id ?? data.selling_band_id ?? current.band_id ?? current.selling_band_id ?? q.bandId);
         const tralbumId = toId(data.id ?? data.tralbum_id ?? q.tralbumId);
-        const tralbumType: TralbumType =
-            (data.item_type || data.tralbum_type || q.tralbumType) === 't' ? 't' : 'a';
+        // page blobs spell item_type "track"/"album", the apis use "t"/"a"
+        const rawType = String(data.item_type || data.tralbum_type || q.tralbumType || '');
+        const tralbumType: TralbumType = (rawType === 't' || rawType === 'track') ? 't' : 'a';
 
         // prefer the release's own artist (current.artist / artist) over the band /
         // tralbum_artist so a side-project or various-artists release shows its real
