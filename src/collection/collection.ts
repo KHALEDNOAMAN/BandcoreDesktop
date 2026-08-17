@@ -594,6 +594,9 @@ function createSearchCard(it: SearchResultItem, index: number): HTMLElement {
     }
     card.addEventListener('contextmenu', (e) => {
         e.preventDefault();
+        // stopPropagation: the document-level contextmenu closer would otherwise
+        // close this menu again as the very same event keeps bubbling
+        e.stopPropagation();
         openSearchCardMenu(e, it);
     });
     return card;
