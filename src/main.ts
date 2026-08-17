@@ -979,8 +979,8 @@ async function init() {
     playerView.webContents.loadFile(path.join(__dirname, 'player', 'player.html'));
     playerView.webContents.once('did-finish-load', () => {
         playerView.webContents.send('player:seekbar-top', store.get('seekbarAbove', false) === true);
-        playerView.webContents.send('player:blur', store.get('miniBlur', 18));
-        playerView.webContents.send('player:opacity', store.get('miniOpacity', 100));
+        playerView.webContents.send('player:blur', store.get('miniBlur', 7));
+        playerView.webContents.send('player:opacity', store.get('miniOpacity', 50));
         playerView.webContents.send('player:info-spacing', store.get('infoSpacing', 3));
         playerView.webContents.send('player:seek-width', store.get('seekbarWidth', 560));
         playerView.webContents.send('player:marquee-speed', store.get('marqueeSpeed', 50));
@@ -3440,8 +3440,8 @@ const entry: DlEntry = { id: entryId, name: `${rel.albumArtist} - ${rel.album}`,
             darkArtistPages: store.get('darkArtistPages', false) === true,
             discordOpts: presenceService.options(),
             seekbarAbove: store.get('seekbarAbove', false) === true,
-            miniBlur: store.get('miniBlur', 18),
-            miniOpacity: store.get('miniOpacity', 100),
+            miniBlur: store.get('miniBlur', 7),
+            miniOpacity: store.get('miniOpacity', 50),
             infoSpacing: store.get('infoSpacing', 3),
             seekbarWidth: store.get('seekbarWidth', 560),
             marqueeSpeed: store.get('marqueeSpeed', 50),
