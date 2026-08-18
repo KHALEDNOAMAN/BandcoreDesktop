@@ -662,6 +662,11 @@ const CHROME_FONTS: Record<string, { label: string; family: string }> = {
     raleway: { label: 'Raleway', family: "'Raleway'" },
     plexsans: { label: 'IBM Plex Sans', family: "'IBM Plex Sans'" },
     lato: { label: 'Lato', family: "'Lato'" },
+    sora: { label: 'Sora', family: "'Sora'" },
+    figtree: { label: 'Figtree', family: "'Figtree'" },
+    worksans: { label: 'Work Sans', family: "'Work Sans'" },
+    archivo: { label: 'Archivo', family: "'Archivo'" },
+    hanken: { label: 'Hanken Grotesk', family: "'Hanken Grotesk'" },
 };
 function chromeFontKey(): string {
     const k = String(store.get('font', 'grotesk'));
