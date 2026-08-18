@@ -571,6 +571,62 @@ export class BandcampApi {
         }
     }
 
+    /**
+     * one page of the wishlist for the home rail's load-more. same endpoint and
+     * normalization as fetchCollection, but exposes the continuation token so
+     * the caller can page as the user scrolls. token '' fetches the newest page.
+     */
+    async fetchWishlistPage(olderThan = ''): Promise<{ items: CollectionItem[]; lastToken: string; more: boolean }> {
+        const session = this.getSession();
+        if (!session) return { items: [], lastToken: olderThan, more: false };
+        let fanId = '';
+        try {
+            const r = await session.fetch('https://bandcamp.com/api/fan/2/collection_summary', {
+                credentials: 'include',
+            } as any);
+            if (r.ok) {
+                const d: any = await r.json();
+                fanId = toId(d?.fan_id ?? d?.collection_summary?.fan_id);
+            }
+        } catch {
+            // fall thru
+        }
+        if (!fanId) return { items: [], lastToken: olderThan, more: false };
+        // the api expects a time-based cursor for the first page ('' gets rejected)
+        const startToken = olderThan || `${Math.floor(Date.now() / 1000)}::a::`;
+        let data: any = null;
+        for (let attempt = 0; attempt < 6; attempt++) {
+            try {
+                const r = await session.fetch('https://bandcamp.com/api/fancollection/1/wishlist_items', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ fan_id: Number(fanId), older_than_token: startToken, count: 500 }),
+                    credentials: 'include',
+                } as any);
+                if (r.ok) { data = await r.json(); break; }
+                this.notify429(r.status);
+                if (r.status !== 429 && r.status < 500) return { items: [], lastToken: olderThan, more: false };
+            } catch {
+                // retry
+            }
+            await new Promise((res) => setTimeout(res, 400 * Math.pow(2, attempt)));
+        }
+        if (!data) return { items: [], lastToken: olderThan, more: false };
+        const raw: any[] = Array.isArray(data?.items) ? data.items : [];
+        const redl: Record<string, string> = (data?.redownload_urls && typeof data.redownload_urls === 'object') ? data.redownload_urls : {};
+        const out: CollectionItem[] = [];
+        const seen = new Set<string>();
+        for (const it of raw) {
+            const c = this.normalizeCollectionItem(it, redl);
+            c.wish = true;
+            const key = c.tralbumType + c.tralbumId;
+            if (!c.tralbumId || seen.has(key)) continue;
+            seen.add(key);
+            out.push(c);
+        }
+        return { items: out, lastToken: String(data?.last_token || ''), more: !!(data?.more_available) && out.length > 0 };
+    }
+
     // --- fan feed (custom feed view) -----------------------------------------
 
     private cachedFanId = '';

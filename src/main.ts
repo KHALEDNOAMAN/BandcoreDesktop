@@ -1720,6 +1720,32 @@ async function init() {
     ipcMain.on('home:close', () => closeHome());
     let homeRailCache: { at: number; feed: any[]; feedError: string; discover: any[]; discoverError: string; wish?: any[] } | null = null;
     const HOME_RAIL_TTL = 120000; // ms: rail data stays fresh for quick re-opens
+    // wishlist rail pager: continuation token + state for scrolling to the end
+    const wishPager = { token: '', more: false, busy: false };
+    ipcMain.handle('home:wishlist-more', async () => {
+        // the store took over (full collection fetch landed): nothing to page
+        if ((collectionItemsDisk.get() || []).some((c: any) => c && c.wish)) return { items: [], done: true };
+        if (wishPager.busy || !wishPager.more) {
+            if (devMode) console.log('[bcrpc] home:wishlist-more skipped busy=' + wishPager.busy + ' more=' + wishPager.more + ' token=' + JSON.stringify(wishPager.token));
+            return { items: [], done: true };
+        }
+        wishPager.busy = true;
+        try {
+            const res = await bandcampApi.fetchWishlistPage(wishPager.token);
+            wishPager.token = res.lastToken;
+            wishPager.more = res.more;
+            const items = res.items.map((c) => ({
+                title: c.title, artist: c.artist, art: c.art, url: c.url, year: c.year || 0,
+                tralbumId: c.tralbumId, tralbumType: c.tralbumType, bandId: c.bandId,
+            }));
+            if (homeRailCache) homeRailCache.wish = [...(homeRailCache.wish || []), ...items];
+            return { items, done: !res.more };
+        } catch (e: any) {
+            return { items: [], done: true };
+        } finally {
+            wishPager.busy = false;
+        }
+    });
     ipcMain.handle('home:data', async () => {
         // local-only: collection stats + the recently-collected rail. instant,
         // never touches the network, so the page always renders this part.
@@ -1789,11 +1815,18 @@ async function init() {
                     : { discover: [], discoverError: r.error || 'discover unavailable' })
                 .catch((e: any) => ({ discover: [], discoverError: e?.message || 'discover unavailable' })),
             wantNetworkWish
-                ? bandcampApi.fetchCollection(30, undefined, undefined, 'wishlist')
-                    .then((items) => items.slice(0, 24).map((c) => ({
-                        title: c.title, artist: c.artist, art: c.art, url: c.url, year: c.year || 0,
-                        tralbumId: c.tralbumId, tralbumType: c.tralbumType, bandId: c.bandId,
-                    })))
+                ? bandcampApi.fetchWishlistPage('')
+                    .then((wp) => {
+                        // arm the scroll pager with the continuation token; the
+                        // whole first page (up to 500) shows in the rail, later
+                        // pages append on scroll
+                        wishPager.token = wp.lastToken;
+                        wishPager.more = wp.more;
+                        return wp.items.map((c) => ({
+                            title: c.title, artist: c.artist, art: c.art, url: c.url, year: c.year || 0,
+                            tralbumId: c.tralbumId, tralbumType: c.tralbumType, bandId: c.bandId,
+                        }));
+                    })
                     .catch(() => [])
                 : Promise.resolve([] as any[]),
         ]);

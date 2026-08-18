@@ -131,6 +131,25 @@ wireRailNav(wishRow, 'wish-prev', 'wish-next');
 wireRailNav(feedRow, 'feed-prev', 'feed-next');
 wireRailNav(discoverRow, 'discover-prev', 'discover-next');
 
+// the wishlist rail pages on scroll: near the end, ask main for the next page
+// (continuation token lives there) and append the cards.
+let wishMoreBusy = false;
+wishRow.addEventListener('scroll', async () => {
+    if (wishMoreBusy) return;
+    if (wishRow.scrollLeft + wishRow.clientWidth < wishRow.scrollWidth - 400) return;
+    wishMoreBusy = true;
+    try {
+        const res: any = await ipcRenderer.invoke('home:wishlist-more').catch(() => null);
+        if (res && res.items && res.items.length) {
+            const frag = document.createDocumentFragment();
+            for (const it of res.items) frag.appendChild(createCard(it));
+            wishRow.appendChild(frag);
+        }
+    } finally {
+        wishMoreBusy = false;
+    }
+});
+
 async function loadHome(): Promise<void> {
     // part 1: local-only data (stats + recently collected) - renders instantly
     const res: any = await ipcRenderer.invoke('home:data').catch(() => null);
