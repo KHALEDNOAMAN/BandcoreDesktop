@@ -91,25 +91,34 @@ function createCard(c: HomeCard): HTMLElement {
 
 function fillRow(row: HTMLElement, sub: HTMLElement, items: HomeCard[], note: string): void {
     sub.textContent = note;
+    const rail = row.closest('.rail') as HTMLElement | null;
+    const navs = rail ? rail.querySelectorAll('.navbtn') : [];
     if (!items.length) {
         row.innerHTML = `<div class="state">${note || 'nothing here yet.'}</div>`;
+        navs.forEach((b) => { (b as HTMLElement).style.display = 'none'; });
         return;
     }
+    navs.forEach((b) => { (b as HTMLElement).style.display = ''; });
     const frag = document.createDocumentFragment();
     for (const it of items) frag.appendChild(createCard(it));
     row.innerHTML = '';
     row.appendChild(frag);
 }
 
-async function loadHome(): Promise<void> {
-    const res: any = await ipcRenderer.invoke('home:data').catch(() => null);
-    ipcRenderer.send('home:log', 'data ok=' + !!(res && res.ok) +
-        ' recent=' + (res && res.recent ? res.recent.length : 0) +
-        ' feed=' + (res && res.feed ? res.feed.length : 0) +
-        ' discover=' + (res && res.discover ? res.discover.length : 0) +
-        (res && (res.feedError || res.discoverError) ? ' err=' + (res.feedError || res.discoverError) : ''));
-    if (!res) { fillRow(recentRow, $('recent-sub'), [], 'could not load.'); return; }
+// circular rail nav: each click steps the rail by 5 cards (132px card + 14px gap)
+const RAIL_STEP = 5 * (132 + 14);
+function wireRailNav(row: HTMLElement, prevId: string, nextId: string): void {
+    $(prevId).addEventListener('click', () => row.scrollBy({ left: -RAIL_STEP, behavior: 'smooth' }));
+    $(nextId).addEventListener('click', () => row.scrollBy({ left: RAIL_STEP, behavior: 'smooth' }));
+}
+wireRailNav(recentRow, 'recent-prev', 'recent-next');
+wireRailNav(feedRow, 'feed-prev', 'feed-next');
+wireRailNav(discoverRow, 'discover-prev', 'discover-next');
 
+async function loadHome(): Promise<void> {
+    // part 1: local-only data (stats + recently collected) - renders instantly
+    const res: any = await ipcRenderer.invoke('home:data').catch(() => null);
+    if (!res) { fillRow(recentRow, $('recent-sub'), [], 'could not load.'); return; }
     const st = res.stats || {};
     statsEl.innerHTML = [
         `<span class="stat"><b>${st.owned || 0}</b> collected</span>`,

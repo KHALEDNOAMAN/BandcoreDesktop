@@ -48,6 +48,14 @@
             display: flex; align-items: baseline; gap: 8px;
         }
         .rail h2 .sub { font-size: 0.6875rem; color: var(--sub); font-weight: 400; }
+        .rail h2 .railspace { flex: 1; }
+        .rail h2 .navbtn {
+            width: 24px; height: 24px; border: none; border-radius: 50%;
+            background: var(--hover-bg); color: var(--muted); cursor: pointer;
+            font-size: 0.875rem; line-height: 1; flex-shrink: 0;
+            display: inline-flex; align-items: center; justify-content: center;
+        }
+        .rail h2 .navbtn:hover { background: var(--accent); color: var(--hover-text); }
         .row { display: flex; gap: 14px; overflow-x: auto; padding-bottom: 6px; }
         .card { width: 132px; flex-shrink: 0; cursor: pointer; }
         .artwrap { position: relative; }
@@ -87,15 +95,27 @@
     <div class="stats" id="stats"></div>
     <div class="scroll" id="scroll">
         <section class="rail" id="rail-recent">
-            <h2>Recently collected <span class="sub" id="recent-sub"></span></h2>
+            <h2>Recently collected <span class="sub" id="recent-sub"></span>
+                <span class="railspace"></span>
+                <button class="navbtn" id="recent-prev" title="Scroll left">‹</button>
+                <button class="navbtn" id="recent-next" title="Scroll right">›</button>
+            </h2>
             <div class="row" id="recent"><div class="state">…</div></div>
         </section>
         <section class="rail" id="rail-feed">
-            <h2>Latest from your feed <span class="sub" id="feed-sub"></span></h2>
+            <h2>Latest from your feed <span class="sub" id="feed-sub"></span>
+                <span class="railspace"></span>
+                <button class="navbtn" id="feed-prev" title="Scroll left">‹</button>
+                <button class="navbtn" id="feed-next" title="Scroll right">›</button>
+            </h2>
             <div class="row" id="feed"><div class="state">…</div></div>
         </section>
         <section class="rail" id="rail-discover">
-            <h2>Discover <span class="sub" id="discover-sub"></span></h2>
+            <h2>Discover <span class="sub" id="discover-sub"></span>
+                <span class="railspace"></span>
+                <button class="navbtn" id="discover-prev" title="Scroll left">‹</button>
+                <button class="navbtn" id="discover-next" title="Scroll right">›</button>
+            </h2>
             <div class="row" id="discover"><div class="state">…</div></div>
         </section>
     </div>
