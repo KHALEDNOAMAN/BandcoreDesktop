@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Bandcamp</title>
+    <title>Bandcore</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         ::-webkit-scrollbar { width: 0; height: 0; display: none; }
@@ -843,7 +843,7 @@ for (const id of Object.keys(RANGE_DEFAULTS)) {
             };
             ipcRenderer.invoke('updates:info').then((u) => {
                 if (!u) return;
-                $('appVersion').textContent = 'Bandcamp Desktop v' + u.version +
+                $('appVersion').textContent = 'Bandcore v' + u.version +
                     (u.packaged ? '' : ' (dev build - self-update disabled)');
                 if (u.status) renderUpd(u.status);
             }).catch(() => { $('appVersion').textContent = 'version unknown'; });

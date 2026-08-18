@@ -1,13 +1,13 @@
 {
-    "name": "bc-desktop",
-    "version": "0.4.0",
+    "name": "bandcore",
+    "version": "1.0.0",
     "description": "🎵 A standalone Bandcamp Desktop Client with Linux/Win/Mac support and Discord Rich Presence",
-    "author": "elricfd <elric@bu.edu>",
+    "author": "nai",
     "license": "GPL-2.0-or-later",
-    "homepage": "https://github.com/elricfd/bc-desktop",
+    "homepage": "https://github.com/Nai64/BandcoreDesktop",
     "repository": {
         "type": "git",
-        "url": "https://github.com/elricfd/bc-desktop.git"
+        "url": "https://github.com/Nai64/BandcoreDesktop.git"
     },
     "main": "./tsc/main.js",
     "scripts": {
@@ -20,13 +20,13 @@
         "build-mac": "tsc && npm run copy-header && electron-builder --mac"
     },
     "build": {
-        "appId": "com.bandcamp.desktop",
-        "productName": "Bandcamp",
+        "appId": "com.nai.bandcore",
+        "productName": "Bandcore",
         "publish": [
             {
                 "provider": "github",
-                "owner": "elricfd",
-                "repo": "bc-desktop"
+                "owner": "Nai64",
+                "repo": "BandcoreDesktop"
             }
         ],
         "asar": true,
@@ -49,8 +49,8 @@
             "allowToChangeInstallationDirectory": true,
             "createDesktopShortcut": true,
             "createStartMenuShortcut": true,
-            "shortcutName": "Bandcamp",
-            "uninstallDisplayName": "Bandcamp ${version}",
+            "shortcutName": "Bandcore",
+            "uninstallDisplayName": "Bandcore ${version}",
             "artifactName": "${productName}-Setup-${version}.${ext}"
         },
         "linux": {
@@ -60,7 +60,7 @@
             ],
             "category": "AudioVideo",
             "icon": "assets/bandcamp-button-circle-black-512.png",
-            "maintainer": "elricfd <elricfd@users.noreply.github.com>"
+            "maintainer": "nai"
         },
         "mac": {
             "target": [

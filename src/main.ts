@@ -334,7 +334,7 @@ function adjustContentViews() {
 function setupTray() {
     const iconPath = path.join(__dirname, '../assets/bandcamp-button-circle-black-64.png');
     tray = new Tray(nativeImage.createFromPath(iconPath));
-    tray.setToolTip('Bandcamp Desktop');
+    tray.setToolTip('Bandcore');
     // right click menu is only reliable way to quit when close to tray is on
     tray.setContextMenu(Menu.buildFromTemplate([
         { label: 'Show Bandcamp', click: () => { mainWindow.show(); mainWindow.focus(); } },
@@ -835,7 +835,7 @@ function openInNewWindow(url: string) {
     const win = new BrowserWindow({
         width: 1100,
         height: 800,
-        title: 'Bandcamp',
+        title: 'Bandcore',
         backgroundColor: '#181a1b',
         autoHideMenuBar: true,
         webPreferences: { nodeIntegration: false, contextIsolation: true, devTools: true },
@@ -949,7 +949,7 @@ async function init() {
         height: 850,
         minWidth: 1080,
         minHeight: 540,
-        title: 'Bandcamp',
+        title: 'Bandcore',
         icon: path.join(__dirname, '../assets/bandcamp-button-circle-black-512.png'),
         backgroundColor: '#181a1b',
         show: false,
@@ -975,7 +975,7 @@ async function init() {
     // first tab. contentView aliases the *active* tab's view; more tabs open via
     // middle-click (bandcamp links) or the + button and all share the one player.
     contentView = makeContentView();
-    tabs = [{ id: ++tabSeq, view: contentView, title: 'Bandcamp' }];
+    tabs = [{ id: ++tabSeq, view: contentView, title: 'Bandcore' }];
     activeTabId = tabSeq;
 
     collectionView = new BrowserView({
@@ -3991,7 +3991,7 @@ const entry: DlEntry = { id: entryId, name: `${rel.albumArtist} - ${rel.album}`,
         const view = makeContentView();
         wireContentView(view);
         const id = ++tabSeq;
-        tabs.push({ id, view, title: 'Bandcamp' });
+        tabs.push({ id, view, title: 'Bandcore' });
         view.webContents.loadURL(url).catch(() => {});
         if (activate) setActiveTab(id);
         else sendTabsState();
@@ -4068,7 +4068,7 @@ const entry: DlEntry = { id: entryId, name: `${rel.albumArtist} - ${rel.album}`,
     };
     if (app.isPackaged) {
         try {
-            autoUpdater.setFeedURL({ provider: 'github', owner: 'elricfd', repo: 'bc-desktop' });
+            autoUpdater.setFeedURL({ provider: 'github', owner: 'Nai64', repo: 'BandcoreDesktop' });
             autoUpdater.autoDownload = true;
             autoUpdater.on('checking-for-update', () => pushUpdStatus('checking'));
             autoUpdater.on('update-available', (info: any) => pushUpdStatus('downloading', String(info?.version || '')));
