@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Bandcore</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; scrollbar-width: none; -ms-overflow-style: none; }
+        ::-webkit-scrollbar { width: 0; height: 0; display: none; }
+        :root {
+            --bg: #181a1b; --titlebar: #121415; --input: #121415; --bar: #1b1e1f;
+            --panel: #161819; --card: #202325; --hover-bg: #24282a;
+            --line: #2a2e30; --line-2: #1e2224; --scroll: #3a3f42;
+            --text: #e8e6e3; --text-2: #cfcac2; --muted: #9a968e; --sub: #848079;
+            --accent: #1da0c3; --hover-text: #ffffff;
+        }
+        html, body { height: 100%; }
+        body {
+            background: var(--bg); color: var(--text); overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Roboto, sans-serif;
+            display: flex; flex-direction: column; user-select: none;
+        }
+        .top {
+            display: flex; align-items: center; gap: 10px; padding: 16px 18px 8px; flex-shrink: 0;
+        }
+        .hello { font-size: 1.375rem; font-weight: 700; line-height: 1.1; }
+        .hello small {
+            display: block; font-size: 0.75rem; color: var(--sub); font-weight: 400;
+            margin-top: 3px; letter-spacing: .02em;
+        }
+        .spacer { flex: 1; }
+        .closebtn {
+            width: 30px; height: 30px; border: none; border-radius: 50%; cursor: pointer;
+            background: var(--hover-bg); color: var(--muted); font-size: 0.8125rem; line-height: 1;
+        }
+        .closebtn:hover { background: var(--accent); color: var(--hover-text); }
+        .stats {
+            display: flex; gap: 8px; padding: 0 18px 4px; flex-wrap: wrap; flex-shrink: 0;
+        }
+        .stat {
+            background: var(--card); border: 1px solid var(--line); border-radius: 999px;
+            padding: 4px 12px; font-size: 0.6875rem; color: var(--muted);
+        }
+        .stat b { color: var(--text); font-weight: 600; }
+        .scroll { flex: 1; overflow-y: auto; padding: 4px 18px 22px; }
+        .rail { margin-top: 18px; }
+        .rail h2 {
+            font-size: 0.875rem; font-weight: 600; margin-bottom: 10px;
+            display: flex; align-items: baseline; gap: 8px;
+        }
+        .rail h2 .sub { font-size: 0.6875rem; color: var(--sub); font-weight: 400; }
+        .row { display: flex; gap: 14px; overflow-x: auto; padding-bottom: 6px; }
+        .card { width: 132px; flex-shrink: 0; cursor: pointer; }
+        .artwrap { position: relative; }
+        .art {
+            width: 132px; height: 132px; border-radius: 8px; background: var(--line);
+            object-fit: cover; display: block; transition: transform .12s ease;
+        }
+        .card:hover .art { transform: scale(1.03); outline: 2px solid var(--accent); }
+        .play, .enq {
+            position: absolute; width: 30px; height: 30px; border: none; border-radius: 50%;
+            background: rgba(24,26,27,.82); color: #fff; line-height: 1; cursor: pointer;
+            opacity: 0; transition: opacity .12s ease;
+        }
+        .play { right: 6px; bottom: 6px; font-size: 0.8125rem; }
+        .enq { right: 6px; top: 6px; font-size: 1.125rem; }
+        .card:hover .play, .card:hover .enq { opacity: 1; }
+        .play:hover, .enq:hover { background: var(--accent); }
+        .badge, .yr {
+            position: absolute; left: 6px; top: 6px; font-size: 0.5625rem; letter-spacing: .05em;
+            background: rgba(24,26,27,.85); color: var(--accent); border-radius: 4px; padding: 3px 6px;
+            text-transform: uppercase; pointer-events: none;
+        }
+        .badge.df { color: var(--muted); }
+        .yr { top: auto; bottom: 6px; color: var(--muted); }
+        .meta .t { font-size: 0.75rem; margin-top: 7px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .meta .a { font-size: 0.6875rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+        .meta .w { font-size: 0.625rem; color: var(--sub); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .state { padding: 26px 4px; color: var(--muted); font-size: 0.75rem; white-space: nowrap; }
+    </style>
+</head>
+<body>
+    <div class="top">
+        <div class="hello" id="hello"></div>
+        <div class="spacer"></div>
+        <button class="closebtn" id="close" title="Close home">✕</button>
+    </div>
+    <div class="stats" id="stats"></div>
+    <div class="scroll" id="scroll">
+        <section class="rail" id="rail-recent">
+            <h2>Recently collected <span class="sub" id="recent-sub"></span></h2>
+            <div class="row" id="recent"><div class="state">…</div></div>
+        </section>
+        <section class="rail" id="rail-feed">
+            <h2>Latest from your feed <span class="sub" id="feed-sub"></span></h2>
+            <div class="row" id="feed"><div class="state">…</div></div>
+        </section>
+        <section class="rail" id="rail-discover">
+            <h2>Discover <span class="sub" id="discover-sub"></span></h2>
+            <div class="row" id="discover"><div class="state">…</div></div>
+        </section>
+    </div>
+
+    <script>require('./home.js');</script>
+</body>
+</html>

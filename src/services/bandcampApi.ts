@@ -907,6 +907,73 @@ art: hiResArt(artId ? `https://f4.bcbits.com/img/a${artId}_9.jpg` : ''),
         }
     }
 
+    /**
+     * trending albums from bandcamp's discover app (the same endpoint the
+     * /discover page uses; no tag filter = the general "top" slice). the home
+     * page's discover rail. rows carry resolver handles so they can play
+     * straight from the rail.
+     */
+    async fetchDiscover(size = 24): Promise<{ ok: boolean; items: SearchResultItem[]; error?: string }> {
+        const session = this.getSession();
+        if (!session) return { ok: false, items: [], error: 'no session' };
+        this.noteInteractive(); // user-driven: the crawler yields
+        try {
+            const r = await session.fetch('https://bandcamp.com/api/discover/1/discover_web', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    category_id: 0, cursor: '*', geoname_id: 0,
+                    include_result_types: ['a'], size, slice: 'top',
+                    tag_norm_names: [], time_facet_id: null,
+                }),
+                credentials: 'include',
+            } as any);
+            if (!r.ok) { this.notify429(r.status); return { ok: false, items: [], error: 'http ' + r.status }; }
+            const d: any = await r.json();
+            const rows: any[] = (d?.results || []).filter((x: any) => x?.result_type === 'a');
+            return {
+                ok: true,
+                items: rows.map((x: any): SearchResultItem => {
+                    const artId = toId(x.primary_image?.image_id);
+                    let url = String(x.item_url || '').trim();
+                    if (url) {
+                        try {
+                            const u = new URL(url);
+                            if (u.searchParams.get('from') === 'discover_page') {
+                                u.searchParams.delete('from');
+                                u.searchParams.delete('from_item_id');
+                                u.searchParams.delete('from_discover_category');
+                            }
+                            url = u.toString();
+                        } catch { /* keep raw */ }
+                    }
+                    const item: SearchResultItem = {
+                        type: 'album',
+                        name: String(x.title || '').trim(),
+                        url,
+                        art: hiResArt(artId ? `https://f4.bcbits.com/img/a${artId}_9.jpg` : ''),
+                        artist: String(x.album_artist || x.band_name || '').trim(),
+                        genre: '',
+                    };
+                    // resolver handles so the home rail can play straight away
+                    (item as any).tralbumId = toId(x.item_id);
+                    (item as any).bandId = toId(x.band_id ?? x.selling_band_id);
+                    if (x.band_location) item.location = String(x.band_location).trim();
+                    const rawDate = x.release_date;
+                    if (rawDate != null && rawDate !== '') {
+                        let y = 0;
+                        if (typeof rawDate === 'number') y = new Date(rawDate > 1e12 ? rawDate : rawDate * 1000).getFullYear();
+                        else { const t = Date.parse(String(rawDate)); if (!isNaN(t)) y = new Date(t).getFullYear(); }
+                        if (y > 1900 && y < 3000) item.year = y;
+                    }
+                    return item;
+                }).filter((i: SearchResultItem) => i.name && i.url),
+            };
+        } catch (e: any) {
+            return { ok: false, items: [], error: e?.message || 'discover fetch failed' };
+        }
+    }
+
     // --- artist pages (the artist view) --------------------------------------
 
     /** one artist page's worth of data for the artist view: identity, banner,

@@ -248,6 +248,8 @@ let collectionView: BrowserView;
 let collectionVisible = false;
 let feedView: BrowserView;
 let feedVisible = false;
+let homeView: BrowserView;
+let homeVisible = false;
 let artistView: BrowserView;
 let artistVisible = false;
 // forward button reopens the overlay the user backed out of (the mirror of
@@ -327,6 +329,7 @@ function adjustContentViews() {
     // collection / feed / artist views (added only while open) fill the content area
     if (collectionView && collectionVisible) collectionView.setBounds(contentRect);
     if (feedView && feedVisible) feedView.setBounds(contentRect);
+    if (homeView && homeVisible) homeView.setBounds(contentRect);
     if (artistView && artistVisible) artistView.setBounds(contentRect);
     if (albumView && albumVisible) albumView.setBounds(contentRect);
 }
@@ -381,7 +384,7 @@ function closeCollection() {
 // open the custom collection overlay (one overlay at a time, like the toggle)
 function openCollection() {
     if (collectionVisible) return;
-    closeFeed(); closeSearch(); // one overlay at a time
+    closeHome(); closeFeed(); closeSearch(); // one overlay at a time
     collectionVisible = true;
     mainWindow.addBrowserView(collectionView);
     mainWindow.setTopBrowserView(headerView); // keep header/player above it
@@ -399,6 +402,29 @@ function closeFeed() {
     if (feedVisible && feedView) mainWindow.removeBrowserView(feedView);
     feedVisible = false;
     if (headerView && !headerView.webContents.isDestroyed()) headerView.webContents.send('feed:state', false);
+}
+
+// open the home overlay (the launch start page + home button). it's a normal
+// overlay: one at a time, header/player stay above, data is re-sent on open.
+function openHome() {
+    if (homeVisible) return;
+    closeCollection(); closeFeed(); closeSearch(); // one overlay at a time
+    homeVisible = true;
+    mainWindow.addBrowserView(homeView);
+    mainWindow.setTopBrowserView(headerView); // keep header/player above it
+    mainWindow.setTopBrowserView(playerView);
+    adjustContentViews();
+    homeView.webContents.send('home:shown');
+    if (headerView && !headerView.webContents.isDestroyed()) {
+        headerView.webContents.send('home:state', true);
+    }
+}
+
+// hide the home overlay (close btn / Esc / any other overlay opening)
+function closeHome() {
+    if (homeVisible && homeView) mainWindow.removeBrowserView(homeView);
+    homeVisible = false;
+    if (headerView && !headerView.webContents.isDestroyed()) headerView.webContents.send('home:state', false);
 }
 
 // close the artist view (its own back button / any overlay toggle)
@@ -612,7 +638,7 @@ async function refreshDynamicAccent(wc: Electron.WebContents): Promise<void> {
     } catch (err) { /* view already gone */ }
 }
 function applyDynamicAccentToChrome(): void {
-    for (const w of [headerView, playerView, collectionView, feedView, artistView, albumView,
+    for (const w of [headerView, playerView, collectionView, feedView, homeView, artistView, albumView,
         settingsWindow, spotlightWin]) {
         if (w && !w.webContents.isDestroyed()) refreshDynamicAccent(w.webContents);
     }
@@ -761,7 +787,7 @@ function accelOfInput(input: Electron.Input): string {
     return parts.join('+');
 }
 
-const HEADER_BUTTON_DEFAULTS = { home: false, back: true, forward: true, newtab: false, urlbar: true, reload: true, downloads: true, gsearch: false, collection: true, feed: true } as const;
+const HEADER_BUTTON_DEFAULTS = { home: true, back: true, forward: true, newtab: false, urlbar: true, reload: true, downloads: true, gsearch: false, collection: true, feed: true } as const;
 function getHeaderButtons(): Record<string, boolean> {
     const saved = store.get('headerButtons', {}) as Record<string, boolean>;
     const out: Record<string, boolean> = {};
@@ -995,6 +1021,12 @@ async function init() {
     feedView.setBackgroundColor(chromeBg());
     feedView.webContents.on('dom-ready', () => applyChromeTheme(feedView.webContents));
 
+    homeView = new BrowserView({
+        webPreferences: { nodeIntegration: true, contextIsolation: false, devTools: devMode }
+    });
+    homeView.setBackgroundColor(chromeBg());
+    homeView.webContents.on('dom-ready', () => applyChromeTheme(homeView.webContents));
+
     artistView = new BrowserView({
         webPreferences: { nodeIntegration: true, contextIsolation: false, devTools: devMode }
     });
@@ -1011,6 +1043,8 @@ async function init() {
     if (devMode) {
         feedView.webContents.on('did-fail-load', (_e, code, desc, url) =>
             console.log('[bcrpc] feed view FAILED ' + code + ' ' + desc + ' ' + url));
+        homeView.webContents.on('did-fail-load', (_e, code, desc, url) =>
+            console.log('[bcrpc] home view FAILED ' + code + ' ' + desc + ' ' + url));
         artistView.webContents.on('did-finish-load', () => console.log('[bcrpc] artist view loaded'));
         artistView.webContents.on('did-fail-load', (_e, code, desc, url) =>
             console.log('[bcrpc] artist view FAILED ' + code + ' ' + desc + ' ' + url));
@@ -1025,9 +1059,10 @@ async function init() {
 
     collectionView.webContents.loadFile(path.join(__dirname, 'collection', 'collection.html'));
     feedView.webContents.loadFile(path.join(__dirname, 'feed', 'feed.html'));
+    homeView.webContents.loadFile(path.join(__dirname, 'home', 'home.html'));
     artistView.webContents.loadFile(path.join(__dirname, 'artist', 'artist.html'));
     // shortcuts work no matter which pane has focus
-    for (const v of [headerView, playerView, collectionView, feedView, artistView]) wireShortcutsOn(v.webContents);
+    for (const v of [headerView, playerView, collectionView, feedView, homeView, artistView]) wireShortcutsOn(v.webContents);
 
     // opt-in (settings, off by default): pre-fetch the collection in the background
     // right after startup so opening the view is instant. small delay so the fetch
@@ -1355,14 +1390,10 @@ async function init() {
         if ((wc as any).__hung || wc.isCrashed()) hardLoad(wc.getURL() || 'https://bandcamp.com');
         else wc.reload();
     });
-    // home btn returns to the homepage, closing the collection overlay if it's open.
-    // uses hardLoad so it always works even from a wedged collection page.
+    // home btn / shortcut toggles the home overlay (the launch start page).
     ipcMain.on('app:home', () => {
-        closeCollection();
-        closeFeed();
-        closeSearch();
-        closedOverlay = null;
-        hardLoad('https://bandcamp.com');
+        if (homeVisible) closeHome();
+        else openHome();
     });
 
     // clicking track title / artist name in player bar (or a feed card) navs page;
@@ -1371,6 +1402,7 @@ async function init() {
         if (typeof url === 'string' && url.startsWith('https://')) {
             closeCollection();
             closeFeed();
+            closeHome();
             closeSearch();
             closedOverlay = null;
             hardLoad(url);
@@ -1664,7 +1696,7 @@ async function init() {
     ipcMain.on('feed:toggle', () => {
         feedVisible = !feedVisible;
         if (feedVisible) {
-            closeCollection(); closeSearch(); // one overlay at a time
+            closeCollection(); closeSearch(); closeHome(); // one overlay at a time
             mainWindow.addBrowserView(feedView);
             mainWindow.setTopBrowserView(headerView); // keep header/player above it
             mainWindow.setTopBrowserView(playerView);
@@ -1679,6 +1711,54 @@ async function init() {
     });
     ipcMain.on('feed:close', () => closeFeed());
 
+    // home page (start-up start page): rails data + toggle/close
+    ipcMain.on('home:log', (_e, msg: unknown) => { if (devMode) console.log('[bcrpc:home] ' + String(msg)); });
+    ipcMain.on('home:close', () => closeHome());
+    ipcMain.handle('home:data', async () => {
+        const all: any[] = collectionItemsDisk.get() || [];
+        const owned = all.filter((c) => c && !c.local && !c.wish).length;
+        const wishlist = all.filter((c) => c && c.wish).length;
+        const recent = all
+            .filter((c) => c && !c.local && !c.wish && Number(c.addedAt) > 0)
+            .sort((a, b) => Number(b.addedAt) - Number(a.addedAt))
+            .slice(0, 24)
+            .map((c) => ({
+                title: String(c.title || '').trim(),
+                artist: String(c.artist || '').trim(),
+                art: String(c.art || ''),
+                url: String(c.url || ''),
+                year: Number(c.year) || 0,
+                tralbumId: String(c.tralbumId || ''),
+                tralbumType: c.tralbumType === 't' ? 't' as const : 'a' as const,
+                bandId: String(c.bandId || ''),
+            }));
+        let feed: any[] = [];
+        let feedError = '';
+        try {
+            const r = await bandcampApi.fetchFeed(0);
+            if (r.ok) {
+                feed = (r.stories || []).slice(0, 24).map((s) => ({
+                    title: s.title, artist: s.artist, art: s.art, url: s.url, via: s.via,
+                    badge: s.type === 'nr' ? 'new' : s.type === 'df' ? 'collected' : '',
+                    tralbumId: s.tralbumId, tralbumType: s.tralbumType, bandId: s.bandId, trackId: s.trackId,
+                }));
+            } else feedError = r.error || 'feed unavailable';
+        } catch (e: any) { feedError = e?.message || 'feed unavailable'; }
+        let discover: any[] = [];
+        let discoverError = '';
+        try {
+            const r = await bandcampApi.fetchDiscover(24);
+            if (r.ok) {
+                discover = r.items.map((i: any) => ({
+                    title: i.name, artist: i.artist, art: i.art, url: i.url, year: i.year || 0,
+                    tralbumId: i.tralbumId || '', bandId: i.bandId || '',
+                }));
+            } else discoverError = r.error || 'discover unavailable';
+        } catch (e: any) { discoverError = e?.message || 'discover unavailable'; }
+        if (devMode) console.log('[bcrpc] home:data owned=' + owned + ' recent=' + recent.length + ' feed=' + feed.length + ' discover=' + discover.length + (feedError || discoverError ? ' err=' + (feedError || discoverError) : ''));
+        return { ok: true, stats: { owned, wishlist, local: localFilesDisk.get().length, playlists: playlistsDisk.get().length }, recent, feed, discover, feedError, discoverError };
+    });
+
     // one page of the fan feed; olderThan pages backwards (0 = newest)
     ipcMain.handle('feed:fetch', async (_e, olderThan: unknown) => {
         const res = await bandcampApi.fetchFeed(Number(olderThan) || 0);
@@ -1690,6 +1770,7 @@ async function init() {
     ipcMain.on('gsearch:log', (_e, msg: unknown) => { if (devMode) console.log('[bcrpc:gsearch] ' + String(msg)); });
     const openSpotlight = () => {
         if (spotlightWin && !spotlightWin.isDestroyed()) { closeSearch(); return; }
+        closeHome(); // one overlay at a time
         try {
             const b = mainWindow.getContentBounds();
             spotlightWin = new BrowserWindow({
@@ -3655,13 +3736,13 @@ const entry: DlEntry = { id: entryId, name: `${rel.albumArtist} - ${rel.album}`,
             }
             if (typeof data.font === 'string' && data.font !== chromeFontKey() && CHROME_FONTS[data.font]) {
                 store.set('font', data.font);
-                for (const w of [headerView, playerView, collectionView, feedView, settingsWindow, spotlightWin, downloadsWin, notice429Win]) {
+                for (const w of [headerView, playerView, collectionView, feedView, homeView, settingsWindow, spotlightWin, downloadsWin, notice429Win]) {
                     if (w && !w.webContents.isDestroyed()) applyChromeTheme(w.webContents);
                 }
             }
             if (typeof data.fontSize === 'number') {
                 store.set('fontSize', Math.min(140, Math.max(80, Math.round(data.fontSize))));
-                for (const w of [headerView, playerView, collectionView, feedView, settingsWindow, spotlightWin, downloadsWin, notice429Win]) {
+                for (const w of [headerView, playerView, collectionView, feedView, homeView, settingsWindow, spotlightWin, downloadsWin, notice429Win]) {
                     if (w && !w.webContents.isDestroyed()) applyChromeTheme(w.webContents);
                 }
             }
@@ -3979,6 +4060,7 @@ const entry: DlEntry = { id: entryId, name: `${rel.albumArtist} - ${rel.album}`,
         mainWindow.addBrowserView(tab.view);
         if (collectionVisible && collectionView) mainWindow.setTopBrowserView(collectionView);
         if (feedVisible && feedView) mainWindow.setTopBrowserView(feedView);
+        if (homeVisible && homeView) mainWindow.setTopBrowserView(homeView);
         mainWindow.setTopBrowserView(headerView);
         mainWindow.setTopBrowserView(playerView);
         adjustContentViews();
@@ -4049,6 +4131,8 @@ const entry: DlEntry = { id: entryId, name: `${rel.albumArtist} - ${rel.album}`,
     await contentView.webContents.loadURL('https://bandcamp.com');
     mainWindow.show();
     adjustContentViews();
+    // the home page is the start page: it opens over the loaded bandcamp tab
+    openHome();
 
     // opt-in music-folder scan, shortly after startup so it never competes with
     // the window coming up (no-op unless enabled in settings)

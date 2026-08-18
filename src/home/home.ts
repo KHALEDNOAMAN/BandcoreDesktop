@@ -1,0 +1,153 @@
+import { ipcRenderer } from 'electron';
+
+// home page: a spotify-style start page (greeting, stats, and three horizontal
+// rails: recently collected, your feed, and bandcamp discover). data comes from
+// main in one shot (home:data); each rail plays/navigates like the feed view.
+
+ipcRenderer.send('home:log', 'booted');
+
+const $ = (id: string) => document.getElementById(id) as HTMLElement;
+const statsEl = $('stats');
+const recentRow = $('recent');
+const feedRow = $('feed');
+const discoverRow = $('discover');
+
+function escapeHtml(s: string): string {
+    return (s || '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] as string));
+}
+
+// time-of-day greeting, like the big start-page headers
+const hr = new Date().getHours();
+$('hello').innerHTML =
+    (hr < 5 ? 'Up late' : hr < 12 ? 'Good morning' : hr < 18 ? 'Good afternoon' : 'Good evening') +
+    '<small>Bandcore</small>';
+
+interface HomeCard {
+    title: string;
+    artist: string;
+    art: string;
+    url: string;
+    tralbumId?: string;
+    tralbumType?: 'a' | 't';
+    bandId?: string;
+    trackId?: string;
+    badge?: string;
+    via?: string;
+    year?: number;
+}
+
+function createCard(c: HomeCard): HTMLElement {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.title = c.title;
+
+    const wrap = document.createElement('div');
+    wrap.className = 'artwrap';
+    wrap.innerHTML =
+        `<img class="art" loading="lazy"${c.art ? ` src="${c.art}"` : ''}>` +
+        (c.badge ? `<span class="badge${c.badge === 'collected' ? ' df' : ''}">${escapeHtml(c.badge)}</span>` : '') +
+        (c.year ? `<span class="yr">${c.year}</span>` : '');
+
+    // play / queue only when the item carries resolver handles (feed + owned
+    // items); discover rows without them just navigate on click.
+    const playable = !!(c.tralbumId && c.bandId);
+    if (playable) {
+        const play = document.createElement('button');
+        play.className = 'play';
+        play.title = 'play';
+        play.textContent = '▶';
+        play.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            await ipcRenderer.invoke('collection:play', { tralbumId: c.tralbumId, tralbumType: c.tralbumType, bandId: c.bandId, trackId: c.trackId || undefined });
+        });
+        wrap.appendChild(play);
+
+        const enq = document.createElement('button');
+        enq.className = 'enq';
+        enq.title = 'add to queue';
+        enq.textContent = '+';
+        enq.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const prev = enq.textContent;
+            const res = await ipcRenderer.invoke('collection:enqueue', { tralbumId: c.tralbumId, tralbumType: c.tralbumType, bandId: c.bandId });
+            enq.textContent = res && res.ok ? '✓' : '×';
+            setTimeout(() => { enq.textContent = prev; }, 900);
+        });
+        wrap.appendChild(enq);
+    }
+    card.appendChild(wrap);
+
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    meta.innerHTML =
+        `<div class="t">${escapeHtml(c.title || 'Untitled')}</div>` +
+        `<div class="a">${escapeHtml(c.artist || '')}</div>` +
+        (c.via ? `<div class="w">collected by ${escapeHtml(c.via)}</div>` : '');
+    card.appendChild(meta);
+
+    card.addEventListener('click', () => { if (c.url) ipcRenderer.send('app:navigate', c.url); });
+    return card;
+}
+
+function fillRow(row: HTMLElement, sub: HTMLElement, items: HomeCard[], note: string): void {
+    sub.textContent = note;
+    if (!items.length) {
+        row.innerHTML = `<div class="state">${note || 'nothing here yet.'}</div>`;
+        return;
+    }
+    const frag = document.createDocumentFragment();
+    for (const it of items) frag.appendChild(createCard(it));
+    row.innerHTML = '';
+    row.appendChild(frag);
+}
+
+async function loadHome(): Promise<void> {
+    const res: any = await ipcRenderer.invoke('home:data').catch(() => null);
+    ipcRenderer.send('home:log', 'data ok=' + !!(res && res.ok) +
+        ' recent=' + (res && res.recent ? res.recent.length : 0) +
+        ' feed=' + (res && res.feed ? res.feed.length : 0) +
+        ' discover=' + (res && res.discover ? res.discover.length : 0) +
+        (res && (res.feedError || res.discoverError) ? ' err=' + (res.feedError || res.discoverError) : ''));
+    if (!res) { fillRow(recentRow, $('recent-sub'), [], 'could not load.'); return; }
+
+    const st = res.stats || {};
+    statsEl.innerHTML = [
+        `<span class="stat"><b>${st.owned || 0}</b> collected</span>`,
+        `<span class="stat"><b>${st.wishlist || 0}</b> wishlist</span>`,
+        `<span class="stat"><b>${st.local || 0}</b> local files</span>`,
+        `<span class="stat"><b>${st.playlists || 0}</b> playlists</span>`,
+    ].join('');
+
+    fillRow(recentRow, $('recent-sub'), res.recent || [], res.recent && res.recent.length ? '' : 'nothing collected yet - go grab some music.');
+    fillRow(feedRow, $('feed-sub'), res.feed || [], res.feedError || (res.feed && res.feed.length ? '' : 'follow some artists to see their releases.'));
+    fillRow(discoverRow, $('discover-sub'), res.discover || [], res.discoverError || (res.discover && res.discover.length ? '' : 'discover is empty right now.'));
+}
+
+$('close').addEventListener('click', () => ipcRenderer.send('home:close'));
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') ipcRenderer.send('home:close'); });
+
+ipcRenderer.on('home:shown', () => loadHome());
+ipcRenderer.on('home:load', () => loadHome());
+
+// global tooltips setting: strip/restore title attributes live
+let tooltipsOn = true;
+const applyTooltips = (): void => {
+    document.querySelectorAll('[title]').forEach((el) => {
+        if (tooltipsOn) {
+            const t = el.getAttribute('data-tip');
+            if (t != null && !el.hasAttribute('title')) el.setAttribute('title', t);
+        } else {
+            el.setAttribute('data-tip', el.getAttribute('title') || '');
+            el.removeAttribute('title');
+        }
+    });
+};
+ipcRenderer.on('chrome:tooltips', (_e, on: unknown) => { tooltipsOn = on === true; applyTooltips(); });
+ipcRenderer.invoke('settings:get').then((s: any) => { tooltipsOn = (s && s.tooltips) !== false; applyTooltips(); }).catch(() => {});
+new MutationObserver((muts) => {
+    const hit = muts.some((m) =>
+        (m.type === 'attributes' && m.attributeName === 'title') ||
+        (m.type === 'childList' && Array.from(m.addedNodes).some((n) => n.nodeType === 1 && !!(n as Element).querySelectorAll && (n as Element).querySelectorAll('[title]').length))
+    );
+    if (hit) applyTooltips();
+}).observe(document.documentElement, { subtree: true, childList: true, attributes: true, attributeFilter: ['title'] });
