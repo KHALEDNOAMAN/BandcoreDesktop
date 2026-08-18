@@ -572,11 +572,12 @@ export class BandcampApi {
     }
 
     /**
-     * one page of the wishlist for the home rail's load-more. same endpoint and
-     * normalization as fetchCollection, but exposes the continuation token so
-     * the caller can page as the user scrolls. token '' fetches the newest page.
+     * one page of a fan list (wishlist or owned collection) for the home
+     * rail's load-more. same endpoint and normalization as fetchCollection,
+     * but exposes the continuation token so the caller can page as the user
+     * scrolls. token '' fetches the newest page.
      */
-    async fetchWishlistPage(olderThan = ''): Promise<{ items: CollectionItem[]; lastToken: string; more: boolean }> {
+    async fetchWishlistPage(olderThan = '', kind: 'collection' | 'wishlist' = 'wishlist'): Promise<{ items: CollectionItem[]; lastToken: string; more: boolean }> {
         const session = this.getSession();
         if (!session) return { items: [], lastToken: olderThan, more: false };
         let fanId = '';
@@ -597,7 +598,7 @@ export class BandcampApi {
         let data: any = null;
         for (let attempt = 0; attempt < 6; attempt++) {
             try {
-                const r = await session.fetch('https://bandcamp.com/api/fancollection/1/wishlist_items', {
+                const r = await session.fetch(`https://bandcamp.com/api/fancollection/1/${kind}_items`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ fan_id: Number(fanId), older_than_token: startToken, count: 500 }),
@@ -618,7 +619,7 @@ export class BandcampApi {
         const seen = new Set<string>();
         for (const it of raw) {
             const c = this.normalizeCollectionItem(it, redl);
-            c.wish = true;
+            if (kind === 'wishlist') c.wish = true;
             const key = c.tralbumType + c.tralbumId;
             if (!c.tralbumId || seen.has(key)) continue;
             seen.add(key);

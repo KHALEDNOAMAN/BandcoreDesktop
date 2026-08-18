@@ -1714,36 +1714,126 @@ async function init() {
     ipcMain.on('feed:close', () => closeFeed());
 
     // home page (start-up start page): local data is instant; the network rails
-    // (feed + discover) load independently and are cached briefly so reopening
-    // the page doesn't re-hit bandcamp (a 100k-follow feed is slow to serve).
+    // (feed + discover + wishlist) are disk-cached so startup shows the last
+    // session's rails immediately and only refreshes them in the background
+    // (a 100k-follow feed is slow to serve).
     ipcMain.on('home:log', (_e, msg: unknown) => { if (devMode) console.log('[bcrpc:home] ' + String(msg)); });
     ipcMain.on('home:close', () => closeHome());
-    let homeRailCache: { at: number; feed: any[]; feedError: string; discover: any[]; discoverError: string; wish?: any[] } | null = null;
-    const HOME_RAIL_TTL = 120000; // ms: rail data stays fresh for quick re-opens
-    // wishlist rail pager: continuation token + state for scrolling to the end
-    const wishPager = { token: '', more: false, busy: false };
+    type HomeRailsT = {
+        at: number; feed: any[]; feedError: string; discover: any[]; discoverError: string;
+        wish?: any[]; wishToken?: string; wishMore?: boolean;
+        recent?: any[];
+    };
+    let homeRailsDisk: DiskCache<HomeRailsT>;
+    let homeRailCache: HomeRailsT | null = null;
+    const HOME_RAIL_TTL = 120000;   // ms: in-memory freshness for quick re-opens
+    const HOME_RAIL_REFRESH = 600000; // ms: disk cache older than this re-fetches in the background
+    const emptyRails = (): HomeRailsT => ({ at: 0, feed: [], feedError: '', discover: [], discoverError: '' });
+    try {
+        homeRailsDisk = new DiskCache<HomeRailsT>(path.join(app.getPath('userData'), 'home-rails.json'), emptyRails());
+        homeRailCache = homeRailsDisk.get();
+        if (!homeRailCache || !homeRailCache.at) homeRailCache = null;
+    } catch { homeRailsDisk = new DiskCache<HomeRailsT>(path.join(app.getPath('userData'), 'home-rails.json'), emptyRails()); }
+    // re-fetch all network rails; called on first use and (in the background)
+    // when the disk cache goes stale. never throws - each rail degrades alone.
+    const refreshHomeRails = async (): Promise<HomeRailsT> => {
+        const storeWish = (collectionItemsDisk.get() || []).filter((c: any) => c && c.wish);
+        const wantNetworkWish = !storeWish.length;
+        const storeOwned = (collectionItemsDisk.get() || []).filter((c: any) => c && !c.wish && !c.local);
+        const wantNetworkRecent = !storeOwned.length;
+        // fetch all rails in parallel; one failing must not block the others
+        const [fr, dr, wp, rp] = await Promise.all([
+            bandcampApi.fetchFeed(0)
+                .then((r) => r.ok
+                    ? { feed: (r.stories || []).slice(0, 24).map((s) => ({
+                        title: s.title, artist: s.artist, art: s.art, url: s.url, via: s.via,
+                        tralbumId: s.tralbumId, tralbumType: s.tralbumType, bandId: s.bandId, trackId: s.trackId,
+                        year: Number(s.year) || bandcampApi.getReleaseYear(s.tralbumType, s.tralbumId),
+                    })), feedError: '' }
+                    : { feed: [], feedError: r.error || 'feed unavailable' })
+                .catch((e: any) => ({ feed: [], feedError: e?.message || 'feed unavailable' })),
+            bandcampApi.fetchDiscover(24)
+                .then((r) => r.ok
+                    ? { discover: r.items.map((i: any) => ({
+                        title: i.name, artist: i.artist, art: i.art, url: i.url, year: i.year || 0,
+                        tralbumId: i.tralbumId || '', bandId: i.bandId || '',
+                    })), discoverError: '' }
+                    : { discover: [], discoverError: r.error || 'discover unavailable' })
+                .catch((e: any) => ({ discover: [], discoverError: e?.message || 'discover unavailable' })),
+            wantNetworkWish
+                ? bandcampApi.fetchWishlistPage('')
+                    .then((wp) => wp)
+                    .catch(() => null)
+                : Promise.resolve(null),
+            // the recently-collected rail: same light approach - the first page
+            // of the owned collection is the newest additions, no full scan
+            wantNetworkRecent
+                ? bandcampApi.fetchWishlistPage('', 'collection')
+                    .then((rp) => rp)
+                    .catch(() => null)
+                : Promise.resolve(null),
+        ]);
+        const next: HomeRailsT = { at: Date.now(), feed: fr.feed, feedError: fr.feedError, discover: dr.discover, discoverError: dr.discoverError };
+        if (wantNetworkRecent && rp) {
+            next.recent = rp.items
+                .slice()
+                .sort((a, b) => Number(b.addedAt) - Number(a.addedAt))
+                .map((c) => ({
+                    title: c.title, artist: c.artist, art: c.art, url: c.url, year: c.year || 0,
+                    tralbumId: c.tralbumId, tralbumType: c.tralbumType, bandId: c.bandId,
+                }));
+        }
+        if (wantNetworkWish && wp) {
+            // whole first page (up to 500) shows in the rail; the token pages
+            // the rest on scroll (home:wishlist-more)
+            next.wish = wp.items.map((c) => ({
+                title: c.title, artist: c.artist, art: c.art, url: c.url, year: c.year || 0,
+                tralbumId: c.tralbumId, tralbumType: c.tralbumType, bandId: c.bandId,
+            }));
+            next.wishToken = wp.lastToken;
+            next.wishMore = wp.more;
+        }
+        homeRailCache = next;
+        homeRailsDisk.replace(next);
+        if (devMode) console.log('[bcrpc] home:rails feed=' + next.feed.length + ' discover=' + next.discover.length + ' wish=' + (next.wish ? next.wish.length : 'store') + ' recent=' + (next.recent ? next.recent.length : 'store') + (next.feedError || next.discoverError ? ' err=' + (next.feedError || next.discoverError) : ''));
+        if (homeVisible && homeView && !homeView.webContents.isDestroyed()) homeView.webContents.send('home:load');
+        return next;
+    };
+    ipcMain.handle('home:rails', async () => {
+        // fresh in-memory cache: instant answer, no network
+        if (homeRailCache && Date.now() - homeRailCache.at < HOME_RAIL_TTL) return homeRailCache;
+        if (homeRailCache) {
+            // stale disk cache (or one missing a rail the code now serves):
+            // serve it now, refresh in the background
+            if (Date.now() - homeRailCache.at >= HOME_RAIL_REFRESH || homeRailCache.recent === undefined) void refreshHomeRails();
+            return homeRailCache;
+        }
+        // no cache at all (first run): wait for the fetch, but keep the page
+        // responsive - feed alone can take a while on big follow lists
+        return refreshHomeRails();
+    });
+    // wishlist rail paging: continuation token rides on the cached rails
+    let wishPageBusy = false;
     ipcMain.handle('home:wishlist-more', async () => {
         // the store took over (full collection fetch landed): nothing to page
         if ((collectionItemsDisk.get() || []).some((c: any) => c && c.wish)) return { items: [], done: true };
-        if (wishPager.busy || !wishPager.more) {
-            if (devMode) console.log('[bcrpc] home:wishlist-more skipped busy=' + wishPager.busy + ' more=' + wishPager.more + ' token=' + JSON.stringify(wishPager.token));
-            return { items: [], done: true };
-        }
-        wishPager.busy = true;
+        if (!homeRailCache || wishPageBusy || !homeRailCache.wishMore) return { items: [], done: true };
+        wishPageBusy = true;
         try {
-            const res = await bandcampApi.fetchWishlistPage(wishPager.token);
-            wishPager.token = res.lastToken;
-            wishPager.more = res.more;
+            const res = await bandcampApi.fetchWishlistPage(homeRailCache.wishToken || '');
+            homeRailCache.wishToken = res.lastToken;
+            homeRailCache.wishMore = res.more;
             const items = res.items.map((c) => ({
                 title: c.title, artist: c.artist, art: c.art, url: c.url, year: c.year || 0,
                 tralbumId: c.tralbumId, tralbumType: c.tralbumType, bandId: c.bandId,
             }));
-            if (homeRailCache) homeRailCache.wish = [...(homeRailCache.wish || []), ...items];
+            homeRailCache.wish = [...(homeRailCache.wish || []), ...items];
+            homeRailsDisk.replace(homeRailCache);
             return { items, done: !res.more };
         } catch (e: any) {
             return { items: [], done: true };
         } finally {
-            wishPager.busy = false;
+            wishPageBusy = false;
         }
     });
     ipcMain.handle('home:data', async () => {
@@ -1780,59 +1870,10 @@ async function init() {
                 tralbumType: c.tralbumType === 't' ? 't' as const : 'a' as const,
                 bandId: String(c.bandId || ''),
             }));
-        // empty store = the collection hasn't been fetched this session (the
-        // collection view only loads when opened). kick the background fetch
-        // now; it notifies the home page when the wishlist and owned halves
-        // land, so the rails fill in as the data arrives.
-        if (!all.length) void fetchCollectionAndWishlist();
+        // the store is authoritative when the collection view has fetched; the
+        // cached recent rail covers the startup case, so no heavy full
+        // collection scan is kicked from here anymore.
         return { ok: true, stats: { owned, wishlist, local: localFilesDisk.get().length, playlists: playlistsDisk.get().length }, recent, wish };
-    });
-    ipcMain.handle('home:rails', async () => {
-        if (homeRailCache && Date.now() - homeRailCache.at < HOME_RAIL_TTL) return homeRailCache;
-        // the wishlist rail: prefer the store's wish items; when the collection
-        // hasn't been fetched yet (cacheReleases off / collection never opened),
-        // grab just the first wishlist page - one request, fills the rail in
-        // seconds without waiting for the full owned collection.
-        const storeWish = (collectionItemsDisk.get() || []).filter((c: any) => c && c.wish);
-        const wantNetworkWish = !storeWish.length;
-        // fetch all rails in parallel; one failing must not block the others
-        const [fr, dr, wr] = await Promise.all([
-            bandcampApi.fetchFeed(0)
-                .then((r) => r.ok
-                    ? { feed: (r.stories || []).slice(0, 24).map((s) => ({
-                        title: s.title, artist: s.artist, art: s.art, url: s.url, via: s.via,
-                        tralbumId: s.tralbumId, tralbumType: s.tralbumType, bandId: s.bandId, trackId: s.trackId,
-                        year: Number(s.year) || bandcampApi.getReleaseYear(s.tralbumType, s.tralbumId),
-                    })), feedError: '' }
-                    : { feed: [], feedError: r.error || 'feed unavailable' })
-                .catch((e: any) => ({ feed: [], feedError: e?.message || 'feed unavailable' })),
-            bandcampApi.fetchDiscover(24)
-                .then((r) => r.ok
-                    ? { discover: r.items.map((i: any) => ({
-                        title: i.name, artist: i.artist, art: i.art, url: i.url, year: i.year || 0,
-                        tralbumId: i.tralbumId || '', bandId: i.bandId || '',
-                    })), discoverError: '' }
-                    : { discover: [], discoverError: r.error || 'discover unavailable' })
-                .catch((e: any) => ({ discover: [], discoverError: e?.message || 'discover unavailable' })),
-            wantNetworkWish
-                ? bandcampApi.fetchWishlistPage('')
-                    .then((wp) => {
-                        // arm the scroll pager with the continuation token; the
-                        // whole first page (up to 500) shows in the rail, later
-                        // pages append on scroll
-                        wishPager.token = wp.lastToken;
-                        wishPager.more = wp.more;
-                        return wp.items.map((c) => ({
-                            title: c.title, artist: c.artist, art: c.art, url: c.url, year: c.year || 0,
-                            tralbumId: c.tralbumId, tralbumType: c.tralbumType, bandId: c.bandId,
-                        }));
-                    })
-                    .catch(() => [])
-                : Promise.resolve([] as any[]),
-        ]);
-        homeRailCache = { at: Date.now(), ...fr, ...dr, ...(wantNetworkWish ? { wish: wr } : {}) };
-        if (devMode) console.log('[bcrpc] home:rails feed=' + homeRailCache.feed.length + ' discover=' + homeRailCache.discover.length + ' wish=' + (homeRailCache.wish ? homeRailCache.wish.length : 'store') + (homeRailCache.feedError || homeRailCache.discoverError ? ' err=' + (homeRailCache.feedError || homeRailCache.discoverError) : ''));
-        return homeRailCache;
     });
 
     // one page of the fan feed; olderThan pages backwards (0 = newest)

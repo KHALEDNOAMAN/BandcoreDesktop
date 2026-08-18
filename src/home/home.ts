@@ -177,8 +177,12 @@ async function loadHome(): Promise<void> {
         ' discover=' + (rails && rails.discover ? rails.discover.length : 0) +
         (rails && (rails.feedError || rails.discoverError) ? ' err=' + (rails.feedError || rails.discoverError) : ''));
     if (rails) {
-        // the network wishlist (first page) lands here when the store had none;
-        // the store-backed one was already filled in part 1.
+        // network rails land here when the store didn't have them yet (first
+        // page each); the store-backed ones were already filled in part 1.
+        if (rails.recent) {
+            $('rail-recent').style.display = rails.recent.length ? '' : 'none';
+            fillRow(recentRow, $('recent-sub'), rails.recent, '');
+        }
         if (rails.wish) {
             $('rail-wish').style.display = rails.wish.length ? '' : 'none';
             fillRow(wishRow, $('wish-sub'), rails.wish, '');
