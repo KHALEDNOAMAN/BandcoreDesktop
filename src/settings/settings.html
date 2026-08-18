@@ -22,7 +22,7 @@
         body {
             background: var(--bg); color: var(--hover-text);
             font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Roboto, sans-serif;
-            font-size: 13px;
+            font-size: 0.8125rem;
             /* ctrl+a used to select the whole chrome (incl the close btn); only let inputs be selected */
             user-select: none;
             height: 100vh; overflow: hidden;
@@ -36,11 +36,11 @@
             height: 36px; padding: 0 6px 0 14px; background: var(--titlebar); border-bottom: 1px solid var(--line-2);
             flex-shrink: 0;
         }
-        .titlebar .title { font-size: 12px; color: var(--muted); }
+        .titlebar .title { font-size: 0.75rem; color: var(--muted); }
         .titlebar .winclose {
             -webkit-app-region: no-drag;
             width: 34px; height: 26px; margin: 0; padding: 0; border-radius: 4px;
-            background: transparent; color: var(--muted); font-size: 13px; line-height: 1;
+            background: transparent; color: var(--muted); font-size: 0.8125rem; line-height: 1;
             display: flex; align-items: center; justify-content: center; cursor: pointer;
         }
         .titlebar .winclose:hover { background: #e81123; color: #fff; }
@@ -53,7 +53,7 @@
         .nav-item {
             display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
             background: none; border: none; border-radius: 6px;
-            color: var(--muted); font-size: 12px; line-height: 1.4;
+            color: var(--muted); font-size: 0.75rem; line-height: 1.4;
             padding: 7px 10px; margin-bottom: 2px; cursor: pointer;
             transition: background .18s ease, color .18s ease, transform .18s ease;
         }
@@ -65,19 +65,19 @@
         .pane { padding: 20px 22px; }
         .pane.hidden { display: none; }
         .pane h2 {
-            font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted);
+            font-size: 0.75rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted);
             padding-bottom: 10px; margin-bottom: 14px; border-bottom: 1px solid var(--line-2);
         }
         .sub-h {
-            font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--sub);
+            font-size: 0.625rem; text-transform: uppercase; letter-spacing: .08em; color: var(--sub);
             margin-bottom: 10px;
         }
-        .hint { color: var(--sub); font-size: 11px; margin-bottom: 14px; line-height: 1.5; }
+        .hint { color: var(--sub); font-size: 0.6875rem; margin-bottom: 14px; line-height: 1.5; }
         .hint code { color: var(--text-2); background: var(--titlebar); padding: 1px 4px; border-radius: 3px; }
-        label { display: block; font-size: 11px; color: var(--hover-text); margin: 10px 0 4px; }
+        label { display: block; font-size: 0.6875rem; color: var(--hover-text); margin: 10px 0 4px; }
         input[type="text"], input[type="password"], input[type="number"], select {
             width: 100%; background: var(--input); border: 1px solid var(--line); border-radius: 5px;
-            color: var(--text); padding: 8px 10px; font-size: 12px; font-family: inherit;
+            color: var(--text); padding: 8px 10px; font-size: 0.75rem; font-family: inherit;
         }
         input:focus, select:focus { outline: none; border-color: var(--accent); }
         input[type="range"] {
@@ -94,14 +94,14 @@
         .row { display: flex; align-items: center; justify-content: space-between; }
         button {
             background: var(--accent); color: var(--hover-text); border: none; border-radius: 5px;
-            padding: 8px 14px; font-size: 12px; cursor: pointer; margin-top: 14px;
+            padding: 8px 14px; font-size: 0.75rem; cursor: pointer; margin-top: 14px;
             transition: filter .18s ease, transform .18s ease;
         }
         button:not(.nav-item):not(.winclose):hover { filter: brightness(1.05); transform: scale(1.01); }
         button:not(.nav-item):not(.winclose):active { transform: scale(.99); }
         button.ghost { background: var(--hover-bg); }
         .toggle { display: flex; align-items: center; gap: 8px; cursor: pointer; }
-        .status { font-size: 11px; margin-top: 8px; min-height: 14px; }
+        .status { font-size: 0.6875rem; margin-top: 8px; min-height: 14px; }
         .ok { color: #5fb878; } .err { color: #d66; }
         /* animated dropdowns (theme/font pickers): the native select stays
            hidden as the value source, the button + popup do the picking */
@@ -109,7 +109,7 @@
         .dd .dd-btn {
             display: flex; align-items: center; justify-content: space-between; gap: 8px;
             width: 100%; margin: 0; background: var(--input); border: 1px solid var(--line);
-            border-radius: 5px; color: var(--text); padding: 8px 10px; font-size: 12px;
+            border-radius: 5px; color: var(--text); padding: 8px 10px; font-size: 0.75rem;
             cursor: pointer; font-family: inherit; text-align: left;
         }
         .dd .dd-btn:hover { border-color: var(--accent); transform: none; }
@@ -125,7 +125,7 @@
         .dd.open .ddmenu { opacity: 1; transform: none; pointer-events: auto; }
         .dditem {
             display: flex; align-items: center; gap: 9px; width: 100%; margin: 0;
-            padding: 7px 10px; font-size: 12px; color: var(--text); background: none;
+            padding: 7px 10px; font-size: 0.75rem; color: var(--text); background: none;
             border: none; border-radius: 6px; cursor: pointer; font-family: inherit; text-align: left;
         }
         button.dditem:hover { transform: none; background: var(--hover-bg); color: var(--hover-text); }
@@ -134,7 +134,7 @@
         .dditem.sel .ddsw { border-color: var(--accent); }
         .wb-lists { display: flex; gap: 16px; margin-top: 10px; }
         .wb-col { flex: 1; border: 1px solid var(--line); border-radius: 6px; padding: 8px; background: var(--input); min-height: 120px; }
-        .wb-col h3 { font-size: 11px; color: var(--muted); margin-bottom: 8px; text-transform: uppercase; text-align: center; }
+        .wb-col h3 { font-size: 0.6875rem; color: var(--muted); margin-bottom: 8px; text-transform: uppercase; text-align: center; }
         .wb-item {
             display: flex; align-items: center; gap: 10px; padding: 8px 10px;
             background: var(--bar); border: 1px solid var(--line); border-radius: 4px;
@@ -213,6 +213,11 @@
                 <label style="margin-top:16px;">UI Font</label>
                 <select id="fontSel" autocomplete="off"></select>
                 <div class="hint" style="margin:6px 0 0;">modern google fonts for the app chrome (url bar, playerbar, settings…); applies instantly.</div>
+                <label style="margin-top:14px;">UI Font Size</label>
+                <div class="row" style="gap:8px;margin-top:2px;">
+                    <input type="range" id="fontSize" min="80" max="140" step="5" style="flex:1;" autocomplete="off">
+                    <span id="fontSizeVal" style="width:44px;text-align:right;font-size:0.6875rem;color:var(--sub);"></span>
+                </div>
                 <label class="toggle" style="margin-top:16px;"><input type="checkbox" id="darkMode"> dark bandcamp pages (darkreader)</label>
                 <label class="toggle" style="margin-top:12px;"><input type="checkbox" id="noDarkArtistPages"> disable dark mode on artist pages (keeps their custom themes)</label>
                 <div class="hint" style="margin:6px 0 0;">dark page changes reload open tabs to apply.</div>
@@ -222,27 +227,27 @@
                 <label style="margin-top:10px;">Seekbar width</label>
                 <div class="row" style="gap:8px;margin-top:2px;">
                     <input type="range" id="seekWidth" min="300" max="900" step="10" style="flex:1;" autocomplete="off">
-                    <span id="seekWidthVal" style="width:44px;text-align:right;font-size:11px;color:var(--sub);"></span>
+                    <span id="seekWidthVal" style="width:44px;text-align:right;font-size: 0.6875rem;color:var(--sub);"></span>
                 </div>
                 <label>Miniplayer backdrop blur</label>
                 <div class="row" style="gap:8px;margin-top:2px;">
                     <input type="range" id="miniBlur" min="0" max="40" step="1" style="flex:1;" autocomplete="off">
-                    <span id="miniBlurVal" style="width:44px;text-align:right;font-size:11px;color:var(--sub);"></span>
+                    <span id="miniBlurVal" style="width:44px;text-align:right;font-size: 0.6875rem;color:var(--sub);"></span>
                 </div>
                 <label style="margin-top:10px;">Miniplayer backdrop transparency</label>
                 <div class="row" style="gap:8px;margin-top:2px;">
                     <input type="range" id="miniOpacity" min="0" max="100" step="1" style="flex:1;" autocomplete="off">
-                    <span id="miniOpacityVal" style="width:44px;text-align:right;font-size:11px;color:var(--sub);"></span>
+                    <span id="miniOpacityVal" style="width:44px;text-align:right;font-size: 0.6875rem;color:var(--sub);"></span>
                 </div>
                 <label style="margin-top:10px;">Title / artist spacing</label>
                 <div class="row" style="gap:8px;margin-top:2px;">
                     <input type="range" id="infoSpacing" min="0" max="20" step="1" style="flex:1;" autocomplete="off">
-                    <span id="infoSpacingVal" style="width:44px;text-align:right;font-size:11px;color:var(--sub);"></span>
+                    <span id="infoSpacingVal" style="width:44px;text-align:right;font-size: 0.6875rem;color:var(--sub);"></span>
                 </div>
                 <label style="margin-top:10px;">Marquee speed <span class="hint">(0% disables scrolling title/artist)</span></label>
                 <div class="row" style="gap:8px;margin-top:2px;">
                     <input type="range" id="marqueeSpeed" min="0" max="100" step="1" style="flex:1;" autocomplete="off">
-                    <span id="marqueeSpeedVal" style="width:44px;text-align:right;font-size:11px;color:var(--sub);"></span>
+                    <span id="marqueeSpeedVal" style="width:44px;text-align:right;font-size: 0.6875rem;color:var(--sub);"></span>
                 </div>
             </section>
 
@@ -262,11 +267,11 @@
             <section class="pane hidden" id="pane-keybinds">
                 <h2>Keybinds</h2>
                 <div class="hint" style="margin-bottom:10px;">click a keybind, then press the new combination - or press Esc/Backspace to remove the keybind ("none" = shortcut disabled; click the button again to cancel). combinations need Ctrl/Alt to avoid clashing with typing &amp; media keys.</div>
-                <div class="row" style="margin-top:6px;"><span style="font-size:12px;color:var(--hover-text);">open collection</span><button class="ghost kb" id="kbCollection" style="margin:0;min-width:130px;"></button></div>
-                <div class="row" style="margin-top:8px;"><span style="font-size:12px;color:var(--hover-text);">open feed</span><button class="ghost kb" id="kbFeed" style="margin:0;min-width:130px;"></button></div>
-                <div class="row" style="margin-top:8px;"><span style="font-size:12px;color:var(--hover-text);">go to homepage</span><button class="ghost kb" id="kbHome" style="margin:0;min-width:130px;"></button></div>
-                <div class="row" style="margin-top:8px;"><span style="font-size:12px;color:var(--hover-text);">open downloads</span><button class="ghost kb" id="kbDownloads" style="margin:0;min-width:130px;"></button></div>
-                <div class="row" style="margin-top:8px;"><span style="font-size:12px;color:var(--hover-text);">open search</span><button class="ghost kb" id="kbSearch" style="margin:0;min-width:130px;"></button></div>
+                <div class="row" style="margin-top:6px;"><span style="font-size: 0.75rem;color:var(--hover-text);">open collection</span><button class="ghost kb" id="kbCollection" style="margin:0;min-width:130px;"></button></div>
+                <div class="row" style="margin-top:8px;"><span style="font-size: 0.75rem;color:var(--hover-text);">open feed</span><button class="ghost kb" id="kbFeed" style="margin:0;min-width:130px;"></button></div>
+                <div class="row" style="margin-top:8px;"><span style="font-size: 0.75rem;color:var(--hover-text);">go to homepage</span><button class="ghost kb" id="kbHome" style="margin:0;min-width:130px;"></button></div>
+                <div class="row" style="margin-top:8px;"><span style="font-size: 0.75rem;color:var(--hover-text);">open downloads</span><button class="ghost kb" id="kbDownloads" style="margin:0;min-width:130px;"></button></div>
+                <div class="row" style="margin-top:8px;"><span style="font-size: 0.75rem;color:var(--hover-text);">open search</span><button class="ghost kb" id="kbSearch" style="margin:0;min-width:130px;"></button></div>
             </section>
 
             <section class="pane hidden" id="pane-storage">
@@ -470,7 +475,7 @@ ipcRenderer.invoke('settings:get').then((s) => {
 // double-click a slider's thumb/circle to restore the setting's default
 // value, animated with an ease-out curve (labels + fill + persist all
 // follow via the regular input/change listeners)
-const RANGE_DEFAULTS = { miniBlur: 7, miniOpacity: 50, infoSpacing: 3, marqueeSpeed: 50, seekWidth: 560 };
+const RANGE_DEFAULTS = { miniBlur: 7, miniOpacity: 50, infoSpacing: 3, marqueeSpeed: 50, seekWidth: 560, fontSize: 100 };
 for (const id of Object.keys(RANGE_DEFAULTS)) {
     const el = $(id);
     let raf = 0;
@@ -683,13 +688,16 @@ for (const id of Object.keys(RANGE_DEFAULTS)) {
             const skw = Math.min(900, Math.max(300, Number(s.seekbarWidth) || 560));
             $('seekWidth').value = String(skw);
             $('seekWidthVal').textContent = skw + ' px';
+            const fsz = Math.min(140, Math.max(80, Number(s.fontSize) || 100));
+            $('fontSize').value = String(fsz);
+            $('fontSizeVal').textContent = fsz + '%';
             // filled range tracks (accent fill up to the thumb, like the seekbar)
             const fillRange = (el) => {
                 const v = Number(el.value) || 0;
                 const mn = Number(el.min) || 0, mx = Number(el.max) || 100;
                 el.style.setProperty('--fill', ((v - mn) / (mx - mn) * 100) + '%');
             };
-            for (const id of ['miniBlur', 'miniOpacity', 'infoSpacing', 'marqueeSpeed', 'seekWidth']) fillRange($(id));
+            for (const id of ['miniBlur', 'miniOpacity', 'infoSpacing', 'marqueeSpeed', 'seekWidth', 'fontSize']) fillRange($(id));
             // player bar toggles apply instantly, like the window bar list
             $('seekbarAbove').addEventListener('change', () => { persist(); });
             $('miniBlur').addEventListener('input', () => { $('miniBlurVal').textContent = $('miniBlur').value + ' px'; fillRange($('miniBlur')); });
@@ -702,6 +710,8 @@ for (const id of Object.keys(RANGE_DEFAULTS)) {
             $('marqueeSpeed').addEventListener('change', () => { persist(); });
             $('seekWidth').addEventListener('input', () => { $('seekWidthVal').textContent = $('seekWidth').value + ' px'; fillRange($('seekWidth')); });
             $('seekWidth').addEventListener('change', () => { persist(); });
+            $('fontSize').addEventListener('input', () => { $('fontSizeVal').textContent = $('fontSize').value + '%'; fillRange($('fontSize')); });
+            $('fontSize').addEventListener('change', () => { persist(); });
             $('showTooltips').addEventListener('change', () => { persist(); });
             // theme applies instantly too (chrome palette swap is live)
             $('themeSel').addEventListener('change', () => { persist(); });
@@ -793,6 +803,10 @@ for (const id of Object.keys(RANGE_DEFAULTS)) {
                 seekbarWidth: (() => {
                     const v = Number($('seekWidth').value);
                     return Number.isFinite(v) ? Math.min(900, Math.max(300, Math.round(v))) : 560;
+                })(),
+                fontSize: (() => {
+                    const v = Number($('fontSize').value);
+                    return Number.isFinite(v) ? Math.min(140, Math.max(80, Math.round(v))) : 100;
                 })()
             });
         }

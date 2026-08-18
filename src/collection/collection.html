@@ -23,12 +23,12 @@
             display: flex; align-items: center; gap: 10px; padding: 12px 18px;
             border-bottom: 1px solid var(--line); background: var(--bar); flex-shrink: 0;
         }
-        .toolbar h1 { font-size: 14px; font-weight: 600; margin-right: 6px; }
-        .count { font-size: 11px; color: var(--sub); }
+        .toolbar h1 { font-size: 0.875rem; font-weight: 600; margin-right: 6px; }
+        .count { font-size: 0.6875rem; color: var(--sub); }
         .spacer { flex: 1; }
         input[type="text"], select {
             background: var(--input); border: 1px solid var(--line); border-radius: 6px;
-            color: var(--text); padding: 7px 10px; font-size: 12px; font-family: inherit; outline: none;
+            color: var(--text); padding: 7px 10px; font-size: 0.75rem; font-family: inherit; outline: none;
         }
         select {
             -webkit-appearance: none; appearance: none; padding-right: 30px;
@@ -39,7 +39,7 @@
         #search { width: 220px; }
         .tbtn {
             background: var(--hover-bg); border: 1px solid var(--line); color: var(--text);
-            border-radius: 6px; padding: 7px 10px; font-size: 12px; cursor: pointer;
+            border-radius: 6px; padding: 7px 10px; font-size: 0.75rem; cursor: pointer;
         }
         .tbtn:hover { border-color: var(--accent); }
         /* icon-only toolbar buttons (dir arrow, view mode, more) */
@@ -88,10 +88,10 @@
         .card.loading { pointer-events: none; }
         .card.loading .art { transform: none; filter: blur(14px) brightness(.6); box-shadow: none; }
         .card-spin { position: absolute; left: 50%; top: 50%; width: 42px; height: 42px; transform: translate(-50%, -50%); z-index: 3; pointer-events: none; }
-        .card .t { font-size: 12px; margin-top: 7px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .card .a { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
-        .card .y { font-size: 10px; color: var(--sub); margin-top: 1px; }
-        .state { padding: 40px 18px; color: var(--muted); font-size: 13px; }
+        .card .t { font-size: 0.75rem; margin-top: 7px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .card .a { font-size: 0.6875rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+        .card .y { font-size: 0.625rem; color: var(--sub); margin-top: 1px; }
+        .state { padding: 40px 18px; color: var(--muted); font-size: 0.8125rem; }
 
         .artwrap {
             position: relative;
@@ -103,26 +103,26 @@
         .dl {
             position: absolute; right: 6px; bottom: 6px; width: 28px; height: 28px;
             border: none; border-radius: 50%; background: rgba(24,26,27,.82); color: #fff;
-            font-size: 15px; line-height: 1; cursor: pointer; opacity: 0; transition: opacity .12s ease;
+            font-size: 0.9375rem; line-height: 1; cursor: pointer; opacity: 0; transition: opacity .12s ease;
         }
         .card:hover .dl { opacity: 1; }
         .dl:hover { background: var(--accent); }
         .enq {
             position: absolute; right: 6px; top: 6px; width: 28px; height: 28px;
             border: none; border-radius: 50%; background: rgba(24,26,27,.82); color: #fff;
-            font-size: 18px; line-height: 1; cursor: pointer; opacity: 0; transition: opacity .12s ease;
+            font-size: 1.125rem; line-height: 1; cursor: pointer; opacity: 0; transition: opacity .12s ease;
         }
         .card:hover .enq { opacity: 1; }
         /* wishlist marker (top-left of the cover) */
         .wishb {
-            position: absolute; left: 6px; top: 6px; font-size: 12px; line-height: 1;
+            position: absolute; left: 6px; top: 6px; font-size: 0.75rem; line-height: 1;
             background: rgba(24,26,27,.85); color: #e46; border-radius: 4px; padding: 4px 6px;
             pointer-events: none;
         }
         .enq:hover { background: var(--accent); }
         .dlmenu {
             position: fixed; z-index: 50; width: 190px; background: var(--card);
-            border: 1px solid var(--line); border-radius: 8px; padding: 6px; font-size: 12px;
+            border: 1px solid var(--line); border-radius: 8px; padding: 6px; font-size: 0.75rem;
             color: var(--muted); box-shadow: 0 8px 24px rgba(0,0,0,.4);
             max-height: 320px; overflow-y: auto;
             opacity: 0; transform: scale(.96) translateY(-4px);
@@ -131,7 +131,7 @@
         .dlmenu.show { opacity: 1; transform: none; }
         .dlfmt {
             display: block; width: 100%; text-align: left; background: none; border: none;
-            color: var(--text); padding: 7px 9px; border-radius: 5px; font-size: 12px; cursor: pointer;
+            color: var(--text); padding: 7px 9px; border-radius: 5px; font-size: 0.75rem; cursor: pointer;
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
         .dlfmt:hover { background: rgba(255,255,255,.06); }
@@ -164,12 +164,12 @@
         }
         .tlleft { width: 180px; flex-shrink: 0; position: sticky; top: 20px; }
         .tlart { width: 100%; aspect-ratio: 1/1; border-radius: 6px; object-fit: cover; background: var(--line); display: block; }
-        .tltitle { font-size: 14px; font-weight: 600; margin-top: 12px; line-height: 1.3; }
-        .tlartist { font-size: 12px; color: var(--muted); margin-top: 4px; }
-        .tlyear { font-size: 11px; color: var(--sub); margin-top: 2px; }
+        .tltitle { font-size: 0.875rem; font-weight: 600; margin-top: 12px; line-height: 1.3; }
+        .tlartist { font-size: 0.75rem; color: var(--muted); margin-top: 4px; }
+        .tlyear { font-size: 0.6875rem; color: var(--sub); margin-top: 2px; }
         .tltags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
         .tltag {
-            font-size: 11px; color: var(--muted); background: var(--hover-bg); border: 1px solid var(--line);
+            font-size: 0.6875rem; color: var(--muted); background: var(--hover-bg); border: 1px solid var(--line);
             border-radius: 999px; padding: 3px 9px; cursor: pointer;
         }
         .tltag:hover { border-color: var(--accent); color: var(--text); }
@@ -187,12 +187,12 @@
             border: 1px solid var(--line); border-radius: 10px; padding: 20px;
             box-shadow: 0 12px 40px rgba(0,0,0,.5);
         }
-        .modal h3 { font-size: 14px; margin-bottom: 8px; }
-        .modal p { font-size: 12px; color: var(--muted); line-height: 1.55; margin-bottom: 14px; }
+        .modal h3 { font-size: 0.875rem; margin-bottom: 8px; }
+        .modal p { font-size: 0.75rem; color: var(--muted); line-height: 1.55; margin-bottom: 14px; }
         .modal .mrow { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
         .modal button {
             background: var(--hover-bg); border: 1px solid var(--line); color: var(--text);
-            border-radius: 6px; padding: 7px 12px; font-size: 12px; cursor: pointer; font-family: inherit;
+            border-radius: 6px; padding: 7px 12px; font-size: 0.75rem; cursor: pointer; font-family: inherit;
         }
         .modal button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
         .modal button:hover { filter: brightness(1.12); }
@@ -203,13 +203,13 @@
 
         /* optional group headers in the grid view (settings toggle) */
         .gridsep {
-            grid-column: 1 / -1; font-size: 12px; color: var(--sub); font-weight: 600;
+            grid-column: 1 / -1; font-size: 0.75rem; color: var(--sub); font-weight: 600;
             padding: 8px 0 0; border-bottom: 1px solid var(--line); margin-bottom: -6px;
         }
         .tlbtns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
         .tlbtns button {
             background: var(--hover-bg); border: 1px solid var(--line); color: var(--text);
-            border-radius: 6px; padding: 6px 12px; font-size: 11px; cursor: pointer; font-family: inherit;
+            border-radius: 6px; padding: 6px 12px; font-size: 0.6875rem; cursor: pointer; font-family: inherit;
             flex: 1; text-align: center;
         }
         .tlbtns .tlplayall { background: var(--accent); border-color: var(--accent); color: #fff; flex: 100%; }
@@ -224,26 +224,26 @@
             gap: 4px 24px; 
             align-content: start;
         }
-        .tlstate { color: var(--muted); font-size: 13px; padding: 8px 0; grid-column: 1 / -1; }
+        .tlstate { color: var(--muted); font-size: 0.8125rem; padding: 8px 0; grid-column: 1 / -1; }
         .tlrow {
             display: flex; align-items: center; gap: 10px; padding: 6px 8px; cursor: pointer;
-            font-size: 13px; border-radius: 5px; height: 32px;
+            font-size: 0.8125rem; border-radius: 5px; height: 32px;
         }
         .tlrow:hover { background: rgba(255,255,255,.06); }
-        .tlnum { width: 20px; text-align: right; color: var(--sub); font-size: 12px; flex-shrink: 0; }
+        .tlnum { width: 20px; text-align: right; color: var(--sub); font-size: 0.75rem; flex-shrink: 0; }
         .tltrk { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .tldur { color: var(--sub); font-size: 12px; flex-shrink: 0; }
+        .tldur { color: var(--sub); font-size: 0.75rem; flex-shrink: 0; }
         /* track list view (all tracks of every release, foobar-style) */
         .grid.listmode { display: block; padding: 0 0 16px; }
         .lv-head, .lv-row {
             display: grid; grid-template-columns: 44px 1fr 1.5fr 1.4fr 52px 1fr 56px;
             gap: 10px; align-items: center; padding: 0 18px;
         }
-        .lv-yr { color: var(--sub); font-size: 12px; }
+        .lv-yr { color: var(--sub); font-size: 0.75rem; }
         .lv-head {
             position: sticky; top: 0; z-index: 5; background: var(--bar);
             border-bottom: 1px solid var(--line); height: 34px;
-            font-size: 11px; color: var(--sub); text-transform: none; font-weight: 600;
+            font-size: 0.6875rem; color: var(--sub); text-transform: none; font-weight: 600;
         }
         .lv-head span { cursor: pointer; user-select: none; }
         .lv-head span:hover { color: var(--text); }
@@ -251,17 +251,17 @@
         /* fixed height: the virtual scroller computes row offsets from constants */
         .lv-genrehead {
             height: 38px; padding: 0 18px 5px; display: flex; align-items: flex-end;
-            font-size: 12px; font-weight: 600; color: var(--accent);
+            font-size: 0.75rem; font-weight: 600; color: var(--accent);
             border-bottom: 1px solid var(--line);
         }
-        .lv-row { height: 34px; font-size: 13px; cursor: pointer; }
+        .lv-row { height: 34px; font-size: 0.8125rem; cursor: pointer; }
         .lv-row:hover { background: rgba(255,255,255,.06); }
         .lv-row > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .lv-num { text-align: right; color: var(--sub); font-size: 12px; }
+        .lv-num { text-align: right; color: var(--sub); font-size: 0.75rem; }
         .lv-art { color: var(--muted); }
         .lv-alb { color: var(--muted); }
-        .lv-gen { color: var(--sub); font-size: 12px; }
-        .lv-dur { text-align: right; color: var(--sub); font-size: 12px; }
+        .lv-gen { color: var(--sub); font-size: 0.75rem; }
+        .lv-dur { text-align: right; color: var(--sub); font-size: 0.75rem; }
 
         /* playlists panel: swaps in for the grid (which keeps rendering hidden) */
         .plov {
@@ -280,49 +280,49 @@
         .pl-cover img { width: 100%; height: 100%; object-fit: cover; }
         /* fewer than 4 covers: the first one fills the whole tile */
         .pl-cover img:only-child, .pl-cover .pl-empty { grid-column: 1 / -1; grid-row: 1 / -1; }
-        .pl-cover .pl-empty { display: flex; align-items: center; justify-content: center; font-size: 34px; color: var(--sub); }
+        .pl-cover .pl-empty { display: flex; align-items: center; justify-content: center; font-size: 2.125rem; color: var(--sub); }
         .pl-cover.sm { width: 96px; flex-shrink: 0; }
-        .pl-name { font-size: 12px; margin-top: 7px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .pl-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+        .pl-name { font-size: 0.75rem; margin-top: 7px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .pl-sub { font-size: 0.6875rem; color: var(--muted); margin-top: 2px; }
         .pl-new {
             aspect-ratio: 1 / 1; border: 1px dashed var(--line); border-radius: 8px; cursor: pointer;
             display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
-            color: var(--muted); font-size: 12px; background: none; font-family: inherit;
+            color: var(--muted); font-size: 0.75rem; background: none; font-family: inherit;
         }
         .pl-new:hover { border-color: var(--accent); color: var(--text); }
-        .pl-new .big { font-size: 28px; line-height: 1; }
+        .pl-new .big { font-size: 1.75rem; line-height: 1; }
         /* playlist detail */
         .pl-head { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; flex-wrap: wrap; }
-        .pl-title { font-size: 17px; font-weight: 600; cursor: pointer; }
+        .pl-title { font-size: 1.0625rem; font-weight: 600; cursor: pointer; }
         .pl-title:hover { text-decoration: underline; }
-        .pl-meta { font-size: 11px; color: var(--muted); margin-top: 3px; }
+        .pl-meta { font-size: 0.6875rem; color: var(--muted); margin-top: 3px; }
         .pl-actions { display: flex; gap: 8px; margin-left: auto; flex-wrap: wrap; }
         .pl-actions .primary { background: var(--accent); border-color: var(--accent); color: #fff; }
         .pl-row {
             display: grid; grid-template-columns: 30px 1.4fr 1fr 1fr 46px 26px; gap: 10px;
             align-items: center; height: 36px; padding: 0 10px; border-radius: 6px;
-            cursor: pointer; font-size: 13px;
+            cursor: pointer; font-size: 0.8125rem;
         }
         .pl-row:hover { background: rgba(255,255,255,.06); }
         .pl-row > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .pl-num { text-align: right; color: var(--sub); font-size: 12px; }
+        .pl-num { text-align: right; color: var(--sub); font-size: 0.75rem; }
         .pl-art2, .pl-alb2 { color: var(--muted); }
-        .pl-dur { text-align: right; color: var(--sub); font-size: 12px; }
+        .pl-dur { text-align: right; color: var(--sub); font-size: 0.75rem; }
         .pl-x {
             width: 22px; height: 22px; border: none; border-radius: 50%; background: rgba(255,255,255,.08);
-            color: var(--text); font-size: 11px; line-height: 1; cursor: pointer; opacity: 0; font-family: inherit;
+            color: var(--text); font-size: 0.6875rem; line-height: 1; cursor: pointer; opacity: 0; font-family: inherit;
         }
         .pl-row:hover .pl-x { opacity: 1; }
         .pl-x:hover { background: #d66; color: #fff; }
         .pl-row.dragover { box-shadow: inset 0 2px 0 var(--accent); }
         .pl-row.dragging { opacity: .4; }
         /* "add to playlist" picker header (menu itself reuses .dlmenu) */
-        .plm-title { padding: 4px 9px 6px; font-size: 11px; color: var(--sub); }
+        .plm-title { padding: 4px 9px 6px; font-size: 0.6875rem; color: var(--sub); }
         /* transient feedback toast (imports, reloads) */
         .ctoast {
             position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%) translateY(8px);
             z-index: 120; background: var(--card); border: 1px solid var(--line); border-radius: 8px;
-            color: var(--text); font-size: 12px; padding: 9px 16px; pointer-events: none;
+            color: var(--text); font-size: 0.75rem; padding: 9px 16px; pointer-events: none;
             opacity: 0; transition: opacity .18s ease, transform .18s ease;
             box-shadow: 0 8px 24px rgba(0,0,0,.4); max-width: 70vw;
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -333,14 +333,14 @@
         .pl-cover.clickable:hover { outline: 2px solid var(--accent); }
         /* playlist description under the title (click to edit) */
         .pl-desc {
-            font-size: 12px; color: var(--muted); margin-top: 6px; max-width: 620px;
+            font-size: 0.75rem; color: var(--muted); margin-top: 6px; max-width: 620px;
             white-space: pre-wrap; cursor: pointer; line-height: 1.5;
         }
         .pl-desc:hover { color: var(--text); }
         .pl-desc.empty { font-style: italic; color: var(--sub); }
         /* local-files marker on grid cards (mirrors the wishlist heart) */
         .localb {
-            position: absolute; left: 6px; top: 6px; font-size: 10px; line-height: 1;
+            position: absolute; left: 6px; top: 6px; font-size: 0.625rem; line-height: 1;
             background: rgba(24,26,27,.85); color: #8ac6ff; border-radius: 4px; padding: 4px 6px;
             pointer-events: none; letter-spacing: .04em;
         }
@@ -348,7 +348,7 @@
         .modal textarea {
             width: 100%; min-height: 96px; resize: vertical;
             background: var(--input); border: 1px solid var(--line); border-radius: 6px;
-            color: var(--text); padding: 8px 10px; font-size: 12px; font-family: inherit; outline: none;
+            color: var(--text); padding: 8px 10px; font-size: 0.75rem; font-family: inherit; outline: none;
         }
         .modal textarea:focus { border-color: var(--accent); }
 
@@ -364,7 +364,7 @@
         .cmenu.show { opacity: 1; transform: none; pointer-events: auto; }
         .cmi {
             display: flex; align-items: center; gap: 9px; width: 100%; padding: 7px 10px;
-            font-size: 12px; color: var(--text); background: none; border: none;
+            font-size: 0.75rem; color: var(--text); background: none; border: none;
             border-radius: 6px; cursor: pointer; font-family: inherit; text-align: left;
         }
         .cmi:hover { background: var(--hover-bg); color: var(--hover-text); }
@@ -373,8 +373,8 @@
         .cmhead { display: flex; align-items: center; gap: 9px; padding: 6px 8px 7px; }
         .cmart { width: 38px; height: 38px; border-radius: 5px; object-fit: cover; flex-shrink: 0; }
         .cmmeta { min-width: 0; flex: 1; }
-        .cmtitle { font-size: 12px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .cmsub { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .cmtitle { font-size: 0.75rem; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .cmsub { font-size: 0.6875rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
         /* fullscreen cover overlay */
         .fsback {
@@ -395,13 +395,13 @@
             border-bottom: 1px solid var(--line); background: var(--panel); flex-shrink: 0;
         }
         .sbar .smeta {
-            font-size: 12px; color: var(--muted); white-space: nowrap;
+            font-size: 0.75rem; color: var(--muted); white-space: nowrap;
             overflow: hidden; text-overflow: ellipsis; min-width: 0;
         }
         .sbar .spacer { flex: 1; }
         .chip {
             background: var(--hover-bg); border: 1px solid var(--line); color: var(--muted);
-            border-radius: 999px; padding: 4px 12px; font-size: 11px; cursor: pointer;
+            border-radius: 999px; padding: 4px 12px; font-size: 0.6875rem; cursor: pointer;
             font-family: inherit; flex-shrink: 0;
         }
         .chip:hover { color: var(--hover-text); border-color: var(--accent); }
@@ -411,13 +411,13 @@
         }
         /* result-type badge on search cards (top-left, like the wishlist heart) */
         .typb {
-            position: absolute; left: 6px; top: 6px; font-size: 10px; line-height: 1;
+            position: absolute; left: 6px; top: 6px; font-size: 0.625rem; line-height: 1;
             background: rgba(24,26,27,.85); color: var(--accent); border-radius: 4px;
             padding: 4px 6px; pointer-events: none; letter-spacing: .04em;
         }
         .card .art.nophoto {
             display: flex; align-items: center; justify-content: center;
-            font-size: 30px; color: var(--sub);
+            font-size: 1.875rem; color: var(--sub);
         }
     </style>
 </head>

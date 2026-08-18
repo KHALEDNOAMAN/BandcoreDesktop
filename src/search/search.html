@@ -26,22 +26,22 @@
             display: flex; align-items: center; gap: 10px; padding: 12px 18px;
             border-bottom: 1px solid var(--line); background: var(--bar); flex-shrink: 0;
         }
-        .toolbar h1 { font-size: 14px; font-weight: 600; margin-right: 6px; }
+        .toolbar h1 { font-size: 0.875rem; font-weight: 600; margin-right: 6px; }
         input[type="text"] {
             background: var(--input); border: 1px solid var(--line); border-radius: 6px;
-            color: var(--text); padding: 8px 12px; font-size: 13px; font-family: inherit;
+            color: var(--text); padding: 8px 12px; font-size: 0.8125rem; font-family: inherit;
             outline: none; flex: 1; max-width: 480px; user-select: text;
         }
         input[type="text"]:focus { border-color: var(--accent); }
         .spacer { flex: 1; }
         .chip {
             background: var(--hover-bg); border: 1px solid var(--line); color: var(--muted);
-            border-radius: 999px; padding: 6px 12px; font-size: 12px; cursor: pointer; font-family: inherit;
+            border-radius: 999px; padding: 6px 12px; font-size: 0.75rem; cursor: pointer; font-family: inherit;
         }
         .chip.on { color: var(--hover-text); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
         .tbtn {
             background: var(--hover-bg); border: 1px solid var(--line); color: var(--text);
-            border-radius: 6px; padding: 7px 10px; font-size: 12px; cursor: pointer;
+            border-radius: 6px; padding: 7px 10px; font-size: 0.75rem; cursor: pointer;
         }
         .tbtn:hover { border-color: var(--accent); }
         .list {
@@ -55,10 +55,10 @@
         .row:hover { background: rgba(255,255,255,.05); }
         .rart { width: 48px; height: 48px; border-radius: 5px; background: var(--line); object-fit: cover; flex-shrink: 0; }
         .rmeta { min-width: 0; flex: 1; }
-        .rname { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .rsub { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+        .rname { font-size: 0.8125rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .rsub { font-size: 0.75rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
         .rbadge {
-            font-size: 9px; letter-spacing: .06em; text-transform: uppercase; flex-shrink: 0;
+            font-size: 0.5625rem; letter-spacing: .06em; text-transform: uppercase; flex-shrink: 0;
             color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
             border-radius: 4px; padding: 3px 7px;
         }
@@ -67,12 +67,12 @@
         .row:hover .ract { opacity: 1; }
         .ract button {
             width: 30px; height: 30px; border: none; border-radius: 50%;
-            background: rgba(255,255,255,.08); color: #fff; cursor: pointer; font-size: 13px; line-height: 1;
+            background: rgba(255,255,255,.08); color: #fff; cursor: pointer; font-size: 0.8125rem; line-height: 1;
         }
         .ract button:hover { background: var(--accent); }
         .ract button { display: inline-flex; align-items: center; justify-content: center; }
         .ract button svg { width: 14px; height: 14px; }
-        .state { padding: 40px 0; color: var(--muted); font-size: 13px; }
+        .state { padding: 40px 0; color: var(--muted); font-size: 0.8125rem; }
     </style>
 </head>
 <body>

@@ -16,18 +16,18 @@
         body {
             background: var(--bg); color: var(--text); height: 100vh; overflow: hidden;
             font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Roboto, sans-serif;
-            font-size: 12px; user-select: none; display: flex; flex-direction: column;
+            font-size: 0.75rem; user-select: none; display: flex; flex-direction: column;
             border: 1px solid var(--line); border-radius: 8px;
         }
         .bar {
             -webkit-app-region: drag; display: flex; align-items: center; gap: 8px;
             padding: 10px 12px; border-bottom: 1px solid var(--line); flex-shrink: 0;
         }
-        .bar h1 { font-size: 13px; font-weight: 600; flex: 1; }
+        .bar h1 { font-size: 0.8125rem; font-weight: 600; flex: 1; }
         .bar button {
             -webkit-app-region: no-drag;
             background: var(--hover-bg); border: 1px solid var(--line); color: var(--text);
-            border-radius: 6px; padding: 5px 10px; font-size: 11px; cursor: pointer; font-family: inherit;
+            border-radius: 6px; padding: 5px 10px; font-size: 0.6875rem; cursor: pointer; font-family: inherit;
         }
         .bar button:hover { border-color: var(--accent); }
         /* no scrollbar until the list actually outgrows the popup (>4 items);
@@ -39,22 +39,22 @@
         .row:hover { background: rgba(255,255,255,.05); }
         .rw-main { flex: 1; min-width: 0; }
         .art { width: 42px; height: 42px; border-radius: 6px; object-fit: cover; flex-shrink: 0; border: 1px solid var(--line); }
-        .art.blank { background: var(--line); display: flex; align-items: center; justify-content: center; color: var(--sub); font-size: 15px; }
-        .who { font-size: 10.5px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .art.blank { background: var(--line); display: flex; align-items: center; justify-content: center; color: var(--sub); font-size: 0.9375rem; }
+        .who { font-size: 0.6562rem; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .name.marquee { overflow: hidden; }
         .name.marquee > span { display: inline-block; white-space: nowrap; animation: mq 9s ease-in-out infinite alternate; }
         @keyframes mq { from { transform: translateX(0); } to { transform: translateX(calc(-1 * var(--d, 0px))); } }
-        .name { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .name { font-size: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .sub { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
-        .st { font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--sub); flex-shrink: 0; }
+        .st { font-size: 0.625rem; text-transform: uppercase; letter-spacing: .05em; color: var(--sub); flex-shrink: 0; }
         .st.completed { color: #5fb878; }
         .st.progressing { color: var(--accent); }
         .st.interrupted, .st.cancelled, .st.failed { color: #d66; }
         .track { flex: 1; height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; }
         .track > div { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.2s ease; }
-        .state { padding: 30px 12px; color: var(--sub); font-size: 12px; text-align: center; }
+        .state { padding: 30px 12px; color: var(--sub); font-size: 0.75rem; text-align: center; }
         .cancel-btn {
-            background: transparent; color: #d66; border: none; font-size: 13px;
+            background: transparent; color: #d66; border: none; font-size: 0.8125rem;
             cursor: pointer; margin-left: 8px; font-weight: bold;
         }
         .cancel-btn:hover { color: #f88; }
@@ -64,7 +64,7 @@
             display: flex; align-items: center; gap: 10px; background: var(--bar);
             flex-shrink: 0;
         }
-        .f-text { flex: 1; font-size: 11px; color: var(--sub); font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .f-text { flex: 1; font-size: 0.6875rem; color: var(--sub); font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .f-track { flex: 1.5; height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; }
         .f-track > div { height: 100%; background: #5fb878; border-radius: 2px; transition: width 0.3s ease; }
     </style>

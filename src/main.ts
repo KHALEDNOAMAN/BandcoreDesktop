@@ -675,6 +675,10 @@ function chromeFontKey(): string {
     if (k === 'system') { store.set('font', 'grotesk'); return 'grotesk'; }
     return CHROME_FONTS[k] ? k : 'system';
 }
+function chromeFontSize(): number {
+    const v = Number(store.get('fontSize', 100));
+    return Math.min(140, Math.max(80, Math.round(v) || 100));
+}
 const fontCssCache = new Map<string, string>();
 function fontCssCached(k: string): string {
     let faces = fontCssCache.get(k);
@@ -688,9 +692,12 @@ function fontCssCached(k: string): string {
 function chromeFontCss(): string {
     const k = chromeFontKey();
     const f = CHROME_FONTS[k];
-    if (!f || !f.family) return '';
+    // the chrome views size their text in rem, so scaling the root font-size
+    // scales the whole chrome; also applied while on the system font
+    const size = `html { font-size: ${chromeFontSize()}% !important; }`;
+    if (!f || !f.family) return size;
     const faces = fontCssCached(k);
-    return (faces ? faces + '\n' : '') +
+    return (faces ? faces + '\n' : '') + size + '\n' +
         `body, button, input, select, textarea { font-family: ${f.family}, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif !important; }`;
 }
 const allFontKeys = new WeakMap<Electron.WebContents, string[]>();
@@ -3533,6 +3540,7 @@ const entry: DlEntry = { id: entryId, name: `${rel.albumArtist} - ${rel.album}`,
             tooltips: store.get('tooltips', true) !== false,
             openAlbumPage: store.get('openAlbumPage', false) === true,
             font: chromeFontKey(),
+            fontSize: chromeFontSize(),
             fontOptions: Object.entries(CHROME_FONTS).map(([k, v]) => ({ key: k, label: v.label, family: v.family })),
         };
     });
@@ -3647,6 +3655,12 @@ const entry: DlEntry = { id: entryId, name: `${rel.albumArtist} - ${rel.album}`,
             }
             if (typeof data.font === 'string' && data.font !== chromeFontKey() && CHROME_FONTS[data.font]) {
                 store.set('font', data.font);
+                for (const w of [headerView, playerView, collectionView, feedView, settingsWindow, spotlightWin, downloadsWin, notice429Win]) {
+                    if (w && !w.webContents.isDestroyed()) applyChromeTheme(w.webContents);
+                }
+            }
+            if (typeof data.fontSize === 'number') {
+                store.set('fontSize', Math.min(140, Math.max(80, Math.round(data.fontSize))));
                 for (const w of [headerView, playerView, collectionView, feedView, settingsWindow, spotlightWin, downloadsWin, notice429Win]) {
                     if (w && !w.webContents.isDestroyed()) applyChromeTheme(w.webContents);
                 }
