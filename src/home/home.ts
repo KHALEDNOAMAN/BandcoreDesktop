@@ -31,7 +31,6 @@ interface HomeCard {
     tralbumType?: 'a' | 't';
     bandId?: string;
     trackId?: string;
-    badge?: string;
     via?: string;
     year?: number;
 }
@@ -43,10 +42,7 @@ function createCard(c: HomeCard): HTMLElement {
 
     const wrap = document.createElement('div');
     wrap.className = 'artwrap';
-    wrap.innerHTML =
-        `<img class="art" loading="lazy"${c.art ? ` src="${c.art}"` : ''}>` +
-        (c.badge ? `<span class="badge${c.badge === 'collected' ? ' df' : ''}">${escapeHtml(c.badge)}</span>` : '') +
-        (c.year ? `<span class="yr">${c.year}</span>` : '');
+    wrap.innerHTML = `<img class="art" loading="lazy"${c.art ? ` src="${c.art}"` : ''}>`;
 
     // play / queue only when the item carries resolver handles (feed + owned
     // items); discover rows without them just navigate on click.
@@ -82,6 +78,7 @@ function createCard(c: HomeCard): HTMLElement {
     meta.innerHTML =
         `<div class="t">${escapeHtml(c.title || 'Untitled')}</div>` +
         `<div class="a">${escapeHtml(c.artist || '')}</div>` +
+        (c.year ? `<div class="w">${c.year}</div>` : '') +
         (c.via ? `<div class="w">collected by ${escapeHtml(c.via)}</div>` : '');
     card.appendChild(meta);
 

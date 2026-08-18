@@ -657,6 +657,7 @@ export class BandcampApi {
         const artId = toId(s.item_art_id ?? s.art_id);
         const date = Number(s.story_date_ts ?? 0) ||
             Math.floor(Date.parse(String(s.story_date || s.new_release_date || '')) / 1000) || 0;
+        const year = Number(String(s.new_release_date || s.release_date || '').match(/\b(19|20)\d{2}\b/)?.[0]) || 0;
         return {
             type: String(s.story_type || '').trim() || 'nr',
             date: date > 0 ? date : 0,
@@ -669,6 +670,7 @@ export class BandcampApi {
             bandId: toId(s.band_id ?? s.selling_band_id),
             trackId: toId(s.featured_track ?? s.featured_track_id ?? s.track_id),
             via: String(s.fan_name ?? '').trim(),
+            year,
         };
     }
 

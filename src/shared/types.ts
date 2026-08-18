@@ -151,4 +151,6 @@ export interface FeedStory {
     trackId: string;
     /** collector's name for 'df' stories ("collected by …"); '' otherwise. */
     via: string;
+    /** release year (0 when unknown). */
+    year: number;
 }

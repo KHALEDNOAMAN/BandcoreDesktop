@@ -1748,8 +1748,8 @@ async function init() {
                 .then((r) => r.ok
                     ? { feed: (r.stories || []).slice(0, 24).map((s) => ({
                         title: s.title, artist: s.artist, art: s.art, url: s.url, via: s.via,
-                        badge: s.type === 'nr' ? 'new' : s.type === 'df' ? 'collected' : '',
                         tralbumId: s.tralbumId, tralbumType: s.tralbumType, bandId: s.bandId, trackId: s.trackId,
+                        year: Number(s.year) || bandcampApi.getReleaseYear(s.tralbumType, s.tralbumId),
                     })), feedError: '' }
                     : { feed: [], feedError: r.error || 'feed unavailable' })
                 .catch((e: any) => ({ feed: [], feedError: e?.message || 'feed unavailable' })),
