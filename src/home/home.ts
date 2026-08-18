@@ -84,7 +84,7 @@ function createCard(c: HomeCard): HTMLElement {
         (c.via ? `<div class="w">collected by ${escapeHtml(c.via)}</div>` : '');
     card.appendChild(meta);
 
-    card.addEventListener('click', () => { if (c.url) ipcRenderer.send('app:navigate', c.url); });
+    card.addEventListener('click', () => { if (c.url) ipcRenderer.send('album:open', { url: c.url, artUrl: c.art, title: c.title }); });
     return card;
 }
 
