@@ -126,13 +126,24 @@ async function loadHome(): Promise<void> {
         `<span class="stat"><b>${st.local || 0}</b> local files</span>`,
         `<span class="stat"><b>${st.playlists || 0}</b> playlists</span>`,
     ].join('');
-
     const recentItems = res.recent || [];
     // the recently-collected rail only appears when there's something in it
     $('rail-recent').style.display = recentItems.length ? '' : 'none';
     fillRow(recentRow, $('recent-sub'), recentItems, '');
-    fillRow(feedRow, $('feed-sub'), res.feed || [], res.feedError || (res.feed && res.feed.length ? '' : 'follow some artists to see their releases.'));
-    fillRow(discoverRow, $('discover-sub'), res.discover || [], res.discoverError || (res.discover && res.discover.length ? '' : 'discover is empty right now.'));
+
+    // part 2: network rails (feed + discover) - each fills in as it arrives
+    const rails: any = await ipcRenderer.invoke('home:rails').catch(() => null);
+    ipcRenderer.send('home:log', 'rails ok=' + !!(rails && rails.feed) +
+        ' feed=' + (rails && rails.feed ? rails.feed.length : 0) +
+        ' discover=' + (rails && rails.discover ? rails.discover.length : 0) +
+        (rails && (rails.feedError || rails.discoverError) ? ' err=' + (rails.feedError || rails.discoverError) : ''));
+    if (rails) {
+        fillRow(feedRow, $('feed-sub'), rails.feed || [], rails.feedError || (rails.feed && rails.feed.length ? '' : 'follow some artists to see their releases.'));
+        fillRow(discoverRow, $('discover-sub'), rails.discover || [], rails.discoverError || (rails.discover && rails.discover.length ? '' : 'discover is empty right now.'));
+    } else {
+        fillRow(feedRow, $('feed-sub'), [], 'could not load the feed.');
+        fillRow(discoverRow, $('discover-sub'), [], 'could not load discover.');
+    }
 }
 
 $('close').addEventListener('click', () => ipcRenderer.send('home:close'));

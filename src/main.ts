@@ -1711,10 +1711,16 @@ async function init() {
     });
     ipcMain.on('feed:close', () => closeFeed());
 
-    // home page (start-up start page): rails data + toggle/close
+    // home page (start-up start page): local data is instant; the network rails
+    // (feed + discover) load independently and are cached briefly so reopening
+    // the page doesn't re-hit bandcamp (a 100k-follow feed is slow to serve).
     ipcMain.on('home:log', (_e, msg: unknown) => { if (devMode) console.log('[bcrpc:home] ' + String(msg)); });
     ipcMain.on('home:close', () => closeHome());
+    let homeRailCache: { at: number; feed: any[]; feedError: string; discover: any[]; discoverError: string } | null = null;
+    const HOME_RAIL_TTL = 120000; // ms: rail data stays fresh for quick re-opens
     ipcMain.handle('home:data', async () => {
+        // local-only: collection stats + the recently-collected rail. instant,
+        // never touches the network, so the page always renders this part.
         const all: any[] = collectionItemsDisk.get() || [];
         const owned = all.filter((c) => c && !c.local && !c.wish).length;
         const wishlist = all.filter((c) => c && c.wish).length;
@@ -1732,31 +1738,33 @@ async function init() {
                 tralbumType: c.tralbumType === 't' ? 't' as const : 'a' as const,
                 bandId: String(c.bandId || ''),
             }));
-        let feed: any[] = [];
-        let feedError = '';
-        try {
-            const r = await bandcampApi.fetchFeed(0);
-            if (r.ok) {
-                feed = (r.stories || []).slice(0, 24).map((s) => ({
-                    title: s.title, artist: s.artist, art: s.art, url: s.url, via: s.via,
-                    badge: s.type === 'nr' ? 'new' : s.type === 'df' ? 'collected' : '',
-                    tralbumId: s.tralbumId, tralbumType: s.tralbumType, bandId: s.bandId, trackId: s.trackId,
-                }));
-            } else feedError = r.error || 'feed unavailable';
-        } catch (e: any) { feedError = e?.message || 'feed unavailable'; }
-        let discover: any[] = [];
-        let discoverError = '';
-        try {
-            const r = await bandcampApi.fetchDiscover(24);
-            if (r.ok) {
-                discover = r.items.map((i: any) => ({
-                    title: i.name, artist: i.artist, art: i.art, url: i.url, year: i.year || 0,
-                    tralbumId: i.tralbumId || '', bandId: i.bandId || '',
-                }));
-            } else discoverError = r.error || 'discover unavailable';
-        } catch (e: any) { discoverError = e?.message || 'discover unavailable'; }
-        if (devMode) console.log('[bcrpc] home:data owned=' + owned + ' recent=' + recent.length + ' feed=' + feed.length + ' discover=' + discover.length + (feedError || discoverError ? ' err=' + (feedError || discoverError) : ''));
-        return { ok: true, stats: { owned, wishlist, local: localFilesDisk.get().length, playlists: playlistsDisk.get().length }, recent, feed, discover, feedError, discoverError };
+        return { ok: true, stats: { owned, wishlist, local: localFilesDisk.get().length, playlists: playlistsDisk.get().length }, recent };
+    });
+    ipcMain.handle('home:rails', async () => {
+        if (homeRailCache && Date.now() - homeRailCache.at < HOME_RAIL_TTL) return homeRailCache;
+        // fetch both rails in parallel; one failing must not block the other
+        const [fr, dr] = await Promise.all([
+            bandcampApi.fetchFeed(0)
+                .then((r) => r.ok
+                    ? { feed: (r.stories || []).slice(0, 24).map((s) => ({
+                        title: s.title, artist: s.artist, art: s.art, url: s.url, via: s.via,
+                        badge: s.type === 'nr' ? 'new' : s.type === 'df' ? 'collected' : '',
+                        tralbumId: s.tralbumId, tralbumType: s.tralbumType, bandId: s.bandId, trackId: s.trackId,
+                    })), feedError: '' }
+                    : { feed: [], feedError: r.error || 'feed unavailable' })
+                .catch((e: any) => ({ feed: [], feedError: e?.message || 'feed unavailable' })),
+            bandcampApi.fetchDiscover(24)
+                .then((r) => r.ok
+                    ? { discover: r.items.map((i: any) => ({
+                        title: i.name, artist: i.artist, art: i.art, url: i.url, year: i.year || 0,
+                        tralbumId: i.tralbumId || '', bandId: i.bandId || '',
+                    })), discoverError: '' }
+                    : { discover: [], discoverError: r.error || 'discover unavailable' })
+                .catch((e: any) => ({ discover: [], discoverError: e?.message || 'discover unavailable' })),
+        ]);
+        homeRailCache = { at: Date.now(), ...fr, ...dr };
+        if (devMode) console.log('[bcrpc] home:rails feed=' + homeRailCache.feed.length + ' discover=' + homeRailCache.discover.length + (homeRailCache.feedError || homeRailCache.discoverError ? ' err=' + (homeRailCache.feedError || homeRailCache.discoverError) : ''));
+        return homeRailCache;
     });
 
     // one page of the fan feed; olderThan pages backwards (0 = newest)
