@@ -1,14 +1,16 @@
 import { ipcRenderer } from 'electron';
 
-// home page: a spotify-style start page (greeting, stats, and three horizontal
-// rails: recently collected, your feed, and bandcamp discover). data comes from
-// main in one shot (home:data); each rail plays/navigates like the feed view.
+// home page: a spotify-style start page (greeting, stats, and four horizontal
+// rails: recently collected, wishlist, your feed, and bandcamp discover). local
+// rails come from home:data instantly; the network rails (home:rails) are
+// cached in main. each rail plays/navigates like the feed view.
 
 ipcRenderer.send('home:log', 'booted');
 
 const $ = (id: string) => document.getElementById(id) as HTMLElement;
 const statsEl = $('stats');
 const recentRow = $('recent');
+const wishRow = $('wish');
 const feedRow = $('feed');
 const discoverRow = $('discover');
 
@@ -125,6 +127,7 @@ function wireRailNav(row: HTMLElement, prevId: string, nextId: string): void {
     $(nextId).addEventListener('click', () => stepRow(row, RAIL_STEP));
 }
 wireRailNav(recentRow, 'recent-prev', 'recent-next');
+wireRailNav(wishRow, 'wish-prev', 'wish-next');
 wireRailNav(feedRow, 'feed-prev', 'feed-next');
 wireRailNav(discoverRow, 'discover-prev', 'discover-next');
 
@@ -143,6 +146,10 @@ async function loadHome(): Promise<void> {
     // the recently-collected rail only appears when there's something in it
     $('rail-recent').style.display = recentItems.length ? '' : 'none';
     fillRow(recentRow, $('recent-sub'), recentItems, '');
+    const wishItems = res.wish || [];
+    // same for the wishlist rail
+    $('rail-wish').style.display = wishItems.length ? '' : 'none';
+    fillRow(wishRow, $('wish-sub'), wishItems, '');
 
     // part 2: network rails (feed + discover) - each fills in as it arrives
     const rails: any = await ipcRenderer.invoke('home:rails').catch(() => null);

@@ -1738,7 +1738,21 @@ async function init() {
                 tralbumType: c.tralbumType === 't' ? 't' as const : 'a' as const,
                 bandId: String(c.bandId || ''),
             }));
-        return { ok: true, stats: { owned, wishlist, local: localFilesDisk.get().length, playlists: playlistsDisk.get().length }, recent };
+        const wish = all
+            .filter((c) => c && c.wish && Number(c.addedAt) > 0)
+            .sort((a, b) => Number(b.addedAt) - Number(a.addedAt))
+            .slice(0, 24)
+            .map((c) => ({
+                title: String(c.title || '').trim(),
+                artist: String(c.artist || '').trim(),
+                art: String(c.art || ''),
+                url: String(c.url || ''),
+                year: Number(c.year) || 0,
+                tralbumId: String(c.tralbumId || ''),
+                tralbumType: c.tralbumType === 't' ? 't' as const : 'a' as const,
+                bandId: String(c.bandId || ''),
+            }));
+        return { ok: true, stats: { owned, wishlist, local: localFilesDisk.get().length, playlists: playlistsDisk.get().length }, recent, wish };
     });
     ipcMain.handle('home:rails', async () => {
         if (homeRailCache && Date.now() - homeRailCache.at < HOME_RAIL_TTL) return homeRailCache;
