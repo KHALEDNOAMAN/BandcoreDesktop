@@ -118,7 +118,10 @@ async function loadHome(): Promise<void> {
         `<span class="stat"><b>${st.playlists || 0}</b> playlists</span>`,
     ].join('');
 
-    fillRow(recentRow, $('recent-sub'), res.recent || [], res.recent && res.recent.length ? '' : 'nothing collected yet - go grab some music.');
+    const recentItems = res.recent || [];
+    // the recently-collected rail only appears when there's something in it
+    $('rail-recent').style.display = recentItems.length ? '' : 'none';
+    fillRow(recentRow, $('recent-sub'), recentItems, '');
     fillRow(feedRow, $('feed-sub'), res.feed || [], res.feedError || (res.feed && res.feed.length ? '' : 'follow some artists to see their releases.'));
     fillRow(discoverRow, $('discover-sub'), res.discover || [], res.discoverError || (res.discover && res.discover.length ? '' : 'discover is empty right now.'));
 }
