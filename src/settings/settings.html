@@ -416,9 +416,14 @@ function makeDropdown(sel, opts) {
             b.innerHTML = '<span class="ddsw"></span><span></span>';
             b.lastChild.textContent = o.textContent;
         } else {
-            b.textContent = o.textContent;
+            // the chrome font css hits `button` with !important (user origin),
+            // so an inline font-family on the button itself can't win - the
+            // preview goes on a span, which that rule doesn't cover.
+            const lab = document.createElement('span');
+            lab.textContent = o.textContent;
+            if (o.style.fontFamily) lab.style.fontFamily = o.style.fontFamily;
+            b.appendChild(lab);
         }
-        if (o.style.fontFamily) b.style.fontFamily = o.style.fontFamily;
         b.addEventListener('click', (e) => {
             e.stopPropagation();
             sel.value = b.dataset.value;
