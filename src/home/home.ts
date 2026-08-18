@@ -106,10 +106,26 @@ function fillRow(row: HTMLElement, sub: HTMLElement, items: HomeCard[], note: st
 }
 
 // circular rail nav: each click steps the rail by 5 cards (132px card + 14px gap)
+// native smooth scrollBy is a no-op in this Electron, so animate it manually
 const RAIL_STEP = 5 * (132 + 14);
+function stepRow(row: HTMLElement, dist: number): void {
+    const from = row.scrollLeft;
+    const max = Math.max(0, row.scrollWidth - row.clientWidth);
+    const to = Math.max(0, Math.min(max, from + dist));
+    if (to === from) return;
+    const t0 = performance.now();
+    const dur = 280;
+    const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+    const step = (now: number) => {
+        const k = Math.min(1, (now - t0) / dur);
+        row.scrollLeft = from + (to - from) * ease(k);
+        if (k < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+}
 function wireRailNav(row: HTMLElement, prevId: string, nextId: string): void {
-    $(prevId).addEventListener('click', () => row.scrollBy({ left: -RAIL_STEP, behavior: 'smooth' }));
-    $(nextId).addEventListener('click', () => row.scrollBy({ left: RAIL_STEP, behavior: 'smooth' }));
+    $(prevId).addEventListener('click', () => stepRow(row, -RAIL_STEP));
+    $(nextId).addEventListener('click', () => stepRow(row, RAIL_STEP));
 }
 wireRailNav(recentRow, 'recent-prev', 'recent-next');
 wireRailNav(feedRow, 'feed-prev', 'feed-next');
