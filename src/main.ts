@@ -119,7 +119,9 @@ class DiskCache<T> {
         this.data = d;
     }
     get(): T { return this.data; }
-    replace(d: T): void { this.data = d; this.save(); }
+    /** replace the in-memory value; the disk write is optional so caches can
+     *  stay session-only when the user doesn't want them persisted. */
+    replace(d: T, persist = true): void { this.data = d; if (persist) this.save(); }
     /** schedule a write; call after mutating the object returned by get() */
     save(): void {
         if (this.timer) return;
@@ -1716,7 +1718,7 @@ async function init() {
     // the page doesn't re-hit bandcamp (a 100k-follow feed is slow to serve).
     ipcMain.on('home:log', (_e, msg: unknown) => { if (devMode) console.log('[bcrpc:home] ' + String(msg)); });
     ipcMain.on('home:close', () => closeHome());
-    let homeRailCache: { at: number; feed: any[]; feedError: string; discover: any[]; discoverError: string } | null = null;
+    let homeRailCache: { at: number; feed: any[]; feedError: string; discover: any[]; discoverError: string; wish?: any[] } | null = null;
     const HOME_RAIL_TTL = 120000; // ms: rail data stays fresh for quick re-opens
     ipcMain.handle('home:data', async () => {
         // local-only: collection stats + the recently-collected rail. instant,
@@ -1890,9 +1892,14 @@ async function init() {
         if (collFetchActive) return { ok: true, count: 0 };
         collFetchActive = true;
         try {
-            // local files first: they live on disk, so they show even offline /
-            // logged out (total 0 = don't touch the loader's progress accounting)
-            const locals = localCollectionItems();
+// local files first: they live on disk, so they show even offline /
+    // logged out (total 0 = don't touch the loader's progress accounting)
+    // the home page re-reads the store whenever the collection changes, so
+    // its rails/stats appear (or update) as soon as the fetch lands.
+    const notifyHomeOfCollection = () => {
+        if (homeVisible && homeView && !homeView.webContents.isDestroyed()) homeView.webContents.send('home:load');
+    };
+    const locals = localCollectionItems();
             if (locals.length) sendCollItems(locals, locals.length, 0);
             const cached = (!fullRescan && cacheReleasesOn()) ? collectionItemsDisk.get() : [];
             if (Array.isArray(cached) && cached.length) {
@@ -1921,6 +1928,7 @@ async function init() {
                         const total = merged.length;
                         sendCollItems(fresh, total, total);
                         collectionItemsDisk.replace(merged);
+                        notifyHomeOfCollection();
                         return { ok: true, count: total };
                     }
                 } catch { /* cache alone is fine */ }
@@ -1935,7 +1943,10 @@ async function init() {
                 const items = [...owned, ...wish];
                 if (devMode) console.log('[bcrpc] collection:fetch ' + owned.length + ' owned + ' + wish.length + ' wishlist');
                 if (items.length) {
-                    if (cacheReleasesOn()) collectionItemsDisk.replace(items);
+                    // the in-memory store is always updated (home rails + stats
+                    // need it); only the disk write is gated on the cache setting
+                    collectionItemsDisk.replace(items, cacheReleasesOn());
+                    notifyHomeOfCollection();
                     // a re-scan is the source of truth: drop anything the view still
                     // shows that bandcamp no longer lists (hidden / un-wishlisted).
                     // local pseudo-items aren't bandcamp's to prune - keep their keys
