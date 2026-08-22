@@ -69,6 +69,8 @@
         .state { padding: 30px 4px; color: var(--muted); font-size: 0.75rem; white-space: nowrap; }
         /* click-to-open: cover blurs while main fetches the release */
         .card.loading, .tile.loading { pointer-events: none; }
+        /* the blur samples past the img's rounded corners - clip at the wrapper */
+        .card.loading .artwrap { overflow: hidden; border-radius: 10px; }
         .card.loading .art { transform: none !important; filter: blur(14px) brightness(.6); box-shadow: none; }
         .tile.loading .art { filter: blur(6px) brightness(.6); }
         .card-spin {
