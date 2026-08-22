@@ -138,14 +138,16 @@ function closeCardMenu(): void {
     }
 }
 
-// fullscreen cover art overlay ("View cover art")
+// fullscreen cover art overlay ("View cover art") - pulls the ORIGINAL
+// resolution (_0), not the 700px thumbnail the cards use
 let fsArtOpen = false;
 function showArtFullscreen(src: string): void {
     if (!src) return;
     fsArtOpen = true;
+    const hires = src.replace(/_\d+\.jpg$/, '_0.jpg');
     const back = document.createElement('div');
     back.className = 'fsback';
-    back.innerHTML = `<img class="fsimg" src="${src}">`;
+    back.innerHTML = `<img class="fsimg" src="${hires}">`;
     const close = () => {
         back.classList.remove('show');
         setTimeout(() => { back.remove(); fsArtOpen = false; }, 180);
