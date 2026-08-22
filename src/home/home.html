@@ -140,6 +140,7 @@
         .rail:hover .edge:not(.dim) { opacity: 1; pointer-events: auto; transform: translateY(-50%) scale(1); }
         .edge:hover { background: var(--accent); }
         .edge.dim { opacity: 0 !important; pointer-events: none !important; }
+        .edge svg { width: 16px; height: 16px; }
 
         /* --- standard shelf card (wishlist) -------------------------------- */
         .shelf .card, .feed .card, .discover .card {
@@ -187,6 +188,7 @@
         .card:hover .play { opacity: 1; transform: translateY(0); }
         .card:hover .enq { opacity: 1; transform: translateY(0); }
         .play:hover, .enq:hover { filter: brightness(1.15); }
+        .enq svg { width: 15px; height: 15px; }
         .meta { padding-right: 4px; }
         .meta .t { font-size: 0.78125rem; font-weight: 600; margin-top: 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .meta .a { font-size: 0.6875rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 3px; }
@@ -247,27 +249,27 @@
             <h2>Wishlist <span class="sub" id="wish-sub"></span><button class="exploreall" id="wish-all" title="See the whole wishlist">Explore All</button></h2>
             <div class="rowwrap">
                 <div class="fade l"></div><div class="fade r"></div>
-                <button class="edge l" id="wish-prev" title="Scroll left">‹</button>
+                <button class="edge l" id="wish-prev" title="Scroll left"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg></button>
                 <div class="row" id="wish"><div class="state">…</div></div>
-                <button class="edge r" id="wish-next" title="Scroll right">›</button>
+                <button class="edge r" id="wish-next" title="Scroll right"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></button>
             </div>
         </section>
         <section class="rail feed" id="rail-feed">
             <h2>Latest from your feed <span class="sub" id="feed-sub"></span><button class="exploreall" id="feed-all" title="See the full feed">Explore All</button></h2>
             <div class="rowwrap">
                 <div class="fade l"></div><div class="fade r"></div>
-                <button class="edge l" id="feed-prev" title="Scroll left">‹</button>
+                <button class="edge l" id="feed-prev" title="Scroll left"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg></button>
                 <div class="row" id="feed"><div class="state">…</div></div>
-                <button class="edge r" id="feed-next" title="Scroll right">›</button>
+                <button class="edge r" id="feed-next" title="Scroll right"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></button>
             </div>
         </section>
         <section class="rail discover" id="rail-discover">
             <h2>Discover <span class="sub" id="discover-sub"></span><button class="exploreall" id="discover-all" title="See more discoveries">Explore All</button></h2>
             <div class="rowwrap">
                 <div class="fade l"></div><div class="fade r"></div>
-                <button class="edge l" id="discover-prev" title="Scroll left">‹</button>
+                <button class="edge l" id="discover-prev" title="Scroll left"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg></button>
                 <div class="row" id="discover"><div class="state">…</div></div>
-                <button class="edge r" id="discover-next" title="Scroll right">›</button>
+                <button class="edge r" id="discover-next" title="Scroll right"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></button>
             </div>
         </section>
     </div>

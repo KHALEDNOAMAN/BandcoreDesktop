@@ -18,6 +18,9 @@ function escapeHtml(s: string): string {
     return (s || '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] as string));
 }
 
+// lucide icons (inline so they inherit currentColor)
+const ICON_QUEUE = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>';
+
 // time-of-day greeting, like the big start-page headers
 const hr = new Date().getHours();
 $('hello').innerHTML =
@@ -67,13 +70,13 @@ function wireActions(wrap: HTMLElement, c: HomeCard): void {
     const enq = document.createElement('button');
     enq.className = 'enq';
     enq.title = 'add to queue';
-    enq.textContent = '+';
+    enq.innerHTML = ICON_QUEUE;
     enq.addEventListener('click', async (e) => {
         e.stopPropagation();
-        const prev = enq.textContent;
+        const prev = enq.innerHTML;
         const res = await ipcRenderer.invoke('collection:enqueue', { tralbumId: c.tralbumId, tralbumType: c.tralbumType, bandId: c.bandId });
         enq.textContent = res && res.ok ? '✓' : '×';
-        setTimeout(() => { enq.textContent = prev; }, 900);
+        setTimeout(() => { enq.innerHTML = prev; }, 900);
     });
     wrap.appendChild(enq);
 }
