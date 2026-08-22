@@ -1882,12 +1882,27 @@ async function init() {
     const progress = (n: number) => {
         if (exploreVisible && exploreView && !exploreView.webContents.isDestroyed()) exploreView.webContents.send('explore:progress', n);
     };
+    // gathered section lists are cached (memory + disk) so reopening an
+    // explore view is instant; 10 min freshness like the home rails
+    let exploreCacheDisk: DiskCache<Record<string, { at: number; items: any[] }>>;
+    try {
+        exploreCacheDisk = new DiskCache<Record<string, { at: number; items: any[] }>>(path.join(app.getPath('userData'), 'explore-cache.json'), {});
+    } catch {
+        exploreCacheDisk = new DiskCache<Record<string, { at: number; items: any[] }>>(path.join(app.getPath('userData'), 'explore-cache.json'), {});
+    }
+    const EXPLORE_TTL = 600000;
     const mapWishItem = (c: any) => ({
         title: c.title, artist: c.artist, art: c.art, url: c.url, year: c.year || 0,
         tralbumId: c.tralbumId, tralbumType: c.tralbumType, bandId: c.bandId,
     });
     ipcMain.handle('explore:list', async (_e, mode: unknown) => {
         const m = String(mode || '');
+        const cache = exploreCacheDisk.get() || {};
+        if (cache[m] && Date.now() - cache[m].at < EXPLORE_TTL) return { ok: true, items: cache[m].items };
+        const remember = (items: any[]) => {
+            cache[m] = { at: Date.now(), items };
+            exploreCacheDisk.replace(cache);
+        };
         try {
             if (m === 'wishlist') {
                 // page through the whole wishlist (500/page, hard caps for safety)
@@ -1908,6 +1923,7 @@ async function init() {
                     if (!res.more || !res.lastToken) break;
                 }
                 if (devMode) console.log('[bcrpc] explore:wishlist ' + out.length + ' items in ' + pages + ' pages');
+                if (out.length) remember(out);
                 return { ok: true, items: out };
             }
             if (m === 'feed') {
@@ -1936,6 +1952,7 @@ async function init() {
                 }
                 if (devMode) console.log('[bcrpc] explore:feed ' + out.length + ' items in ' + pages + ' pages');
                 if (!out.length && firstError) return { ok: false, items: [], error: firstError };
+                if (out.length) remember(out);
                 return { ok: true, items: out.slice(0, 500) };
             }
             if (m === 'discover') {
@@ -1959,6 +1976,7 @@ async function init() {
                 }
                 if (devMode) console.log('[bcrpc] explore:discover ' + out.length + ' items in ' + pages + ' pages');
                 if (!out.length && firstError) return { ok: false, items: [], error: firstError };
+                if (out.length) remember(out);
                 return { ok: true, items: out };
             }
             return { ok: false, items: [], error: 'unknown section' };
