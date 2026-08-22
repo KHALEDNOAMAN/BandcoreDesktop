@@ -75,7 +75,13 @@
             filter: blur(16px) saturate(1.2) brightness(.3);
             z-index: 0;
         }
-        .tile:hover { transform: translateX(2px); box-shadow: 0 6px 18px rgba(0,0,0,.35); }
+        .tile:hover { box-shadow: 0 6px 18px rgba(0,0,0,.35); }
+        /* subtle grounding gradient at the tile's bottom */
+        .tile::after {
+            content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 58%;
+            background: linear-gradient(to top, rgba(8,9,10,.5), rgba(8,9,10,0));
+            pointer-events: none; z-index: 0;
+        }
         .tile .art {
             width: 48px; height: 48px; border-radius: 7px; object-fit: cover; display: block;
             background: var(--line); flex-shrink: 0; box-shadow: 0 3px 10px rgba(0,0,0,.4);
