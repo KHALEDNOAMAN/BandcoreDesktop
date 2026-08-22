@@ -84,9 +84,103 @@ function wireActions(wrap: HTMLElement, c: HomeCard): void {
 function baseCard(c: HomeCard): HTMLElement {
     const el = document.createElement('div');
     el.title = c.title;
-    el.addEventListener('click', () => { if (c.url) ipcRenderer.send('album:open', { url: c.url, artUrl: c.art, title: c.title }); });
+    el.addEventListener('click', () => {
+        if (!c.url) return;
+        // cover blurs + lottie spins while main fetches the release
+        startCardLoading(el);
+        ipcRenderer.send('album:open', { url: c.url, artUrl: c.art, title: c.title });
+    });
     return el;
 }
+
+// --- click-to-open loading effect (ported from the collection view) ---------
+// the clicked card's cover blurs and darkens (with a centered lottie) while
+// main fetches the release; album:loading-done clears it on success/failure.
+let loadingCard: HTMLElement | null = null;
+let cardSpinAnim: any = null;
+
+// a .lottie file is a zip: EOCD -> central directory -> local headers, with
+// deflate entries (zlib) and stored ones passed through. manifest.json names
+// the animation, which lives at animations/<id>.json.
+function dotLottieToJson(buf: Buffer): any | null {
+    try {
+        const findSig = (from: number, to: number, sig: number): number => {
+            for (let i = from; i >= to; i--) {
+                if (buf.readUInt32LE(i) === sig) return i;
+            }
+            return -1;
+        };
+        const eocd = findSig(buf.length - 22, Math.max(0, buf.length - 65557), 0x06054b50);
+        if (eocd < 0) return null;
+        const count = buf.readUInt16LE(eocd + 10);
+        const cdOff = buf.readUInt32LE(eocd + 16);
+        const entries: { name: string; method: number; csize: number; lho: number }[] = [];
+        let p = cdOff;
+        for (let i = 0; i < count; i++) {
+            if (buf.readUInt32LE(p) !== 0x02014b50) return null;
+            const method = buf.readUInt16LE(p + 10);
+            const csize = buf.readUInt32LE(p + 20);
+            const lho = buf.readUInt32LE(p + 42);
+            const nlen = buf.readUInt16LE(p + 28);
+            const elen = buf.readUInt16LE(p + 30);
+            const clen = buf.readUInt16LE(p + 32);
+            entries.push({ name: buf.toString('utf8', p + 46, p + 46 + nlen), method, csize, lho });
+            p += 46 + nlen + elen + clen;
+        }
+        const readFile = (name: string): Buffer | null => {
+            const f = entries.find((x) => x.name === name);
+            if (!f) return null;
+            if (buf.readUInt32LE(f.lho) !== 0x04034b50) return null;
+            const nlen = buf.readUInt16LE(f.lho + 26);
+            const elen = buf.readUInt16LE(f.lho + 28);
+            const data = buf.subarray(f.lho + 30 + nlen + elen, f.lho + 30 + nlen + elen + f.csize);
+            if (f.method === 0) return data;
+            if (f.method === 8) return require('zlib').inflateRawSync(data);
+            return null;
+        };
+        const manifest = readFile('manifest.json');
+        if (!manifest) return null;
+        const m = JSON.parse(manifest.toString('utf8'));
+        const id = m && m.animations && m.animations[0] && m.animations[0].id;
+        if (!id) return null;
+        const anim = readFile('animations/' + id + '.json');
+        return anim ? JSON.parse(anim.toString('utf8')) : null;
+    } catch (e) { return null; }
+}
+function startCardLoading(card: HTMLElement): void {
+    clearCardLoading();
+    loadingCard = card;
+    card.classList.add('loading');
+    const sp = document.createElement('div');
+    sp.className = 'card-spin';
+    // center on the ART, not the card (the card also holds the title/artist
+    // text, which would pull the spinner below the cover's middle)
+    const host = card.querySelector('.artwrap') || card;
+    host.appendChild(sp);
+    try {
+        const fs = require('fs');
+        const path = require('path');
+        const dir = path.join(__dirname, '..', '..', 'assets', 'lottie');
+        let animData: any = null;
+        const lottiePath = path.join(dir, 'loading.lottie');
+        const legacyPath = path.join(dir, 'loading.json');
+        if (fs.existsSync(lottiePath)) animData = dotLottieToJson(fs.readFileSync(lottiePath));
+        if (!animData && fs.existsSync(legacyPath)) animData = JSON.parse(fs.readFileSync(legacyPath, 'utf8'));
+        cardSpinAnim = require('../../assets/lottie/lottie.min.js').loadAnimation({
+            container: sp, renderer: 'svg', loop: true, autoplay: true,
+            animationData: animData,
+        });
+    } catch (e) { cardSpinAnim = null; }
+}
+function clearCardLoading(): void {
+    if (cardSpinAnim) { try { cardSpinAnim.destroy(); } catch (e) { /* already gone */ } cardSpinAnim = null; }
+    if (!loadingCard) return;
+    loadingCard.classList.remove('loading');
+    const sp = loadingCard.querySelector('.card-spin');
+    if (sp) sp.remove();
+    loadingCard = null;
+}
+ipcRenderer.on('album:loading-done', () => clearCardLoading());
 
 // "jump back in" wide shortcut tile - the artwork itself blurred as backdrop
 function createTile(c: HomeCard): HTMLElement {

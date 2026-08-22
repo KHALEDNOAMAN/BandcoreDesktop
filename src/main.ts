@@ -1641,7 +1641,7 @@ async function init() {
         try {
             if (devMode) console.log('[bcrpc:album] open ' + url);
             const clearCardLoading = () => {
-                for (const w of [collectionView, artistView]) {
+                for (const w of [collectionView, artistView, homeView, exploreView]) {
                     if (w && !w.webContents.isDestroyed()) {
                         w.webContents.send('album:loading-done');
                     }

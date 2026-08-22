@@ -67,6 +67,14 @@
         .rail:hover h2 .exploreall { opacity: 1; }
         .rail h2 .exploreall:hover { color: var(--accent); }
         .state { padding: 30px 4px; color: var(--muted); font-size: 0.75rem; white-space: nowrap; }
+        /* click-to-open: cover blurs while main fetches the release */
+        .card.loading, .tile.loading { pointer-events: none; }
+        .card.loading .art { transform: none !important; filter: blur(14px) brightness(.6); box-shadow: none; }
+        .tile.loading .art { filter: blur(6px) brightness(.6); }
+        .card-spin {
+            position: absolute; left: 50%; top: 50%; width: 42px; height: 42px;
+            transform: translate(-50%, -50%); z-index: 4; pointer-events: none;
+        }
 
         /* --- jump back in: shortcut tiles ---------------------------------- */
         .tiles .tilegrid {
