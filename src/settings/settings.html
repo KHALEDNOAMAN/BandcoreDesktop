@@ -73,6 +73,11 @@
             margin-bottom: 10px;
         }
         .hint { color: var(--sub); font-size: 0.6875rem; margin-bottom: 14px; line-height: 1.5; }
+        /* about pane */
+        .about-hero { display: flex; align-items: center; gap: 14px; }
+        .about-logo { width: 56px; height: 56px; border-radius: 12px; box-shadow: 0 6px 18px rgba(0,0,0,.4); }
+        .about-name { font-size: 1.125rem; font-weight: 700; letter-spacing: -.01em; }
+        .about-credits { margin-top: 14px; max-width: 560px; }
         .hint code { color: var(--text-2); background: var(--titlebar); padding: 1px 4px; border-radius: 3px; }
         label { display: block; font-size: 0.6875rem; color: var(--hover-text); margin: 10px 0 4px; }
         input[type="text"], input[type="password"], input[type="number"], select {
@@ -335,8 +340,25 @@
 
             <section class="pane hidden" id="pane-about">
                 <h2>About</h2>
-                <div class="row" style="gap:8px;align-items:center;">
-                    <span class="hint" id="appVersion" style="flex:1;margin:0;">version …</span>
+                <div class="about-hero">
+                    <img class="about-logo" src="../../assets/icons/png/bandcore_app_icon.png" alt="">
+                    <div class="about-meta">
+                        <div class="about-name">Bandcore</div>
+                        <div class="hint" id="appVersion" style="margin:2px 0 0;">version …</div>
+                    </div>
+                </div>
+                <div class="hint about-credits">
+                    Bandcore is built on <b>bc-desktop</b> by <b>elricfd</b> — this project would not exist
+                    without that foundation. Huge credits to it and its contributors.
+                    Icons throughout the app are from <b>Lucide</b>. Maintained by <b>nai</b>.
+                </div>
+                <div class="row" style="gap:8px;flex-wrap:wrap;margin:12px 0 0;">
+                    <button id="btnOpenBaseRepo" class="ghost">bc-desktop on GitHub ↗</button>
+                    <button id="btnOpenLucide" class="ghost">icons by Lucide ↗</button>
+                    <button id="btnMaintainer" class="ghost">maintained by nai ↗</button>
+                </div>
+                <div class="row" style="gap:8px;align-items:center;margin-top:16px;">
+                    <span class="hint" style="flex:1;margin:0;">updates</span>
                     <button id="btnInstallUpdate" class="ghost" style="margin-top:0;white-space:nowrap;display:none;border-color:var(--accent);color:var(--accent);">Restart &amp; install</button>
                     <button id="btnCheckUpdates" class="ghost" style="margin-top:0;white-space:nowrap;">Check for updates</button>
                 </div>
@@ -847,6 +869,11 @@ for (const id of Object.keys(RANGE_DEFAULTS)) {
                     (u.packaged ? '' : ' (dev build - self-update disabled)');
                 if (u.status) renderUpd(u.status);
             }).catch(() => { $('appVersion').textContent = 'version unknown'; });
+            // about page links
+            const openExt = (url) => { void ipcRenderer.invoke('open:external', url); };
+            $('btnOpenBaseRepo').onclick = () => openExt('https://github.com/elricfd/bc-desktop');
+            $('btnOpenLucide').onclick = () => openExt('https://lucide.dev/');
+            $('btnMaintainer').onclick = () => openExt('https://x.com/nai_sucks');
             ipcRenderer.on('updates:status', (_e, st) => renderUpd(st || {}));
             $('btnCheckUpdates').onclick = async () => {
                 $('updStatus').textContent = 'checking for updates…';

@@ -3851,6 +3851,10 @@ const entry: DlEntry = { id: entryId, name: `${rel.albumArtist} - ${rel.album}`,
 
     // settings + last.fm auth bridge
     ipcMain.on('settings:log', (_e, msg: unknown) => { if (devMode) console.log('[bcrpc:settings] ' + String(msg)); });
+    // open https links from the settings about page in the system browser
+    ipcMain.handle('open:external', (_e, url: unknown) => {
+        if (typeof url === 'string' && /^https:\/\//i.test(url)) shell.openExternal(url);
+    });
     ipcMain.handle('settings:get', () => {
         if (devMode) console.log('[bcrpc] settings:get');
         return {
