@@ -178,6 +178,10 @@
 
         /* --- discover variant: editorial feature cards ---------------------- */
         .discover .card { width: 180px; }
+        /* the whole cover (artwork + gradient + label) scales as one on hover */
+        .discover .artwrap { overflow: hidden; border-radius: 10px; }
+        .discover .card:hover .artwrap { transform: translateY(-4px) scale(1.02); }
+        .discover .card:hover .art { transform: none; }
         .discover .art { width: 180px; height: 180px; }
         .discover .artwrap::before {
             content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 62%;
