@@ -21,6 +21,23 @@ function escapeHtml(s: string): string {
 // lucide icons (inline so they inherit currentColor)
 const ICON_QUEUE = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>';
 
+// context-menu icons come from the shared set so they stay consistent
+// with the collection view's menus
+const MENU_ICON = 'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"';
+const readIcon = (name: string): string => {
+    try {
+        const fs = require('fs');
+        const path = require('path');
+        return fs.readFileSync(path.join(__dirname, '..', '..', 'assets', 'icons', name), 'utf8')
+            .replace(/width="24"/, 'width="15"')
+            .replace(/height="24"/, 'height="15"')
+            .replace(/stroke="#ffffff"/, 'stroke="currentColor"');
+    } catch (e) { return ''; }
+};
+const ICON_OPEN = readIcon('open_album.svg');
+const ICON_ART = readIcon('cover_art_fs.svg');
+const ICON_SEARCH = `<svg viewBox="0 0 24 24" fill="none" ${MENU_ICON}><circle cx="10" cy="8" r="5"/><path d="M2 21a8 8 0 0 1 10.434-7.62"/><circle cx="18" cy="18" r="3"/><path d="m22 22-1.9-1.9"/></svg>`;
+
 // time-of-day greeting, like the big start-page headers
 const hr = new Date().getHours();
 $('hello').innerHTML =
@@ -102,7 +119,7 @@ function baseCard(c: HomeCard): HTMLElement {
 // --- context menu (ported from the collection view) --------------------------
 // a hand-built DOM menu with a header (cover + title/artist); while it is open
 // the rest of the section dims and the source card is spotlit.
-type MenuItem = { label: string; onClick?: () => void };
+type MenuItem = { icon?: string; label: string; onClick?: () => void };
 let cardMenuEl: HTMLElement | null = null;
 let spotEl: HTMLElement | null = null;
 
@@ -148,14 +165,14 @@ function openCardMenu(x: number, y: number, source: HTMLElement, c: HomeCard): v
     (source.closest('.rail') as HTMLElement | null)?.classList.add('dim');
     const playable = !!(c.tralbumId && c.bandId);
     const items: MenuItem[] = [
-        { label: 'Open album', onClick: () => { if (c.url) ipcRenderer.send('album:open', { url: c.url, artUrl: c.art, title: c.title }); } },
+        { icon: ICON_OPEN, label: 'Open album', onClick: () => { if (c.url) ipcRenderer.send('album:open', { url: c.url, artUrl: c.art, title: c.title }); } },
     ];
     if (playable) {
-        items.push({ label: 'Add album to queue', onClick: () => { void ipcRenderer.invoke('collection:enqueue', { tralbumId: c.tralbumId, tralbumType: c.tralbumType, bandId: c.bandId }); } });
+        items.push({ icon: ICON_QUEUE, label: 'Add album to queue', onClick: () => { void ipcRenderer.invoke('collection:enqueue', { tralbumId: c.tralbumId, tralbumType: c.tralbumType, bandId: c.bandId }); } });
     }
-    if (c.art) items.push({ label: 'View cover art', onClick: () => showArtFullscreen(c.art) });
+    if (c.art) items.push({ icon: ICON_ART, label: 'View cover art', onClick: () => showArtFullscreen(c.art) });
     const artist = (c.artist || '').trim();
-    if (artist) items.push({ label: 'Search ' + artist, onClick: () => ipcRenderer.send('search:run', { text: artist, mode: 'all' }) });
+    if (artist) items.push({ icon: ICON_SEARCH, label: 'Search ' + artist, onClick: () => ipcRenderer.send('search:run', { text: artist, mode: 'all' }) });
     const m = document.createElement('div');
     m.className = 'cmenu';
     m.innerHTML =
@@ -165,7 +182,12 @@ function openCardMenu(x: number, y: number, source: HTMLElement, c: HomeCard): v
     for (const it of items) {
         const b = document.createElement('button');
         b.className = 'cmi';
-        b.textContent = it.label;
+        if (it.icon) {
+            b.innerHTML = it.icon;
+            b.appendChild(document.createTextNode(it.label));
+        } else {
+            b.textContent = it.label;
+        }
         b.addEventListener('click', () => { closeCardMenu(); if (it.onClick) it.onClick(); });
         m.appendChild(b);
     }

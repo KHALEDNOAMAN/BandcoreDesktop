@@ -90,11 +90,13 @@
         .cmtitle { font-size: 0.75rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .cmsub { font-size: 0.65625rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
         .cmi {
-            display: flex; align-items: center; width: 100%; padding: 7px 9px;
+            display: flex; align-items: center; gap: 9px; width: 100%; padding: 7px 9px;
             border: none; background: none; color: var(--text); font-size: 0.75rem;
             text-align: left; border-radius: 6px; cursor: pointer;
         }
+        .cmi svg { width: 15px; height: 15px; flex-shrink: 0; color: var(--muted); }
         .cmi:hover { background: var(--hover-bg); color: var(--hover-text); }
+        .cmi:hover svg { color: var(--hover-text); }
         /* spotlight: the section dims, the source card stays lit */
         .rail.dim .card, .rail.dim .tile { filter: brightness(.3) saturate(.5); transition: filter .15s ease; }
         .rail.dim .card.spot, .rail.dim .tile.spot { filter: none; }
