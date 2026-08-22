@@ -132,8 +132,8 @@ function createFeedCard(c: HomeCard): HTMLElement {
     const meta = document.createElement('div');
     meta.className = 'meta';
     meta.innerHTML =
-        `<div class="who">${escapeHtml(c.artist || '')}${when ? `<span class="when">${when}</span>` : ''}</div>` +
-        `<div class="what">${escapeHtml(c.title || 'Untitled')}</div>` +
+        `<div class="who">${escapeHtml(c.title || 'Untitled')}${when ? `<span class="when" title="${when} ago">${when}</span>` : ''}</div>` +
+        `<div class="what">${escapeHtml(c.artist || '')}</div>` +
         (c.via ? `<div class="via">collected by ${escapeHtml(c.via)}</div>` : '');
     card.appendChild(meta);
     return card;
