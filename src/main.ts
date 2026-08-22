@@ -340,7 +340,7 @@ function adjustContentViews() {
 }
 
 function setupTray() {
-    const iconPath = path.join(__dirname, '../assets/bandcamp-button-circle-black-64.png');
+    const iconPath = path.join(__dirname, '../assets/icons/png/bandcore_app_icon.png');
     tray = new Tray(nativeImage.createFromPath(iconPath));
     tray.setToolTip('Bandcore');
     // right click menu is only reliable way to quit when close to tray is on
@@ -1004,7 +1004,7 @@ async function init() {
         minWidth: 1080,
         minHeight: 540,
         title: 'Bandcore',
-        icon: path.join(__dirname, '../assets/bandcamp-button-circle-black-512.png'),
+        icon: path.join(__dirname, '../assets/icons/png/bandcore_app_icon.png'),
         backgroundColor: '#181a1b',
         show: false,
         frame: false,
@@ -3157,7 +3157,7 @@ const entry: DlEntry = { id: entryId, name: `Playlist - ${p.name}`, album: '', a
             if (typeof file !== 'string' || !file || !fs.existsSync(file)) return;
             let icon = nativeImage.createFromPath(file);
             if (!icon.isEmpty()) icon = icon.resize({ width: 128 });
-            else icon = nativeImage.createFromPath(path.join(__dirname, '../assets/bandcamp-button-circle-black-64.png'));
+            else icon = nativeImage.createFromPath(path.join(__dirname, '../assets/icons/png/bandcore_app_icon.png')).resize({ width: 128 });
             e.sender.startDrag({ file, icon });
         } catch { /* drag just doesn't start */ }
     });

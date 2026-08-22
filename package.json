@@ -41,7 +41,7 @@
         ],
         "win": {
             "target": "nsis",
-            "icon": "assets/bandcamp-button-circle-black-512.png"
+            "icon": "assets/icons/png/bandcore_app_icon.png"
         },
         "nsis": {
             "oneClick": false,
@@ -59,7 +59,7 @@
                 "deb"
             ],
             "category": "AudioVideo",
-            "icon": "assets/bandcamp-button-circle-black-512.png",
+            "icon": "assets/icons/png/bandcore_app_icon.png",
             "maintainer": "nai"
         },
         "mac": {
@@ -68,7 +68,7 @@
                 "zip"
             ],
             "category": "public.app-category.music",
-            "icon": "assets/bandcamp-button-circle-black-512.png"
+            "icon": "assets/icons/png/bandcore_app_icon.png"
         }
     },
     "devDependencies": {
