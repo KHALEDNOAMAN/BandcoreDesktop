@@ -95,7 +95,8 @@
         .tile .play, .tile .enq {
             position: absolute; top: 50%; transform: translateY(-50%) translateX(6px);
             width: 30px; height: 30px; border: none; border-radius: 50%;
-            background: var(--accent); color: #fff; cursor: pointer;
+            background: rgba(10,11,12,.9); color: #fff; cursor: pointer;
+            -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
             font-size: 0.75rem; line-height: 1; display: inline-flex; align-items: center; justify-content: center;
             opacity: 0; transition: opacity .18s ease, transform .18s var(--ease), filter .12s ease;
         }
@@ -158,12 +159,18 @@
         .card:hover .art { transform: scale(1.04); }
         .play, .enq {
             position: absolute; width: 32px; height: 32px; border: none; border-radius: 50%;
-            background: var(--accent); color: #fff; line-height: 1; cursor: pointer;
+            line-height: 1; cursor: pointer;
             display: inline-flex; align-items: center; justify-content: center;
             opacity: 0; transform: translateY(8px);
-            transition: opacity .2s ease, transform .2s var(--ease), filter .12s ease;
+            transition: opacity .2s ease, transform .2s var(--ease), background .15s ease;
         }
-                .play { right: 8px; bottom: 8px; font-size: 0.8125rem; }
+        /* traditional black disc for the play button */
+        .play {
+            right: 8px; bottom: 8px; font-size: 0.8125rem;
+            background: rgba(10,11,12,.9); color: #fff;
+            -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+        }
+        .play:hover { background: rgba(28,30,32,.95); }
         .enq {
             right: 8px; top: 8px; font-size: 1.0625rem; transform: translateY(-8px);
             background: rgba(10,11,12,.9); color: var(--text-2);
