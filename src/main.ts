@@ -427,7 +427,6 @@ function openHome() {
 
 // hide the home overlay (close btn / Esc / any other overlay opening)
 function closeHome() {
-    if (devMode) console.log('[bcrpc] closeHome called');
     if (homeVisible && homeView) mainWindow.removeBrowserView(homeView);
     homeVisible = false;
     if (headerView && !headerView.webContents.isDestroyed()) headerView.webContents.send('home:state', false);
@@ -482,7 +481,6 @@ function openArtistView() {
 
 // close the album view (its own back button / any overlay toggle)
 function closeAlbumView() {
-    if (devMode) console.log('[bcrpc] closeAlbumView called');
     if (albumVisible && albumView) mainWindow.removeBrowserView(albumView);
     albumVisible = false;
     openOverlayUrl = '';
@@ -1400,7 +1398,6 @@ async function init() {
     // back button both land here) - the underlying tab never navigates while
     // an overlay is on top of it, and forward can re-open what was closed.
     ipcMain.on('app:back', () => {
-        if (devMode) console.log('[bcrpc] app:back albumVisible=' + albumVisible + ' artistVisible=' + artistVisible);
         if (albumVisible) { closedOverlay = { type: 'album', url: openOverlayUrl }; closeAlbumView(); return; }
         if (artistVisible) { closedOverlay = { type: 'artist', url: openOverlayUrl }; closeArtistView(); return; }
         closedOverlay = null;
