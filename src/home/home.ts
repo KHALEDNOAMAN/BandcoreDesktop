@@ -37,6 +37,7 @@ const readIcon = (name: string): string => {
 const ICON_OPEN = readIcon('open_album.svg');
 const ICON_ART = readIcon('cover_art_fs.svg');
 const ICON_SEARCH = `<svg viewBox="0 0 24 24" fill="none" ${MENU_ICON}><circle cx="10" cy="8" r="5"/><path d="M2 21a8 8 0 0 1 10.434-7.62"/><circle cx="18" cy="18" r="3"/><path d="m22 22-1.9-1.9"/></svg>`;
+const ICON_DL = `<svg viewBox="0 0 24 24" fill="none" ${MENU_ICON}><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>`;
 
 // time-of-day greeting, like the big start-page headers
 const hr = new Date().getHours();
@@ -98,7 +99,7 @@ function wireActions(wrap: HTMLElement, c: HomeCard): void {
     wrap.appendChild(enq);
 }
 
-function baseCard(c: HomeCard): HTMLElement {
+function baseCard(c: HomeCard, owned = false): HTMLElement {
     const el = document.createElement('div');
     el.title = c.title;
     el.addEventListener('click', () => {
@@ -111,7 +112,7 @@ function baseCard(c: HomeCard): HTMLElement {
     el.addEventListener('contextmenu', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        openCardMenu(e.clientX, e.clientY, el, c);
+        openCardMenu(e.clientX, e.clientY, el, c, owned);
     });
     return el;
 }
@@ -160,7 +161,7 @@ function showArtFullscreen(src: string): void {
     requestAnimationFrame(() => requestAnimationFrame(() => back.classList.add('show')));
 }
 
-function openCardMenu(x: number, y: number, source: HTMLElement, c: HomeCard): void {
+function openCardMenu(x: number, y: number, source: HTMLElement, c: HomeCard, owned = false): void {
     closeCardMenu();
     spotEl = source;
     source.classList.add('spot');
@@ -171,6 +172,11 @@ function openCardMenu(x: number, y: number, source: HTMLElement, c: HomeCard): v
     ];
     if (playable) {
         items.push({ icon: ICON_QUEUE, label: 'Add album to queue', onClick: () => { void ipcRenderer.invoke('collection:enqueue', { tralbumId: c.tralbumId, tralbumType: c.tralbumType, bandId: c.bandId }); } });
+    }
+    if (owned && c.url) {
+        // only owned releases can be downloaded; bandcamp answers with the
+        // formats the fan actually has
+        items.push({ icon: ICON_DL, label: 'Download album', onClick: () => { void openDownloadMenu(x, y, source, c); } });
     }
     if (c.art) items.push({ icon: ICON_ART, label: 'View cover art', onClick: () => showArtFullscreen(c.art) });
     const artist = (c.artist || '').trim();
@@ -190,7 +196,11 @@ function openCardMenu(x: number, y: number, source: HTMLElement, c: HomeCard): v
         } else {
             b.textContent = it.label;
         }
-        b.addEventListener('click', () => { closeCardMenu(); if (it.onClick) it.onClick(); });
+        b.addEventListener('click', (ev) => {
+            ev.stopPropagation(); // keep the doc-level closers out of this
+            closeCardMenu();
+            if (it.onClick) it.onClick();
+        });
         m.appendChild(b);
     }
     document.body.appendChild(m);
@@ -199,12 +209,62 @@ function openCardMenu(x: number, y: number, source: HTMLElement, c: HomeCard): v
     cardMenuEl = m;
     requestAnimationFrame(() => requestAnimationFrame(() => m.classList.add('show')));
 }
-// global closers, like the collection's
-document.addEventListener('click', () => closeCardMenu());
-document.addEventListener('wheel', () => closeCardMenu(), { passive: true });
+// global closers, like the collection's (closeDlMenu also closes the main menu)
+document.addEventListener('click', () => closeDlMenu());
+document.addEventListener('wheel', () => closeDlMenu(), { passive: true });
 document.addEventListener('contextmenu', (e) => {
     if (cardMenuEl && !cardMenuEl.contains(e.target as Node)) closeCardMenu();
+    if (dlMenuEl && !dlMenuEl.contains(e.target as Node)) closeDlMenu();
 });
+
+// download format submenu (owned items): same flow as the collection's
+// search-card menu - ask bandcamp which formats the fan owns, then start
+let dlMenuEl: HTMLElement | null = null;
+function closeDlMenu(): void {
+    if (dlMenuEl) {
+        const m = dlMenuEl;
+        dlMenuEl = null;
+        m.classList.remove('show');
+        setTimeout(() => m.remove(), 140);
+    }
+    closeCardMenu();
+}
+async function openDownloadMenu(x: number, y: number, source: HTMLElement, c: HomeCard): Promise<void> {
+    // keep the spotlight alive after the parent menu closes
+    spotEl = source;
+    source.classList.add('spot');
+    (source.closest('.rail') as HTMLElement | null)?.classList.add('dim');
+    const menu = document.createElement('div');
+    menu.className = 'cmenu';
+    menu.textContent = 'loading formats…';
+    menu.addEventListener('click', (ev) => ev.stopPropagation());
+    document.body.appendChild(menu);
+    dlMenuEl = menu;
+    menu.style.left = Math.max(6, Math.min(x, window.innerWidth - 200)) + 'px';
+    menu.style.top = Math.max(6, Math.min(y, window.innerHeight - 150)) + 'px';
+    requestAnimationFrame(() => requestAnimationFrame(() => menu.classList.add('show')));
+    const res: any = await ipcRenderer.invoke('download:formats', c.url).catch(() => null);
+    if (dlMenuEl !== menu) return; // superseded
+    if (!res || !res.ok || !res.formats.length) { menu.textContent = 'no downloads available'; return; }
+    menu.innerHTML = '';
+    for (const f of anyFormats(res)) {
+        const b = document.createElement('button');
+        b.className = 'cmi';
+        b.textContent = f.label;
+        b.addEventListener('click', async (ev) => {
+            ev.stopPropagation();
+            b.textContent = f.label + ' - preparing…';
+            ipcRenderer.send('downloads:art-hint', c.art);
+            await ipcRenderer.invoke('download:start', f.url);
+            b.textContent = f.label + ' - started ✓';
+            setTimeout(() => closeDlMenu(), 900);
+        });
+        menu.appendChild(b);
+    }
+}
+function anyFormats(res: any): { label: string; url: string }[] {
+    return res.formats || [];
+}
 
 // --- click-to-open loading effect (ported from the collection view) ---------
 // the clicked card's cover blurs and darkens (with a centered lottie) while
@@ -297,7 +357,7 @@ ipcRenderer.on('album:loading-done', () => clearCardLoading());
 
 // "jump back in" wide shortcut tile - the artwork itself blurred as backdrop
 function createTile(c: HomeCard): HTMLElement {
-    const tile = baseCard(c);
+    const tile = baseCard(c, true); // tiles are owned recents: downloadable
     tile.className = 'tile';
     tile.innerHTML =
         (c.art ? `<img class="bgart" alt="" src="${c.art}">` : '') +
@@ -532,8 +592,8 @@ async function loadHome(): Promise<void> {
 $('close').addEventListener('click', () => ipcRenderer.send('home:close'));
 document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
-    if (cardMenuEl) { closeCardMenu(); return; }  // Esc closes the menu first
-    if (fsArtOpen) return;                         // fullscreen art handles its own Esc
+    if (cardMenuEl || dlMenuEl) { closeDlMenu(); return; }  // Esc closes the menu first
+    if (fsArtOpen) return;                                  // fullscreen art handles its own Esc
     ipcRenderer.send('home:close');
 });
 
