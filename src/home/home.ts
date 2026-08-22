@@ -85,11 +85,12 @@ function baseCard(c: HomeCard): HTMLElement {
     return el;
 }
 
-// "jump back in" wide shortcut tile
+// "jump back in" wide shortcut tile - the artwork itself blurred as backdrop
 function createTile(c: HomeCard): HTMLElement {
     const tile = baseCard(c);
     tile.className = 'tile';
     tile.innerHTML =
+        (c.art ? `<img class="bgart" alt="" src="${c.art}">` : '') +
         `<img class="art" loading="lazy"${c.art ? ` src="${c.art}"` : ''}>` +
         `<div class="tt">` +
             `<div class="t">${escapeHtml(c.title || 'Untitled')}</div>` +
@@ -173,10 +174,17 @@ function updateEdges(rail: HTMLElement | null): void {
     const row = rail.querySelector('.row') as HTMLElement | null;
     const l = rail.querySelector('.edge.l') as HTMLElement | null;
     const r = rail.querySelector('.edge.r') as HTMLElement | null;
+    const fl = rail.querySelector('.fade.l');
+    const fr = rail.querySelector('.fade.r');
     if (!row || !l || !r) return;
     const max = row.scrollWidth - row.clientWidth;
-    l.classList.toggle('dim', max <= 4 || row.scrollLeft <= 4);
-    r.classList.toggle('dim', max <= 4 || row.scrollLeft >= max - 4);
+    // smart state: hints only point where there really is more content
+    const canL = row.scrollLeft > 4;
+    const canR = max > 4 && row.scrollLeft < max - 4;
+    l.classList.toggle('dim', !canL);
+    r.classList.toggle('dim', !canR);
+    fl?.classList.toggle('on', canL);
+    fr?.classList.toggle('on', canR);
 }
 
 // re-render a shelf from scratch; items beyond the cap wait in `pending`
@@ -265,6 +273,10 @@ for (const row of [wishRow, feedRow, discoverRow]) {
         void onShelfScroll(row);
     });
 }
+// overflow state changes with the window: re-evaluate the smart hints
+window.addEventListener('resize', () => {
+    for (const row of [wishRow, feedRow, discoverRow]) updateEdges(row.closest('.rail') as HTMLElement | null);
+});
 
 async function loadHome(): Promise<void> {
     // part 1: local-only data - renders instantly
