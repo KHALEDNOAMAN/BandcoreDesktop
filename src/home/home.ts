@@ -90,8 +90,97 @@ function baseCard(c: HomeCard): HTMLElement {
         startCardLoading(el);
         ipcRenderer.send('album:open', { url: c.url, artUrl: c.art, title: c.title });
     });
+    // right-click context menu (ported from the collection view)
+    el.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        openCardMenu(e.clientX, e.clientY, el, c);
+    });
     return el;
 }
+
+// --- context menu (ported from the collection view) --------------------------
+// a hand-built DOM menu with a header (cover + title/artist); while it is open
+// the rest of the section dims and the source card is spotlit.
+type MenuItem = { label: string; onClick?: () => void };
+let cardMenuEl: HTMLElement | null = null;
+let spotEl: HTMLElement | null = null;
+
+function closeCardMenu(): void {
+    if (cardMenuEl) {
+        const m = cardMenuEl;
+        cardMenuEl = null;
+        m.classList.remove('show');
+        setTimeout(() => m.remove(), 140);
+    }
+    if (spotEl) {
+        spotEl.classList.remove('spot');
+        const rail = document.querySelector('.rail.dim');
+        if (rail) rail.classList.remove('dim');
+        spotEl = null;
+    }
+}
+
+// fullscreen cover art overlay ("View cover art")
+let fsArtOpen = false;
+function showArtFullscreen(src: string): void {
+    if (!src) return;
+    fsArtOpen = true;
+    const back = document.createElement('div');
+    back.className = 'fsback';
+    back.innerHTML = `<img class="fsimg" src="${src}">`;
+    const close = () => {
+        back.classList.remove('show');
+        setTimeout(() => { back.remove(); fsArtOpen = false; }, 180);
+        document.removeEventListener('keydown', esc, true);
+    };
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape' && fsArtOpen) { e.stopPropagation(); close(); } };
+    back.addEventListener('click', close);
+    document.addEventListener('keydown', esc, true);
+    document.body.appendChild(back);
+    requestAnimationFrame(() => requestAnimationFrame(() => back.classList.add('show')));
+}
+
+function openCardMenu(x: number, y: number, source: HTMLElement, c: HomeCard): void {
+    closeCardMenu();
+    spotEl = source;
+    source.classList.add('spot');
+    (source.closest('.rail') as HTMLElement | null)?.classList.add('dim');
+    const playable = !!(c.tralbumId && c.bandId);
+    const items: MenuItem[] = [
+        { label: 'Open album', onClick: () => { if (c.url) ipcRenderer.send('album:open', { url: c.url, artUrl: c.art, title: c.title }); } },
+    ];
+    if (playable) {
+        items.push({ label: 'Add album to queue', onClick: () => { void ipcRenderer.invoke('collection:enqueue', { tralbumId: c.tralbumId, tralbumType: c.tralbumType, bandId: c.bandId }); } });
+    }
+    if (c.art) items.push({ label: 'View cover art', onClick: () => showArtFullscreen(c.art) });
+    const artist = (c.artist || '').trim();
+    if (artist) items.push({ label: 'Search ' + artist, onClick: () => ipcRenderer.send('search:run', { text: artist, mode: 'all' }) });
+    const m = document.createElement('div');
+    m.className = 'cmenu';
+    m.innerHTML =
+        `<div class="cmhead">${c.art ? `<img class="cmart" src="${c.art}">` : ''}` +
+        `<div class="cmmeta"><div class="cmtitle">${escapeHtml(c.title || 'Untitled')}</div>` +
+        `<div class="cmsub">${escapeHtml(c.artist || '')}</div></div></div>`;
+    for (const it of items) {
+        const b = document.createElement('button');
+        b.className = 'cmi';
+        b.textContent = it.label;
+        b.addEventListener('click', () => { closeCardMenu(); if (it.onClick) it.onClick(); });
+        m.appendChild(b);
+    }
+    document.body.appendChild(m);
+    m.style.left = Math.max(6, Math.min(x, window.innerWidth - 240)) + 'px';
+    m.style.top = Math.max(6, Math.min(y, window.innerHeight - m.offsetHeight - 8)) + 'px';
+    cardMenuEl = m;
+    requestAnimationFrame(() => requestAnimationFrame(() => m.classList.add('show')));
+}
+// global closers, like the collection's
+document.addEventListener('click', () => closeCardMenu());
+document.addEventListener('wheel', () => closeCardMenu(), { passive: true });
+document.addEventListener('contextmenu', (e) => {
+    if (cardMenuEl && !cardMenuEl.contains(e.target as Node)) closeCardMenu();
+});
 
 // --- click-to-open loading effect (ported from the collection view) ---------
 // the clicked card's cover blurs and darkens (with a centered lottie) while
@@ -417,7 +506,12 @@ async function loadHome(): Promise<void> {
 }
 
 $('close').addEventListener('click', () => ipcRenderer.send('home:close'));
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') ipcRenderer.send('home:close'); });
+document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    if (cardMenuEl) { closeCardMenu(); return; }  // Esc closes the menu first
+    if (fsArtOpen) return;                         // fullscreen art handles its own Esc
+    ipcRenderer.send('home:close');
+});
 
 ipcRenderer.on('home:shown', () => loadHome());
 ipcRenderer.on('home:load', () => loadHome());
