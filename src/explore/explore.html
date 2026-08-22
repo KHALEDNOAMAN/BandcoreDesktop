@@ -5,6 +5,8 @@
     <title>Bandcore</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; scrollbar-width: none; -ms-overflow-style: none; }
+        :focus, :focus-visible { outline: none; }
+        .card, .artwrap, .art { outline: none; -webkit-tap-highlight-color: transparent; }
         ::-webkit-scrollbar { width: 0; height: 0; display: none; }
         :root {
             --bg: #181a1b; --panel: #161819; --card: #202325; --hover-bg: #24282a;
@@ -74,6 +76,51 @@
         .meta .a { font-size: 0.6875rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 3px; }
         .meta .w { font-size: 0.625rem; color: var(--sub); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .state { padding: 40px 4px; color: var(--muted); font-size: 0.78125rem; }
+        /* click-to-open: cover blurs while main fetches the release */
+        .card.loading { pointer-events: none; }
+        .card.loading .artwrap { overflow: hidden; border-radius: 10px; }
+        .card.loading .art { transform: none !important; filter: blur(14px) brightness(.6); }
+        .card-spin {
+            position: absolute; left: 50%; top: 50%; width: 42px; height: 42px;
+            transform: translate(-50%, -50%); z-index: 4; pointer-events: none;
+        }
+        /* right-click context menu (same look as home/collection) */
+        .cmenu {
+            position: fixed; z-index: 999; min-width: 210px; padding: 4px;
+            background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+            box-shadow: 0 10px 28px rgba(0,0,0,.4);
+            opacity: 0; transform: scale(.96) translateY(-3px);
+            transition: opacity .12s ease, transform .12s ease; pointer-events: none;
+        }
+        .cmenu.show { opacity: 1; transform: none; pointer-events: auto; }
+        .cmhead { display: flex; gap: 10px; align-items: center; padding: 6px; border-bottom: 1px solid var(--line-2); margin-bottom: 4px; }
+        .cmart { width: 36px; height: 36px; border-radius: 5px; object-fit: cover; flex-shrink: 0; }
+        .cmmeta { min-width: 0; }
+        .cmtitle { font-size: 0.75rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .cmsub { font-size: 0.65625rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+        .cmi {
+            display: flex; align-items: center; gap: 9px; width: 100%; padding: 7px 9px;
+            border: none; background: none; color: var(--text); font-size: 0.75rem;
+            text-align: left; border-radius: 6px; cursor: pointer;
+        }
+        .cmi svg { width: 15px; height: 15px; flex-shrink: 0; color: var(--muted); }
+        .cmi:hover { background: var(--hover-bg); color: var(--hover-text); }
+        .cmi:hover svg { color: var(--hover-text); }
+        /* spotlight while the menu is open */
+        #grid.dim .card { filter: brightness(.3) saturate(.5); transition: filter .15s ease; }
+        #grid.dim .card.spot { filter: none; }
+        #grid.dim .card.spot .artwrap { box-shadow: 0 0 0 2px var(--accent); }
+        /* fullscreen cover art */
+        .fsback {
+            position: fixed; inset: 0; z-index: 1000; background: rgba(8,9,10,.92);
+            display: flex; align-items: center; justify-content: center; cursor: zoom-out;
+            opacity: 0; transition: opacity .18s ease;
+        }
+        .fsback.show { opacity: 1; }
+        .fsimg {
+            max-width: min(86vw, 900px); max-height: 88vh; border-radius: 10px;
+            box-shadow: 0 30px 80px rgba(0,0,0,.7);
+        }
         @media (prefers-reduced-motion: reduce) {
             * { animation: none !important; transition: none !important; }
         }
