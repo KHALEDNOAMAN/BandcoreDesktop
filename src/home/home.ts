@@ -39,12 +39,6 @@ const ICON_ART = readIcon('cover_art_fs.svg');
 const ICON_SEARCH = `<svg viewBox="0 0 24 24" fill="none" ${MENU_ICON}><circle cx="10" cy="8" r="5"/><path d="M2 21a8 8 0 0 1 10.434-7.62"/><circle cx="18" cy="18" r="3"/><path d="m22 22-1.9-1.9"/></svg>`;
 const ICON_DL = `<svg viewBox="0 0 24 24" fill="none" ${MENU_ICON}><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>`;
 
-// time-of-day greeting, like the big start-page headers
-const hr = new Date().getHours();
-$('hello').innerHTML =
-    (hr < 5 ? 'Up late' : hr < 12 ? 'Good morning' : hr < 18 ? 'Good afternoon' : 'Good evening') +
-    '<small>Bandcore</small>';
-
 interface HomeCard {
     title: string;
     artist: string;
@@ -515,6 +509,53 @@ function wireRailNav(row: HTMLElement, prevId: string, nextId: string): void {
 wireRailNav(wishRow, 'wish-prev', 'wish-next');
 wireRailNav(feedRow, 'feed-prev', 'feed-next');
 wireRailNav(discoverRow, 'discover-prev', 'discover-next');
+
+// skeleton placeholders: shown once at boot until each rail's real data lands
+// (cached rails replace these within milliseconds; empty rails swap to their
+// state text instead)
+function showSkeletons(): void {
+    recentGrid.innerHTML = '<div class="skel skel-tile"></div>'.repeat(4);
+    const shelf = '<div class="skel-card"><div class="skel skel-art"></div><div class="skel skel-line"></div><div class="skel skel-line" style="width:55%"></div></div>';
+    wishRow.innerHTML = shelf.repeat(8);
+    feedRow.innerHTML = shelf.repeat(8);
+    discoverRow.innerHTML = shelf.repeat(8);
+}
+showSkeletons();
+
+// drag-to-scroll: grab a shelf and swing it, spotify-style. a real drag
+// swallows the click that follows so cards don't open by accident.
+let dragConsumed = false;
+function enableDragScroll(row: HTMLElement): void {
+    let down = false;
+    let startX = 0;
+    let startLeft = 0;
+    let moved = false;
+    row.addEventListener('mousedown', (e) => {
+        if (e.button !== 0) return;
+        down = true; moved = false;
+        startX = e.pageX; startLeft = row.scrollLeft;
+    });
+    window.addEventListener('mousemove', (e) => {
+        if (!down) return;
+        const dx = e.pageX - startX;
+        if (!moved && Math.abs(dx) > 5) { moved = true; row.classList.add('dragging'); }
+        if (moved) row.scrollLeft = startLeft - dx;
+    });
+    window.addEventListener('mouseup', () => {
+        if (down && moved) dragConsumed = true;
+        down = false;
+        row.classList.remove('dragging');
+    });
+}
+enableDragScroll(wishRow);
+enableDragScroll(feedRow);
+enableDragScroll(discoverRow);
+document.addEventListener('click', (e) => {
+    if (!dragConsumed) return;
+    dragConsumed = false;
+    e.stopPropagation();
+    e.preventDefault();
+}, { capture: true });
 
 // "Explore All" opens the full-section view for that shelf
 for (const [id, mode] of [['wish-all', 'wishlist'], ['feed-all', 'feed'], ['discover-all', 'discover']] as const) {

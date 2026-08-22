@@ -26,12 +26,7 @@
 
         /* --- header zone -------------------------------------------------- */
         .top {
-            display: flex; align-items: center; gap: 10px; padding: 22px 26px 4px; flex-shrink: 0;
-        }
-        .hello { font-size: 1.75rem; font-weight: 700; line-height: 1.08; letter-spacing: -.01em; }
-        .hello small {
-            display: block; font-size: 0.75rem; color: var(--sub); font-weight: 400;
-            margin-top: 5px; letter-spacing: .04em;
+            display: flex; align-items: center; gap: 10px; padding: 14px 26px 0; flex-shrink: 0;
         }
         .spacer { flex: 1; }
         /* ghost close: only exists when you look for it */
@@ -63,11 +58,31 @@
             margin-left: auto; background: none; border: none; cursor: pointer;
             color: var(--muted); font-size: 0.6875rem; font-weight: 600;
             letter-spacing: .05em; text-transform: uppercase; padding: 2px 4px; border-radius: 4px;
-            opacity: 0; transition: color .15s ease, opacity .2s ease;
+            opacity: .45; transition: color .15s ease, opacity .2s ease;
         }
         .rail:hover h2 .exploreall { opacity: 1; }
         .rail h2 .exploreall:hover { color: var(--accent); }
         .state { padding: 30px 4px; color: var(--muted); font-size: 0.75rem; white-space: nowrap; }
+
+        /* skeleton shimmer while a rail loads */
+        .skel { position: relative; overflow: hidden; background: var(--card); border-radius: 10px; }
+        .skel::after {
+            content: ''; position: absolute; inset: 0;
+            background: linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,.055), rgba(255,255,255,0));
+            transform: translateX(-100%); animation: skel 1.4s infinite;
+        }
+        @keyframes skel { to { transform: translateX(100%); } }
+        .skel-card { width: 150px; flex-shrink: 0; }
+        .skel-art { width: 150px; height: 150px; }
+        .skel-line { height: 12px; margin-top: 9px; border-radius: 4px; }
+        .skel-tile { height: 64px; }
+
+        /* drag-to-scroll feedback */
+        .row.dragging, .row.dragging * { cursor: grabbing !important; }
+        .art, .bgart, .tile .art { -webkit-user-drag: none; user-select: none; }
+        /* tactile press */
+        .card:active .artwrap { transform: translateY(-2px) scale(.98); }
+        .tile:active { transform: scale(.985); }
         /* click-to-open: cover blurs while main fetches the release */
         .card.loading, .tile.loading { pointer-events: none; }
         /* the blur samples past the img's rounded corners - clip at the wrapper */
@@ -286,7 +301,6 @@
 </head>
 <body>
     <div class="top">
-        <div class="hello" id="hello"></div>
         <div class="spacer"></div>
         <button class="closebtn" id="close" title="Close home">✕</button>
     </div>
