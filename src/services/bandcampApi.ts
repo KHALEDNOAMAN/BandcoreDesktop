@@ -972,7 +972,7 @@ art: hiResArt(artId ? `https://f4.bcbits.com/img/a${artId}_9.jpg` : ''),
      * page's discover rail. rows carry resolver handles so they can play
      * straight from the rail.
      */
-    async fetchDiscover(size = 24): Promise<{ ok: boolean; items: SearchResultItem[]; error?: string }> {
+    async fetchDiscover(size = 24, cursor = '*'): Promise<{ ok: boolean; items: SearchResultItem[]; nextCursor?: string; error?: string }> {
         const session = this.getSession();
         if (!session) return { ok: false, items: [], error: 'no session' };
         this.noteInteractive(); // user-driven: the crawler yields
@@ -981,7 +981,7 @@ art: hiResArt(artId ? `https://f4.bcbits.com/img/a${artId}_9.jpg` : ''),
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    category_id: 0, cursor: '*', geoname_id: 0,
+                    category_id: 0, cursor, geoname_id: 0,
                     include_result_types: ['a'], size, slice: 'top',
                     tag_norm_names: [], time_facet_id: null,
                 }),
@@ -1027,6 +1027,7 @@ art: hiResArt(artId ? `https://f4.bcbits.com/img/a${artId}_9.jpg` : ''),
                     }
                     return item;
                 }).filter((i: SearchResultItem) => i.name && i.url),
+                nextCursor: String(d?.cursor ?? d?.next_cursor ?? '') || undefined,
             };
         } catch (e: any) {
             return { ok: false, items: [], error: e?.message || 'discover fetch failed' };

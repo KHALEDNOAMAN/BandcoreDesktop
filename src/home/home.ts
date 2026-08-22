@@ -246,6 +246,11 @@ wireRailNav(wishRow, 'wish-prev', 'wish-next');
 wireRailNav(feedRow, 'feed-prev', 'feed-next');
 wireRailNav(discoverRow, 'discover-prev', 'discover-next');
 
+// "Explore All" opens the full-section view for that shelf
+for (const [id, mode] of [['wish-all', 'wishlist'], ['feed-all', 'feed'], ['discover-all', 'discover']] as const) {
+    $(id).addEventListener('click', () => ipcRenderer.send('app:explore', mode));
+}
+
 // --- scroll-to-end loading ---------------------------------------------------
 // wishlist pages through bandcamp (network continuation) once its client-side
 // buffer is drained; the other shelves just append their buffer.

@@ -252,6 +252,7 @@ let feedView: BrowserView;
 let feedVisible = false;
 let homeView: BrowserView;
 let homeVisible = false;
+let exploreVisible = false;
 let artistView: BrowserView;
 let artistVisible = false;
 // forward button reopens the overlay the user backed out of (the mirror of
@@ -260,7 +261,8 @@ let closedOverlay: { type: 'album' | 'artist'; url: string } | null = null;
 let openOverlayUrl = '';
 let openOverlayType: 'album' | 'artist' | '' = '';
 let artistYearToken = 0; // bumps on each artist open; stale year streams abort
-let albumView: BrowserView;
+    let albumView: BrowserView;
+    let exploreView: BrowserView;
 let albumVisible = false;
 let spotlightWin: BrowserWindow | null = null; // macOS-spotlight-style search popup
 
@@ -332,6 +334,7 @@ function adjustContentViews() {
     if (collectionView && collectionVisible) collectionView.setBounds(contentRect);
     if (feedView && feedVisible) feedView.setBounds(contentRect);
     if (homeView && homeVisible) homeView.setBounds(contentRect);
+    if (exploreView && exploreVisible) exploreView.setBounds(contentRect);
     if (artistView && artistVisible) artistView.setBounds(contentRect);
     if (albumView && albumVisible) albumView.setBounds(contentRect);
 }
@@ -386,7 +389,7 @@ function closeCollection() {
 // open the custom collection overlay (one overlay at a time, like the toggle)
 function openCollection() {
     if (collectionVisible) return;
-    closeHome(); closeFeed(); closeSearch(); // one overlay at a time
+    closeHome(); closeFeed(); closeSearch(); closeExplore(); // one overlay at a time
     collectionVisible = true;
     mainWindow.addBrowserView(collectionView);
     mainWindow.setTopBrowserView(headerView); // keep header/player above it
@@ -427,6 +430,23 @@ function closeHome() {
     if (homeVisible && homeView) mainWindow.removeBrowserView(homeView);
     homeVisible = false;
     if (headerView && !headerView.webContents.isDestroyed()) headerView.webContents.send('home:state', false);
+}
+
+// the explore view: the full list behind a home page section. behaves like
+// home - a full-size overlay page above the content.
+function openExplore(mode: string) {
+    if (!mode || !exploreView || exploreView.webContents.isDestroyed()) return;
+    closeHome(); closeCollection(); closeFeed(); closeSearch(); closeExplore(); // one overlay at a time
+    exploreVisible = true;
+    mainWindow.addBrowserView(exploreView);
+    mainWindow.setTopBrowserView(headerView); // keep header/player above it
+    mainWindow.setTopBrowserView(playerView);
+    adjustContentViews();
+    exploreView.webContents.send('explore:shown', mode);
+}
+function closeExplore() {
+    if (exploreVisible && exploreView) mainWindow.removeBrowserView(exploreView);
+    exploreVisible = false;
 }
 
 // close the artist view (its own back button / any overlay toggle)
@@ -640,7 +660,7 @@ async function refreshDynamicAccent(wc: Electron.WebContents): Promise<void> {
     } catch (err) { /* view already gone */ }
 }
 function applyDynamicAccentToChrome(): void {
-    for (const w of [headerView, playerView, collectionView, feedView, homeView, artistView, albumView,
+    for (const w of [headerView, playerView, collectionView, feedView, homeView, exploreView, artistView, albumView,
         settingsWindow, spotlightWin]) {
         if (w && !w.webContents.isDestroyed()) refreshDynamicAccent(w.webContents);
     }
@@ -1029,6 +1049,12 @@ async function init() {
     homeView.setBackgroundColor(chromeBg());
     homeView.webContents.on('dom-ready', () => applyChromeTheme(homeView.webContents));
 
+    exploreView = new BrowserView({
+        webPreferences: { nodeIntegration: true, contextIsolation: false, devTools: devMode }
+    });
+    exploreView.setBackgroundColor(chromeBg());
+    exploreView.webContents.on('dom-ready', () => applyChromeTheme(exploreView.webContents));
+
     artistView = new BrowserView({
         webPreferences: { nodeIntegration: true, contextIsolation: false, devTools: devMode }
     });
@@ -1062,9 +1088,10 @@ async function init() {
     collectionView.webContents.loadFile(path.join(__dirname, 'collection', 'collection.html'));
     feedView.webContents.loadFile(path.join(__dirname, 'feed', 'feed.html'));
     homeView.webContents.loadFile(path.join(__dirname, 'home', 'home.html'));
+    exploreView.webContents.loadFile(path.join(__dirname, 'explore', 'explore.html'));
     artistView.webContents.loadFile(path.join(__dirname, 'artist', 'artist.html'));
     // shortcuts work no matter which pane has focus
-    for (const v of [headerView, playerView, collectionView, feedView, homeView, artistView]) wireShortcutsOn(v.webContents);
+    for (const v of [headerView, playerView, collectionView, feedView, homeView, exploreView, artistView]) wireShortcutsOn(v.webContents);
 
     // opt-in (settings, off by default): pre-fetch the collection in the background
     // right after startup so opening the view is instant. small delay so the fetch
@@ -1406,6 +1433,7 @@ async function init() {
             closeFeed();
             closeHome();
             closeSearch();
+            closeExplore();
             closedOverlay = null;
             hardLoad(url);
         }
@@ -1698,7 +1726,7 @@ async function init() {
     ipcMain.on('feed:toggle', () => {
         feedVisible = !feedVisible;
         if (feedVisible) {
-            closeCollection(); closeSearch(); closeHome(); // one overlay at a time
+            closeCollection(); closeSearch(); closeHome(); closeExplore(); // one overlay at a time
             mainWindow.addBrowserView(feedView);
             mainWindow.setTopBrowserView(headerView); // keep header/player above it
             mainWindow.setTopBrowserView(playerView);
@@ -1835,6 +1863,100 @@ async function init() {
             return { items: [], done: true };
         } finally {
             wishPageBusy = false;
+        }
+    });
+
+    // explore view: the full list behind a home page section. gathers every
+    // item for the requested section (paging where the api allows) and streams
+    // progress to the view while it works.
+    ipcMain.on('explore:log', (_e, msg: unknown) => { if (devMode) console.log('[bcrpc:explore] ' + String(msg)); });
+    ipcMain.on('app:explore', (_e, mode: unknown) => openExplore(String(mode || '')));
+    ipcMain.on('explore:close', () => closeExplore());
+    const progress = (n: number) => {
+        if (exploreVisible && exploreView && !exploreView.webContents.isDestroyed()) exploreView.webContents.send('explore:progress', n);
+    };
+    const mapWishItem = (c: any) => ({
+        title: c.title, artist: c.artist, art: c.art, url: c.url, year: c.year || 0,
+        tralbumId: c.tralbumId, tralbumType: c.tralbumType, bandId: c.bandId,
+    });
+    ipcMain.handle('explore:list', async (_e, mode: unknown) => {
+        const m = String(mode || '');
+        try {
+            if (m === 'wishlist') {
+                // page through the whole wishlist (500/page, hard caps for safety)
+                let token = ''; let pages = 0;
+                const out: any[] = [];
+                const seen = new Set<string>();
+                while (pages < 12 && out.length < 6000) {
+                    const res = await bandcampApi.fetchWishlistPage(token);
+                    for (const c of res.items) {
+                        const key = c.tralbumType + c.tralbumId;
+                        if (seen.has(key)) continue;
+                        seen.add(key);
+                        out.push(mapWishItem(c));
+                    }
+                    token = res.lastToken;
+                    pages++;
+                    progress(out.length);
+                    if (!res.more || !res.lastToken) break;
+                }
+                if (devMode) console.log('[bcrpc] explore:wishlist ' + out.length + ' items in ' + pages + ' pages');
+                return { ok: true, items: out };
+            }
+            if (m === 'feed') {
+                // walk backwards through feed pages until they run out
+                let olderThan = 0; let pages = 0; let firstError = '';
+                const out: any[] = [];
+                const seen = new Set<string>();
+                while (pages < 10 && out.length < 500) {
+                    const res = await bandcampApi.fetchFeed(olderThan);
+                    if (!res.ok) { firstError = res.error || 'feed unavailable'; break; }
+                    if (!res.stories.length) break;
+                    for (const s of res.stories) {
+                        const key = s.tralbumType + s.tralbumId;
+                        if (seen.has(key)) continue;
+                        seen.add(key);
+                        out.push({
+                            title: s.title, artist: s.artist, art: s.art, url: s.url, via: s.via,
+                            year: Number(s.year) || bandcampApi.getReleaseYear(s.tralbumType, s.tralbumId),
+                            tralbumId: s.tralbumId, tralbumType: s.tralbumType, bandId: s.bandId, trackId: s.trackId,
+                        });
+                    }
+                    olderThan = res.oldest;
+                    pages++;
+                    progress(out.length);
+                    if (!res.oldest) break;
+                }
+                if (devMode) console.log('[bcrpc] explore:feed ' + out.length + ' items in ' + pages + ' pages');
+                if (!out.length && firstError) return { ok: false, items: [], error: firstError };
+                return { ok: true, items: out.slice(0, 500) };
+            }
+            if (m === 'discover') {
+                // follow the discover cursor a few pages
+                let cursor = '*'; let pages = 0; let firstError = '';
+                const out: any[] = [];
+                while (pages < 5 && out.length < 250) {
+                    const res = await bandcampApi.fetchDiscover(50, cursor);
+                    if (!res.ok) { firstError = res.error || 'discover unavailable'; break; }
+                    for (const i of res.items) {
+                        out.push({
+                            title: i.name, artist: i.artist, art: i.art, url: i.url,
+                            year: (i as any).year || 0,
+                            tralbumId: (i as any).tralbumId || '', bandId: (i as any).bandId || '',
+                        });
+                    }
+                    cursor = res.nextCursor || '';
+                    pages++;
+                    progress(out.length);
+                    if (!cursor) break;
+                }
+                if (devMode) console.log('[bcrpc] explore:discover ' + out.length + ' items in ' + pages + ' pages');
+                if (!out.length && firstError) return { ok: false, items: [], error: firstError };
+                return { ok: true, items: out };
+            }
+            return { ok: false, items: [], error: 'unknown section' };
+        } catch (e: any) {
+            return { ok: false, items: [], error: e?.message || 'could not load' };
         }
     });
     ipcMain.handle('home:data', async () => {
