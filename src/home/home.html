@@ -163,13 +163,15 @@
         /* --- shelves (wishlist / feed / discover) -------------------------- */
         .rowwrap { position: relative; }
         .row { display: flex; gap: 16px; overflow-x: auto; padding: 8px 12px 10px; margin: 0 -10px; }
-                /* smart edge fades: hint at more content, only when there is any */
+                /* smart edge fades: hint at more content, only when there is any.
+           they track the row's full clip box (the row bleeds 10px past the
+           wrapper via negative margins) */
         .fade {
-            position: absolute; top: -8px; bottom: -10px; width: 60px; z-index: 2;
+            position: absolute; top: -8px; bottom: -10px; width: 72px; z-index: 2;
             pointer-events: none; opacity: 0; transition: opacity .28s ease;
         }
-        .fade.l { left: -2px; background: linear-gradient(to right, #000 14%, rgba(0,0,0,0)); }
-        .fade.r { right: -2px; background: linear-gradient(to left, #000 14%, rgba(0,0,0,0)); }
+        .fade.l { left: -10px; background: linear-gradient(to right, #000 14%, rgba(0,0,0,0)); }
+        .fade.r { right: -10px; background: linear-gradient(to left, #000 14%, rgba(0,0,0,0)); }
         .fade.on { opacity: 1; }
         /* floating edge chevrons - appear only while the shelf is hovered */
         .edge {
