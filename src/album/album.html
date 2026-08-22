@@ -412,6 +412,12 @@
             if (ctxMenu && !ctxMenu.contains(e.target)) closeTrackMenu();
         });
         document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeTrackMenu(); });
+        // esc backs out of the album view (unless one of our menus/overlays ate it)
+        document.addEventListener('keydown', (e) => {
+            if (e.key !== 'Escape') return;
+            if (document.querySelector('.cmenu') || document.querySelector('.fsback')) return;
+            ipcRenderer.send('app:back');
+        });
 
         // cover art context menu (right-click the hero art): view fullscreen,
         // download, or copy to the clipboard. same look as the track menu,

@@ -433,9 +433,12 @@ function closeHome() {
 }
 
 // the explore view: the full list behind a home page section. behaves like
-// home - a full-size overlay page above the content.
+// home - a full-size overlay page above the content. if home was open when
+// explore launched, an explicit close re-opens it afterwards.
+let homeBehindExplore = false;
 function openExplore(mode: string) {
     if (!mode || !exploreView || exploreView.webContents.isDestroyed()) return;
+    homeBehindExplore = homeVisible;
     closeHome(); closeCollection(); closeFeed(); closeSearch(); closeExplore(); // one overlay at a time
     exploreVisible = true;
     mainWindow.addBrowserView(exploreView);
@@ -444,9 +447,12 @@ function openExplore(mode: string) {
     adjustContentViews();
     exploreView.webContents.send('explore:shown', mode);
 }
-function closeExplore() {
+function closeExplore(restoresHome = false) {
+    const wasBehind = homeBehindExplore;
+    homeBehindExplore = false;
     if (exploreVisible && exploreView) mainWindow.removeBrowserView(exploreView);
     exploreVisible = false;
+    if (restoresHome && wasBehind && !homeVisible) openHome();
 }
 
 // close the artist view (its own back button / any overlay toggle)
@@ -1400,6 +1406,7 @@ async function init() {
     ipcMain.on('app:back', () => {
         if (albumVisible) { closedOverlay = { type: 'album', url: openOverlayUrl }; closeAlbumView(); return; }
         if (artistVisible) { closedOverlay = { type: 'artist', url: openOverlayUrl }; closeArtistView(); return; }
+        if (exploreVisible) { closeExplore(true); return; } // unwind to home if it launched the explore view
         closedOverlay = null;
         navGo('back');
     });
@@ -1871,7 +1878,7 @@ async function init() {
     // progress to the view while it works.
     ipcMain.on('explore:log', (_e, msg: unknown) => { if (devMode) console.log('[bcrpc:explore] ' + String(msg)); });
     ipcMain.on('app:explore', (_e, mode: unknown) => openExplore(String(mode || '')));
-    ipcMain.on('explore:close', () => closeExplore());
+    ipcMain.on('explore:close', () => closeExplore(true));
     const progress = (n: number) => {
         if (exploreVisible && exploreView && !exploreView.webContents.isDestroyed()) exploreView.webContents.send('explore:progress', n);
     };
