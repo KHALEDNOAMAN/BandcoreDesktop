@@ -12,6 +12,7 @@
             --line: #2a2e30; --line-2: #1e2224; --scroll: #3a3f42;
             --text: #e8e6e3; --text-2: #cfcac2; --muted: #9a968e; --sub: #848079;
             --accent: #1da0c3; --hover-text: #ffffff;
+            --ease: cubic-bezier(.22,.61,.36,1);
         }
         html, body { height: 100%; }
         body {
@@ -19,64 +20,168 @@
             font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Roboto, sans-serif;
             display: flex; flex-direction: column; user-select: none;
         }
+
+        /* --- header zone -------------------------------------------------- */
         .top {
-            display: flex; align-items: center; gap: 10px; padding: 16px 18px 8px; flex-shrink: 0;
+            display: flex; align-items: center; gap: 10px; padding: 22px 26px 4px; flex-shrink: 0;
         }
-        .hello { font-size: 1.375rem; font-weight: 700; line-height: 1.1; }
+        .hello { font-size: 1.75rem; font-weight: 700; line-height: 1.08; letter-spacing: -.01em; }
         .hello small {
             display: block; font-size: 0.75rem; color: var(--sub); font-weight: 400;
-            margin-top: 3px; letter-spacing: .02em;
+            margin-top: 5px; letter-spacing: .04em;
         }
         .spacer { flex: 1; }
+        /* ghost close: only exists when you look for it */
         .closebtn {
             width: 30px; height: 30px; border: none; border-radius: 50%; cursor: pointer;
             background: var(--hover-bg); color: var(--muted); font-size: 0.8125rem; line-height: 1;
+            opacity: 0; transition: opacity .25s ease, background .15s ease, color .15s ease;
         }
+        .top:hover .closebtn, .closebtn:focus-visible { opacity: 1; }
         .closebtn:hover { background: var(--accent); color: var(--hover-text); }
-        .stats {
-            display: flex; gap: 8px; padding: 0 18px 4px; flex-wrap: wrap; flex-shrink: 0;
+
+        .scroll { flex: 1; overflow-y: auto; padding: 10px 26px 30px; }
+
+        /* --- sections: shared --------------------------------------------- */
+        .rail { margin-top: 28px; animation: riseIn .55s var(--ease) both; }
+        .rail:nth-child(2) { animation-delay: .07s; }
+        .rail:nth-child(3) { animation-delay: .14s; }
+        .rail:nth-child(4) { animation-delay: .21s; }
+        @keyframes riseIn {
+            from { opacity: 0; transform: translateY(16px); }
+            to   { opacity: 1; transform: none; }
         }
-        .stat {
-            background: var(--card); border: 1px solid var(--line); border-radius: 999px;
-            padding: 4px 12px; font-size: 0.6875rem; color: var(--muted);
-        }
-        .stat b { color: var(--text); font-weight: 600; }
-        .scroll { flex: 1; overflow-y: auto; padding: 4px 18px 22px; }
-        .rail { margin-top: 18px; }
         .rail h2 {
-            font-size: 0.875rem; font-weight: 600; margin-bottom: 10px;
+            font-size: 0.9375rem; font-weight: 700; margin-bottom: 12px; letter-spacing: .01em;
             display: flex; align-items: baseline; gap: 8px;
         }
         .rail h2 .sub { font-size: 0.6875rem; color: var(--sub); font-weight: 400; }
-        .rail h2 .railspace { flex: 1; }
-        .rail h2 .navbtn {
-            width: 24px; height: 24px; border: none; border-radius: 50%;
-            background: var(--hover-bg); color: var(--muted); cursor: pointer;
-            font-size: 0.875rem; line-height: 1; flex-shrink: 0;
-            display: inline-flex; align-items: center; justify-content: center;
+        .state { padding: 30px 4px; color: var(--muted); font-size: 0.75rem; white-space: nowrap; }
+
+        /* --- jump back in: shortcut tiles ---------------------------------- */
+        .tiles .tilegrid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px;
         }
-        .rail h2 .navbtn:hover { background: var(--accent); color: var(--hover-text); }
-        .row { display: flex; gap: 14px; overflow-x: auto; padding-bottom: 6px; }
-        .card { width: 132px; flex-shrink: 0; cursor: pointer; }
-        .artwrap { position: relative; }
+        .tile {
+            position: relative; display: flex; align-items: center; gap: 12px; min-width: 0;
+            background: rgba(32,35,37,.55); border-radius: 10px; padding: 8px 96px 8px 8px;
+            cursor: pointer; overflow: hidden;
+            transition: background .18s ease, transform .18s var(--ease);
+        }
+        .tile:hover { background: var(--hover-bg); transform: translateX(2px); }
+        .tile .art {
+            width: 48px; height: 48px; border-radius: 7px; object-fit: cover; display: block;
+            background: var(--line); flex-shrink: 0;
+        }
+        .tile .tt { min-width: 0; }
+        .tile .t { font-size: 0.8125rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .tile .a { font-size: 0.6875rem; color: var(--muted); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .tile .play, .tile .enq {
+            position: absolute; top: 50%; transform: translateY(-50%) translateX(6px);
+            width: 30px; height: 30px; border: none; border-radius: 50%;
+            background: var(--accent); color: #fff; cursor: pointer;
+            font-size: 0.75rem; line-height: 1; display: inline-flex; align-items: center; justify-content: center;
+            opacity: 0; transition: opacity .18s ease, transform .18s var(--ease), filter .12s ease;
+        }
+        .tile .play { right: 52px; }
+        .tile .enq { right: 14px; }
+        .tile:hover .play, .tile:hover .enq { opacity: 1; transform: translateY(-50%) translateX(0); }
+        .tile .play:hover, .tile .enq:hover { filter: brightness(1.15); }
+
+        /* --- shelves (wishlist / feed / discover) -------------------------- */
+        .rowwrap { position: relative; }
+        .row { display: flex; gap: 16px; overflow-x: auto; padding: 8px 2px 10px; }
+        /* floating edge chevrons - appear only while the shelf is hovered */
+        .edge {
+            position: absolute; top: 38%; z-index: 3;
+            width: 34px; height: 34px; border: none; border-radius: 50%;
+            background: rgba(16,18,19,.88); color: var(--text); cursor: pointer;
+            font-size: 1.05rem; line-height: 1; display: inline-flex; align-items: center; justify-content: center;
+            box-shadow: 0 4px 16px rgba(0,0,0,.45);
+            opacity: 0; pointer-events: none; transform: translateY(-50%) scale(.9);
+            transition: opacity .22s ease, transform .22s var(--ease), background .15s ease;
+        }
+        .edge.l { left: -8px; }
+        .edge.r { right: -8px; }
+        .rail:hover .edge:not(.dim) { opacity: 1; pointer-events: auto; transform: translateY(-50%) scale(1); }
+        .edge:hover { background: var(--accent); }
+        .edge.dim { opacity: 0 !important; pointer-events: none !important; }
+
+        /* --- standard shelf card (wishlist) -------------------------------- */
+        .shelf .card, .feed .card, .discover .card {
+            flex-shrink: 0; cursor: pointer;
+            animation: riseIn .45s var(--ease) both;
+        }
+        .shelf .card { width: 150px; }
+        .artwrap {
+            position: relative; border-radius: 10px; overflow: visible;
+            transition: transform .22s var(--ease), filter .22s ease;
+        }
         .art {
-            width: 132px; height: 132px; border-radius: 8px; background: var(--line);
-            object-fit: cover; display: block; transition: transform .12s ease;
+            width: 150px; height: 150px; border-radius: 10px; background: var(--line);
+            object-fit: cover; display: block;
+            transition: transform .35s var(--ease);
         }
-        .card:hover .art { transform: scale(1.03); outline: 2px solid var(--accent); }
+        .artwrap::after {
+            /* soft depth under every cover, revealed on lift */
+            content: ''; position: absolute; inset: 0; border-radius: 10px;
+            box-shadow: 0 14px 30px rgba(0,0,0,.5); opacity: 0;
+            transition: opacity .22s ease; pointer-events: none;
+        }
+        .card:hover .artwrap { transform: translateY(-4px); }
+        .card:hover .artwrap::after { opacity: 1; }
+        .card:hover .art { transform: scale(1.04); }
         .play, .enq {
-            position: absolute; width: 30px; height: 30px; border: none; border-radius: 50%;
-            background: rgba(24,26,27,.82); color: #fff; line-height: 1; cursor: pointer;
-            opacity: 0; transition: opacity .12s ease;
+            position: absolute; width: 32px; height: 32px; border: none; border-radius: 50%;
+            background: var(--accent); color: #fff; line-height: 1; cursor: pointer;
+            display: inline-flex; align-items: center; justify-content: center;
+            opacity: 0; transform: translateY(8px);
+            transition: opacity .2s ease, transform .2s var(--ease), filter .12s ease;
         }
-        .play { right: 6px; bottom: 6px; font-size: 0.8125rem; }
-        .enq { right: 6px; top: 6px; font-size: 1.125rem; }
-        .card:hover .play, .card:hover .enq { opacity: 1; }
-        .play:hover, .enq:hover { background: var(--accent); }
-        .meta .t { font-size: 0.75rem; margin-top: 7px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .meta .a { font-size: 0.6875rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
-        .meta .w { font-size: 0.625rem; color: var(--sub); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .state { padding: 26px 4px; color: var(--muted); font-size: 0.75rem; white-space: nowrap; }
+        .play { right: 8px; bottom: 8px; font-size: 0.8125rem; }
+        .enq { right: 8px; top: 8px; font-size: 1.0625rem; transform: translateY(-8px); }
+        .card:hover .play { opacity: 1; transform: translateY(0); }
+        .card:hover .enq { opacity: 1; transform: translateY(0); }
+        .play:hover, .enq:hover { filter: brightness(1.15); }
+        .meta { padding-right: 4px; }
+        .meta .t { font-size: 0.78125rem; font-weight: 600; margin-top: 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .meta .a { font-size: 0.6875rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 3px; }
+        .meta .w { font-size: 0.625rem; color: var(--sub); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        /* --- feed variant: artist-forward + time accent --------------------- */
+        .feed .card { width: 150px; }
+        .feed .meta .who { font-size: 0.8125rem; font-weight: 700; margin-top: 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .feed .meta .who .when { font-size: 0.5625rem; font-weight: 600; color: var(--accent); letter-spacing: .05em; text-transform: uppercase; margin-left: 6px; }
+        .feed .meta .what { font-size: 0.6875rem; color: var(--muted); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .feed .meta .via { font-size: 0.625rem; color: var(--sub); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        /* --- discover variant: editorial feature cards ---------------------- */
+        .discover .card { width: 180px; }
+        .discover .art { width: 180px; height: 180px; }
+        .discover .artwrap::before {
+            content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 62%;
+            background: linear-gradient(to top, rgba(10,11,12,.92) 20%, rgba(10,11,12,0));
+            border-radius: 0 0 10px 10px; pointer-events: none; z-index: 1;
+            opacity: .95; transition: opacity .22s ease;
+        }
+        .discover .card:hover .artwrap::before { opacity: 1; }
+        .discover .ovl {
+            position: absolute; left: 0; right: 0; bottom: 0; z-index: 2; padding: 12px;
+        }
+        .discover .ovl .t {
+            font-size: 0.84375rem; font-weight: 700; color: #fff; line-height: 1.25;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .discover .ovl .a {
+            font-size: 0.65625rem; color: rgba(255,255,255,.72); margin-top: 3px;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .discover .ovl .a b { color: rgba(255,255,255,.92); font-weight: 600; }
+        .discover .play, .discover .enq { z-index: 3; }
+
+        @media (prefers-reduced-motion: reduce) {
+            * { animation: none !important; transition: none !important; }
+        }
     </style>
 </head>
 <body>
@@ -85,39 +190,34 @@
         <div class="spacer"></div>
         <button class="closebtn" id="close" title="Close home">✕</button>
     </div>
-    <div class="stats" id="stats"></div>
     <div class="scroll" id="scroll">
-        <section class="rail" id="rail-recent">
-            <h2>Recently collected <span class="sub" id="recent-sub"></span>
-                <span class="railspace"></span>
-                <button class="navbtn" id="recent-prev" title="Scroll left">‹</button>
-                <button class="navbtn" id="recent-next" title="Scroll right">›</button>
-            </h2>
-            <div class="row" id="recent"><div class="state">…</div></div>
+        <section class="rail tiles" id="rail-recent">
+            <h2>Jump back in <span class="sub" id="recent-sub"></span></h2>
+            <div class="tilegrid" id="recent"><div class="state">…</div></div>
         </section>
-        <section class="rail" id="rail-wish">
-            <h2>Wishlist <span class="sub" id="wish-sub"></span>
-                <span class="railspace"></span>
-                <button class="navbtn" id="wish-prev" title="Scroll left">‹</button>
-                <button class="navbtn" id="wish-next" title="Scroll right">›</button>
-            </h2>
-            <div class="row" id="wish"><div class="state">…</div></div>
+        <section class="rail shelf" id="rail-wish">
+            <h2>Wishlist <span class="sub" id="wish-sub"></span></h2>
+            <div class="rowwrap">
+                <button class="edge l" id="wish-prev" title="Scroll left">‹</button>
+                <div class="row" id="wish"><div class="state">…</div></div>
+                <button class="edge r" id="wish-next" title="Scroll right">›</button>
+            </div>
         </section>
-        <section class="rail" id="rail-feed">
-            <h2>Latest from your feed <span class="sub" id="feed-sub"></span>
-                <span class="railspace"></span>
-                <button class="navbtn" id="feed-prev" title="Scroll left">‹</button>
-                <button class="navbtn" id="feed-next" title="Scroll right">›</button>
-            </h2>
-            <div class="row" id="feed"><div class="state">…</div></div>
+        <section class="rail feed" id="rail-feed">
+            <h2>Latest from your feed <span class="sub" id="feed-sub"></span></h2>
+            <div class="rowwrap">
+                <button class="edge l" id="feed-prev" title="Scroll left">‹</button>
+                <div class="row" id="feed"><div class="state">…</div></div>
+                <button class="edge r" id="feed-next" title="Scroll right">›</button>
+            </div>
         </section>
-        <section class="rail" id="rail-discover">
-            <h2>Discover <span class="sub" id="discover-sub"></span>
-                <span class="railspace"></span>
-                <button class="navbtn" id="discover-prev" title="Scroll left">‹</button>
-                <button class="navbtn" id="discover-next" title="Scroll right">›</button>
-            </h2>
-            <div class="row" id="discover"><div class="state">…</div></div>
+        <section class="rail discover" id="rail-discover">
+            <h2>Discover <span class="sub" id="discover-sub"></span></h2>
+            <div class="rowwrap">
+                <button class="edge l" id="discover-prev" title="Scroll left">‹</button>
+                <div class="row" id="discover"><div class="state">…</div></div>
+                <button class="edge r" id="discover-next" title="Scroll right">›</button>
+            </div>
         </section>
     </div>
 

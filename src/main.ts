@@ -1749,6 +1749,7 @@ async function init() {
                         title: s.title, artist: s.artist, art: s.art, url: s.url, via: s.via,
                         tralbumId: s.tralbumId, tralbumType: s.tralbumType, bandId: s.bandId, trackId: s.trackId,
                         year: Number(s.year) || bandcampApi.getReleaseYear(s.tralbumType, s.tralbumId),
+                        date: Number(s.date) || 0,
                     })), feedError: '' }
                     : { feed: [], feedError: r.error || 'feed unavailable' })
                 .catch((e: any) => ({ feed: [], feedError: e?.message || 'feed unavailable' })),

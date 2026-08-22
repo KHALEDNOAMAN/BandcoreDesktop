@@ -1,15 +1,15 @@
 import { ipcRenderer } from 'electron';
 
-// home page: a spotify-style start page (greeting, stats, and four horizontal
-// rails: recently collected, wishlist, your feed, and bandcamp discover). local
-// rails come from home:data instantly; the network rails (home:rails) are
-// cached in main. each rail plays/navigates like the feed view.
+// home page: a spotify-style start page. "jump back in" renders shortcut tiles,
+// wishlist/feed/discover render shelves - each section with its own card
+// design. local data (home:data) renders instantly; network rails (home:rails)
+// are disk-cached in main so startup is instant. big lists render capped (60
+// cards) and append client-side as you scroll near a shelf's end.
 
 ipcRenderer.send('home:log', 'booted');
 
 const $ = (id: string) => document.getElementById(id) as HTMLElement;
-const statsEl = $('stats');
-const recentRow = $('recent');
+const recentGrid = $('recent');
 const wishRow = $('wish');
 const feedRow = $('feed');
 const discoverRow = $('discover');
@@ -35,85 +35,193 @@ interface HomeCard {
     trackId?: string;
     via?: string;
     year?: number;
+    /** epoch seconds when the story happened (feed only) */
+    date?: number;
 }
 
-function createCard(c: HomeCard): HTMLElement {
-    const card = document.createElement('div');
-    card.className = 'card';
-    card.title = c.title;
+/** compact relative time for feed accents ("2h", "3d"). */
+function relTime(epochSec?: number): string {
+    if (!epochSec || epochSec <= 0) return '';
+    const mins = Math.max(1, Math.round((Date.now() / 1000 - epochSec) / 60));
+    if (mins < 60) return `${mins}m`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h`;
+    return `${Math.floor(hours / 24)}d`;
+}
 
+// shared play / enqueue buttons (only when the item carries resolver handles;
+// discover rows without them just navigate on click)
+function wireActions(wrap: HTMLElement, c: HomeCard): void {
+    const playable = !!(c.tralbumId && c.bandId);
+    if (!playable) return;
+    const play = document.createElement('button');
+    play.className = 'play';
+    play.title = 'play';
+    play.textContent = '▶';
+    play.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        await ipcRenderer.invoke('collection:play', { tralbumId: c.tralbumId, tralbumType: c.tralbumType, bandId: c.bandId, trackId: c.trackId || undefined });
+    });
+    wrap.appendChild(play);
+
+    const enq = document.createElement('button');
+    enq.className = 'enq';
+    enq.title = 'add to queue';
+    enq.textContent = '+';
+    enq.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const prev = enq.textContent;
+        const res = await ipcRenderer.invoke('collection:enqueue', { tralbumId: c.tralbumId, tralbumType: c.tralbumType, bandId: c.bandId });
+        enq.textContent = res && res.ok ? '✓' : '×';
+        setTimeout(() => { enq.textContent = prev; }, 900);
+    });
+    wrap.appendChild(enq);
+}
+
+function baseCard(c: HomeCard): HTMLElement {
+    const el = document.createElement('div');
+    el.title = c.title;
+    el.addEventListener('click', () => { if (c.url) ipcRenderer.send('album:open', { url: c.url, artUrl: c.art, title: c.title }); });
+    return el;
+}
+
+// "jump back in" wide shortcut tile
+function createTile(c: HomeCard): HTMLElement {
+    const tile = baseCard(c);
+    tile.className = 'tile';
+    tile.innerHTML =
+        `<img class="art" loading="lazy"${c.art ? ` src="${c.art}"` : ''}>` +
+        `<div class="tt">` +
+            `<div class="t">${escapeHtml(c.title || 'Untitled')}</div>` +
+            `<div class="a">${escapeHtml(c.artist || '')}</div>` +
+        `</div>`;
+    wireActions(tile, c);
+    return tile;
+}
+
+// standard shelf card (wishlist): cover on top, meta below
+function createShelfCard(c: HomeCard): HTMLElement {
+    const card = baseCard(c);
+    card.className = 'card';
     const wrap = document.createElement('div');
     wrap.className = 'artwrap';
     wrap.innerHTML = `<img class="art" loading="lazy"${c.art ? ` src="${c.art}"` : ''}>`;
-
-    // play / queue only when the item carries resolver handles (feed + owned
-    // items); discover rows without them just navigate on click.
-    const playable = !!(c.tralbumId && c.bandId);
-    if (playable) {
-        const play = document.createElement('button');
-        play.className = 'play';
-        play.title = 'play';
-        play.textContent = '▶';
-        play.addEventListener('click', async (e) => {
-            e.stopPropagation();
-            await ipcRenderer.invoke('collection:play', { tralbumId: c.tralbumId, tralbumType: c.tralbumType, bandId: c.bandId, trackId: c.trackId || undefined });
-        });
-        wrap.appendChild(play);
-
-        const enq = document.createElement('button');
-        enq.className = 'enq';
-        enq.title = 'add to queue';
-        enq.textContent = '+';
-        enq.addEventListener('click', async (e) => {
-            e.stopPropagation();
-            const prev = enq.textContent;
-            const res = await ipcRenderer.invoke('collection:enqueue', { tralbumId: c.tralbumId, tralbumType: c.tralbumType, bandId: c.bandId });
-            enq.textContent = res && res.ok ? '✓' : '×';
-            setTimeout(() => { enq.textContent = prev; }, 900);
-        });
-        wrap.appendChild(enq);
-    }
+    wireActions(wrap, c);
     card.appendChild(wrap);
-
     const meta = document.createElement('div');
     meta.className = 'meta';
     meta.innerHTML =
         `<div class="t">${escapeHtml(c.title || 'Untitled')}</div>` +
         `<div class="a">${escapeHtml(c.artist || '')}</div>` +
-        (c.year ? `<div class="w">${c.year}</div>` : '') +
-        (c.via ? `<div class="w">collected by ${escapeHtml(c.via)}</div>` : '');
+        (c.year ? `<div class="w">${c.year}</div>` : '');
     card.appendChild(meta);
-
-    card.addEventListener('click', () => { if (c.url) ipcRenderer.send('album:open', { url: c.url, artUrl: c.art, title: c.title }); });
     return card;
 }
 
-function fillRow(row: HTMLElement, sub: HTMLElement, items: HomeCard[], note: string): void {
-    sub.textContent = note;
-    const rail = row.closest('.rail') as HTMLElement | null;
-    const navs = rail ? rail.querySelectorAll('.navbtn') : [];
-    if (!items.length) {
-        row.innerHTML = `<div class="state">${note || 'nothing here yet.'}</div>`;
-        navs.forEach((b) => { (b as HTMLElement).style.display = 'none'; });
-        return;
-    }
-    navs.forEach((b) => { (b as HTMLElement).style.display = ''; });
-    const frag = document.createDocumentFragment();
-    for (const it of items) frag.appendChild(createCard(it));
-    row.innerHTML = '';
-    row.appendChild(frag);
+// feed variant: artist-forward with a relative-time accent
+function createFeedCard(c: HomeCard): HTMLElement {
+    const card = baseCard(c);
+    card.className = 'card';
+    const wrap = document.createElement('div');
+    wrap.className = 'artwrap';
+    wrap.innerHTML = `<img class="art" loading="lazy"${c.art ? ` src="${c.art}"` : ''}>`;
+    wireActions(wrap, c);
+    card.appendChild(wrap);
+    const when = relTime(c.date);
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    meta.innerHTML =
+        `<div class="who">${escapeHtml(c.artist || '')}${when ? `<span class="when">${when}</span>` : ''}</div>` +
+        `<div class="what">${escapeHtml(c.title || 'Untitled')}</div>` +
+        (c.via ? `<div class="via">collected by ${escapeHtml(c.via)}</div>` : '');
+    card.appendChild(meta);
+    return card;
 }
 
-// circular rail nav: each click steps the rail by 5 cards (132px card + 14px gap)
-// native smooth scrollBy is a no-op in this Electron, so animate it manually
-const RAIL_STEP = 5 * (132 + 14);
-function stepRow(row: HTMLElement, dist: number): void {
+// discover variant: editorial feature card, title overlaid on artwork gradient
+function createFeatureCard(c: HomeCard): HTMLElement {
+    const card = baseCard(c);
+    card.className = 'card';
+    const wrap = document.createElement('div');
+    wrap.className = 'artwrap';
+    wrap.innerHTML =
+        `<img class="art" loading="lazy"${c.art ? ` src="${c.art}"` : ''}>` +
+        `<div class="ovl">` +
+            `<div class="t">${escapeHtml(c.title || 'Untitled')}</div>` +
+            `<div class="a"><b>${escapeHtml(c.artist || '')}</b>${c.year ? ' · ' + c.year : ''}</div>` +
+        `</div>`;
+    wireActions(wrap, c);
+    card.appendChild(wrap);
+    return card;
+}
+
+// --- shelf rendering --------------------------------------------------------
+// big lists stay smooth: render at most RENDER_CAP nodes per shelf, keep the
+// rest here, append more as the user scrolls toward the end.
+type Builder = (c: HomeCard) => HTMLElement;
+const RENDER_CAP = 60;
+const pending = new Map<HTMLElement, HomeCard[]>();
+
+function stagger(row: HTMLElement): void {
+    Array.from(row.children).slice(0, 12).forEach((el, i) => {
+        (el as HTMLElement).style.animationDelay = `${i * 22}ms`;
+    });
+}
+
+function updateEdges(rail: HTMLElement | null): void {
+    if (!rail) return;
+    const row = rail.querySelector('.row') as HTMLElement | null;
+    const l = rail.querySelector('.edge.l') as HTMLElement | null;
+    const r = rail.querySelector('.edge.r') as HTMLElement | null;
+    if (!row || !l || !r) return;
+    const max = row.scrollWidth - row.clientWidth;
+    l.classList.toggle('dim', max <= 4 || row.scrollLeft <= 4);
+    r.classList.toggle('dim', max <= 4 || row.scrollLeft >= max - 4);
+}
+
+// re-render a shelf from scratch; items beyond the cap wait in `pending`
+function fillRow(row: HTMLElement, subId: string, items: HomeCard[], note: string, build: Builder): void {
+    $(subId).textContent = note;
+    const rail = row.closest('.rail') as HTMLElement | null;
+    if (!items.length) {
+        row.innerHTML = `<div class="state">${note || 'nothing here yet.'}</div>`;
+        pending.delete(row);
+        updateEdges(rail);
+        return;
+    }
+    const frag = document.createDocumentFragment();
+    for (const it of items.slice(0, RENDER_CAP)) frag.appendChild(build(it));
+    row.innerHTML = '';
+    row.appendChild(frag);
+    pending.set(row, items.slice(RENDER_CAP));
+    stagger(row);
+    updateEdges(rail);
+}
+
+// append the next client-side chunk when a shelf nears its end; returns true
+// when buffered cards were added
+function appendPending(row: HTMLElement): boolean {
+    const left = pending.get(row);
+    if (!left || !left.length) return false;
+    const chunk = left.splice(0, RENDER_CAP);
+    if (!left.length) pending.delete(row);
+    const frag = document.createDocumentFragment();
+    for (const it of chunk) frag.appendChild(createShelfCard(it));
+    row.appendChild(frag);
+    updateEdges(row.closest('.rail') as HTMLElement | null);
+    return true;
+}
+
+// --- shelf navigation -------------------------------------------------------
+// floating edge chevrons step by ~85% of the visible width. native smooth
+// scrollBy is a no-op in this Electron, so animate manually.
+function stepRow(row: HTMLElement, dir: number): void {
     const from = row.scrollLeft;
     const max = Math.max(0, row.scrollWidth - row.clientWidth);
-    const to = Math.max(0, Math.min(max, from + dist));
+    const to = Math.max(0, Math.min(max, from + dir * Math.round(row.clientWidth * 0.85)));
     if (to === from) return;
     const t0 = performance.now();
-    const dur = 280;
+    const dur = 350;
     const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
     const step = (now: number) => {
         const k = Math.min(1, (now - t0) / dur);
@@ -123,54 +231,53 @@ function stepRow(row: HTMLElement, dist: number): void {
     requestAnimationFrame(step);
 }
 function wireRailNav(row: HTMLElement, prevId: string, nextId: string): void {
-    $(prevId).addEventListener('click', () => stepRow(row, -RAIL_STEP));
-    $(nextId).addEventListener('click', () => stepRow(row, RAIL_STEP));
+    $(prevId).addEventListener('click', () => stepRow(row, -1));
+    $(nextId).addEventListener('click', () => stepRow(row, 1));
 }
-wireRailNav(recentRow, 'recent-prev', 'recent-next');
 wireRailNav(wishRow, 'wish-prev', 'wish-next');
 wireRailNav(feedRow, 'feed-prev', 'feed-next');
 wireRailNav(discoverRow, 'discover-prev', 'discover-next');
 
-// the wishlist rail pages on scroll: near the end, ask main for the next page
-// (continuation token lives there) and append the cards.
+// --- scroll-to-end loading ---------------------------------------------------
+// wishlist pages through bandcamp (network continuation) once its client-side
+// buffer is drained; the other shelves just append their buffer.
 let wishMoreBusy = false;
-wishRow.addEventListener('scroll', async () => {
-    if (wishMoreBusy) return;
-    if (wishRow.scrollLeft + wishRow.clientWidth < wishRow.scrollWidth - 400) return;
+async function onShelfScroll(row: HTMLElement): Promise<void> {
+    if (row.scrollLeft + row.clientWidth < row.scrollWidth - 400) return;
+    if (appendPending(row)) return;
+    if (row !== wishRow || wishMoreBusy) return;
     wishMoreBusy = true;
     try {
         const res: any = await ipcRenderer.invoke('home:wishlist-more').catch(() => null);
         if (res && res.items && res.items.length) {
             const frag = document.createDocumentFragment();
-            for (const it of res.items) frag.appendChild(createCard(it));
+            for (const it of res.items) frag.appendChild(createShelfCard(it));
             wishRow.appendChild(frag);
+            updateEdges(wishRow.closest('.rail') as HTMLElement | null);
         }
     } finally {
         wishMoreBusy = false;
     }
-});
+}
+for (const row of [wishRow, feedRow, discoverRow]) {
+    row.addEventListener('scroll', () => {
+        updateEdges(row.closest('.rail') as HTMLElement | null);
+        void onShelfScroll(row);
+    });
+}
 
 async function loadHome(): Promise<void> {
-    // part 1: local-only data (stats + recently collected) - renders instantly
+    // part 1: local-only data - renders instantly
     const res: any = await ipcRenderer.invoke('home:data').catch(() => null);
-    if (!res) { fillRow(recentRow, $('recent-sub'), [], 'could not load.'); return; }
-    const st = res.stats || {};
-    statsEl.innerHTML = [
-        `<span class="stat"><b>${st.owned || 0}</b> collected</span>`,
-        `<span class="stat"><b>${st.wishlist || 0}</b> wishlist</span>`,
-        `<span class="stat"><b>${st.local || 0}</b> local files</span>`,
-        `<span class="stat"><b>${st.playlists || 0}</b> playlists</span>`,
-    ].join('');
-    const recentItems = res.recent || [];
-    // the recently-collected rail only appears when there's something in it
+    if (!res) { fillRow(recentGrid, 'recent-sub', [], 'could not load.', createTile); return; }
+    const recentItems = (res.recent || []).slice(0, 8); // tiles show a handful
     $('rail-recent').style.display = recentItems.length ? '' : 'none';
-    fillRow(recentRow, $('recent-sub'), recentItems, '');
+    fillRow(recentGrid, 'recent-sub', recentItems, '', createTile);
     const wishItems = res.wish || [];
-    // same for the wishlist rail
     $('rail-wish').style.display = wishItems.length ? '' : 'none';
-    fillRow(wishRow, $('wish-sub'), wishItems, '');
+    fillRow(wishRow, 'wish-sub', wishItems, '', createShelfCard);
 
-    // part 2: network rails (feed + discover) - each fills in as it arrives
+    // part 2: cached/network rails - each fills in as it arrives
     const rails: any = await ipcRenderer.invoke('home:rails').catch(() => null);
     ipcRenderer.send('home:log', 'rails ok=' + !!(rails && rails.feed) +
         ' feed=' + (rails && rails.feed ? rails.feed.length : 0) +
@@ -181,17 +288,17 @@ async function loadHome(): Promise<void> {
         // page each); the store-backed ones were already filled in part 1.
         if (rails.recent) {
             $('rail-recent').style.display = rails.recent.length ? '' : 'none';
-            fillRow(recentRow, $('recent-sub'), rails.recent, '');
+            fillRow(recentGrid, 'recent-sub', rails.recent.slice(0, 8), '', createTile);
         }
         if (rails.wish) {
             $('rail-wish').style.display = rails.wish.length ? '' : 'none';
-            fillRow(wishRow, $('wish-sub'), rails.wish, '');
+            fillRow(wishRow, 'wish-sub', rails.wish, '', createShelfCard);
         }
-        fillRow(feedRow, $('feed-sub'), rails.feed || [], rails.feedError || (rails.feed && rails.feed.length ? '' : 'follow some artists to see their releases.'));
-        fillRow(discoverRow, $('discover-sub'), rails.discover || [], rails.discoverError || (rails.discover && rails.discover.length ? '' : 'discover is empty right now.'));
+        fillRow(feedRow, 'feed-sub', rails.feed || [], rails.feedError || (rails.feed && rails.feed.length ? '' : 'follow some artists to see their releases.'), createFeedCard);
+        fillRow(discoverRow, 'discover-sub', rails.discover || [], rails.discoverError || (rails.discover && rails.discover.length ? '' : 'discover is empty right now.'), createFeatureCard);
     } else {
-        fillRow(feedRow, $('feed-sub'), [], 'could not load the feed.');
-        fillRow(discoverRow, $('discover-sub'), [], 'could not load discover.');
+        fillRow(feedRow, 'feed-sub', [], 'could not load the feed.', createFeedCard);
+        fillRow(discoverRow, 'discover-sub', [], 'could not load discover.', createFeatureCard);
     }
 }
 
