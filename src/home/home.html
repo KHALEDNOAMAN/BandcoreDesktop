@@ -101,12 +101,12 @@
         .row { display: flex; gap: 16px; overflow-x: auto; padding: 8px 2px 10px; }
                 /* smart edge fades: hint at more content, only when there is any */
         .fade {
-            position: absolute; top: -8px; bottom: -10px; width: 72px; z-index: 2;
+            position: absolute; top: -8px; bottom: -10px; width: 60px; z-index: 2;
             pointer-events: none; opacity: 0; transition: opacity .28s ease;
         }
-        .fade.l { left: -2px; background: linear-gradient(to right, var(--bg) 12%, rgba(24,26,27,0)); }
-        .fade.r { right: -2px; background: linear-gradient(to left, var(--bg) 12%, rgba(24,26,27,0)); }
-        .fade.on { opacity: 1; }
+        .fade.l { left: -2px; background: linear-gradient(to right, rgba(24,26,27,.85) 10%, rgba(24,26,27,0)); }
+        .fade.r { right: -2px; background: linear-gradient(to left, rgba(24,26,27,.85) 10%, rgba(24,26,27,0)); }
+        .fade.on { opacity: .55; }
         /* floating edge chevrons - appear only while the shelf is hovered */
         .edge {
             position: absolute; top: 38%; z-index: 3;
