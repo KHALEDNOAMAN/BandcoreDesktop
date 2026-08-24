@@ -635,6 +635,77 @@ async function loadHome(): Promise<void> {
     }
 }
 
+// keyboard navigation: arrows move a focus ring across the shelves, enter
+// opens the focused card, escape clears it. spotify-ish, fully optional.
+let kbRow: HTMLElement | null = null;
+let kbIndex = -1;
+
+function kbClear(): void {
+    document.querySelectorAll('.kb-focus').forEach((el) => el.classList.remove('kb-focus'));
+    kbRow = null;
+    kbIndex = -1;
+}
+function kbApply(): void {
+    if (!kbRow) return;
+    document.querySelectorAll('.kb-focus').forEach((el) => el.classList.remove('kb-focus'));
+    const kids = Array.from(kbRow.children).filter((c) => (c as HTMLElement).classList.contains('card') || (c as HTMLElement).classList.contains('tile')) as HTMLElement[];
+    if (!kids.length) { kbRow = null; return; }
+    kbIndex = Math.max(0, Math.min(kids.length - 1, kbIndex));
+    const el = kids[kbIndex];
+    el.classList.add('kb-focus');
+    el.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    // keep the focused card inside the scrolled viewport
+    const r1 = el.getBoundingClientRect();
+    const r2 = kbRow.getBoundingClientRect();
+    if (r1.left < r2.left) kbRow.scrollBy({ left: r1.left - r2.left - 20 });
+    if (r1.right > r2.right) kbRow.scrollBy({ left: r1.right - r2.right + 20 });
+}
+const KB_ROWS: [string, HTMLElement][] = [
+    ['recent', recentGrid],
+    ['wish', wishRow],
+    ['feed', feedRow],
+    ['discover', discoverRow],
+];
+document.addEventListener('keydown', (e) => {
+    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft' && e.key !== 'ArrowDown' && e.key !== 'ArrowUp' && e.key !== 'Enter' && e.key !== 'Escape') return;
+    if ((e.target as HTMLElement)?.tagName === 'INPUT' || (e.target as HTMLElement)?.tagName === 'TEXTAREA') return;
+    if (cardMenuEl || dlMenuEl || fsArtOpen) return; // menus handle their own keys
+    if (!kbRow && (e.key === 'ArrowRight' || e.key === 'ArrowDown')) {
+        kbRow = (KB_ROWS.find(([, r]) => r.offsetParent !== null) || [])[1] || null; // first visible shelf
+        kbIndex = -1;
+        e.preventDefault();
+        kbApply();
+        return;
+    }
+    if (!kbRow) return;
+    if (e.key === 'Escape') { kbClear(); return; }
+    if (e.key === 'Enter') {
+        const el = kbRow.children[kbIndex] as HTMLElement | undefined;
+        if (el) { kbClear(); el.dispatchEvent(new MouseEvent('click', { bubbles: true })); }
+        e.preventDefault();
+        return;
+    }
+    const dir = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+    if (dir !== 0) {
+        kbIndex += dir;
+        e.preventDefault();
+        kbApply();
+        return;
+    }
+    // up/down: hop between visible shelves
+    const vis = KB_ROWS.filter(([, r]) => r.offsetParent !== null);
+    const at = vis.findIndex(([, r]) => r === kbRow);
+    if (at >= 0) {
+        const next = vis[(at + (e.key === 'ArrowDown' ? 1 : vis.length - 1)) % vis.length];
+        if (next) {
+            kbRow = next[1];
+            kbIndex = 0;
+            e.preventDefault();
+            kbApply();
+        }
+    }
+});
+
 $('close').addEventListener('click', () => ipcRenderer.send('home:close'));
 $('gologin').addEventListener('click', () => ipcRenderer.send('app:navigate', 'https://bandcamp.com/login'));
 document.addEventListener('keydown', (e) => {

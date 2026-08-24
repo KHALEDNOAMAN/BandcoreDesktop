@@ -100,6 +100,9 @@
         /* tactile press */
         .card:active .artwrap { transform: translateY(-2px) scale(.98); }
         .tile:active { transform: scale(.985); }
+        /* keyboard navigation focus ring */
+        .kb-focus { outline: none; }
+        .kb-focus .artwrap, .tile.kb-focus { box-shadow: 0 0 0 2px var(--accent) !important; border-radius: 10px; }
         /* click-to-open: cover blurs while main fetches the release */
         .card.loading, .tile.loading { pointer-events: none; }
         /* the blur samples past the img's rounded corners - clip at the wrapper */
