@@ -614,6 +614,10 @@ async function loadHome(): Promise<void> {
     if (rails) {
         // network rails land here when the store didn't have them yet (first
         // page each); the store-backed ones were already filled in part 1.
+        // a missing fan session (fresh exe) gets a login prompt instead of
+        // silent empty shelves
+        const notLoggedIn = !!(rails && (rails.feedError || '').includes('not logged in'));
+        $('loginbar').classList.toggle('show', notLoggedIn);
         if (rails.recent) {
             $('rail-recent').style.display = rails.recent.length ? '' : 'none';
             fillRow(recentGrid, 'recent-sub', rails.recent.slice(0, 8), '', createTile);
@@ -625,12 +629,14 @@ async function loadHome(): Promise<void> {
         fillRow(feedRow, 'feed-sub', rails.feed || [], rails.feedError || (rails.feed && rails.feed.length ? '' : 'follow some artists to see their releases.'), createFeedCard);
         fillRow(discoverRow, 'discover-sub', rails.discover || [], rails.discoverError || (rails.discover && rails.discover.length ? '' : 'discover is empty right now.'), createFeatureCard);
     } else {
+        $('loginbar').classList.remove('show');
         fillRow(feedRow, 'feed-sub', [], 'could not load the feed.', createFeedCard);
         fillRow(discoverRow, 'discover-sub', [], 'could not load discover.', createFeatureCard);
     }
 }
 
 $('close').addEventListener('click', () => ipcRenderer.send('home:close'));
+$('gologin').addEventListener('click', () => ipcRenderer.send('app:navigate', 'https://bandcamp.com/login'));
 document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
     if (cardMenuEl || dlMenuEl) { closeDlMenu(); return; }  // Esc closes the menu first

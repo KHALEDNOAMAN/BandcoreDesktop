@@ -64,6 +64,23 @@
         .rail h2 .exploreall:hover { color: var(--accent); }
         .state { padding: 30px 4px; color: var(--muted); font-size: 0.75rem; white-space: nowrap; }
 
+        /* first-run login prompt (fresh exe = empty cookie jar) */
+        .loginbar {
+            display: none; align-items: center; gap: 14px; margin: 2px 0 4px;
+            background: color-mix(in srgb, var(--accent) 12%, transparent);
+            border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+            border-radius: 10px; padding: 10px 14px;
+            color: var(--text-2); font-size: 0.78125rem;
+        }
+        .loginbar.show { display: flex; }
+        .loginbar button {
+            flex-shrink: 0; border: none; border-radius: 999px; cursor: pointer;
+            background: var(--accent); color: #fff; font-size: 0.6875rem; font-weight: 700;
+            letter-spacing: .04em; text-transform: uppercase; padding: 7px 14px;
+            transition: filter .15s ease;
+        }
+        .loginbar button:hover { filter: brightness(1.15); }
+
         /* skeleton shimmer while a rail loads */
         .skel { position: relative; overflow: hidden; background: var(--card); border-radius: 10px; }
         .skel::after {
@@ -305,6 +322,10 @@
         <button class="closebtn" id="close" title="Close home">✕</button>
     </div>
     <div class="scroll" id="scroll">
+        <div class="loginbar" id="loginbar">
+            <span>this device isn't logged in to bandcamp yet — log in once below and everything syncs.</span>
+            <button id="gologin">log in on bandcamp</button>
+        </div>
         <section class="rail tiles" id="rail-recent">
             <h2>Jump back in <span class="sub" id="recent-sub"></span></h2>
             <div class="tilegrid" id="recent"><div class="state">…</div></div>
